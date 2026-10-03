@@ -30,8 +30,10 @@ There is no test runner configured yet.
   attribution, and writes the normalized result to `app/src/data/data.json`. This file is
   **gitignored and regenerated on every dev/build** (see `predev`/`prebuild` in `package.json`) — the
   CSVs are the single source of truth, never hand-edit `data.json`.
-- **`app/scripts/groupAttribution.ts`** — the hand-maintained `GROUP_MEMBERS` lookup table implementing
-  the duo/group scoring rule below. Add new groups here as they show up in someone's top 25.
+- **`app/scripts/artistAttribution.ts`** — the hand-maintained `ARTIST_ALIASES` and `GROUP_MEMBERS`
+  lookup tables implementing the alias-merging and duo/group scoring rules below. Add new cases here
+  as they show up in someone's top 25. Aliases resolve *before* group expansion, so a group whose
+  listed members are themselves aliases still collapses to the right canonical person.
 - **`app/src/data/types.ts`** — shared shape (`Dataset` / `MonthlyList` / `Track`) for the JSON produced
   by the build script and consumed by the frontend. Each `Track` carries both `creditedArtists` (as
   literally written in the CSV) and `scoringArtists` (after group expansion) — stats/charts should
@@ -65,6 +67,15 @@ There is no test runner configured yet.
   position (1–25) matters for "best of" framing but a track counts even at #25.
 - **Features count**: if a track has a featured artist (e.g. "feat. X" in the title, or a secondary
   name in the artist field), the featured artist gets a full point too — same as the primary artist.
+- **Alias merging**: if the same real person has released music under more than one artist name (a
+  rename, a side project that's really just them, an "FKA"), every alias should count toward ONE
+  canonical name in the stats — don't let someone's songs get split across multiple "artists" just
+  because the CSV credits them under whichever name was current at release time. Current cases (see
+  `ARTIST_ALIASES` in `artistAttribution.ts`): "Mount Eerie" and "The Microphones" are both Phil
+  Elverum; "Milo" is an earlier stage name for the artist now credited as "R.A.P. Ferreira". If a track
+  credits two aliases of the same person together (this happens — e.g. a track crediting both "Milo"
+  and "R.A.P. Ferreira"), that's still one point for that person, not two. This mapping is not
+  derivable from the CSVs and needs manual upkeep as new alias cases show up.
 - **Group/duo attribution**: if a track is credited to a duo/group whose individual members also have
   independent solo careers, and the track credit does NOT separately name those members, each member
   individually gets a full point in addition to (or standing in for) the group credit. Canonical
