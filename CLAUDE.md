@@ -10,10 +10,43 @@ favorite). The site will turn the accumulated monthly lists into stats and chart
 artist, a timeline of tracks added per artist per month (with per-artist show/hide toggles), and
 possibly a "replay" animation of tracks being added over time.
 
-No application code exists yet — this repo currently contains only the raw monthly CSV exports that
-will be the data source. There is no build system, package manager, test runner, or framework chosen
-yet. When scaffolding the app, pick a stack and record the actual commands here (dev server, build,
-lint, test) — don't invent them speculatively.
+## Commands
+
+All commands run from `app/`:
+
+- `npm run dev` — start the Vite dev server (auto-runs `build:data` first via the `predev` hook).
+- `npm run build` — type-check + production build (auto-runs `build:data` first via `prebuild`).
+- `npm run build:data` — regenerate `src/data/data.json` from the CSVs under `top25/csv/`. Run this
+  manually any time you edit/add a CSV and want fresh data without a full dev-server restart.
+- `npm run lint` — oxlint.
+- `npm run preview` — serve the production build locally.
+
+There is no test runner configured yet.
+
+## Architecture
+
+- **`app/scripts/buildData.ts`** — the entire data pipeline. Reads every `top25/csv/<person>/*.csv`,
+  parses the Spotify/Exportify schema with Papa Parse, splits `Artist Name(s)` on `;`, applies group
+  attribution, and writes the normalized result to `app/src/data/data.json`. This file is
+  **gitignored and regenerated on every dev/build** (see `predev`/`prebuild` in `package.json`) — the
+  CSVs are the single source of truth, never hand-edit `data.json`.
+- **`app/scripts/groupAttribution.ts`** — the hand-maintained `GROUP_MEMBERS` lookup table implementing
+  the duo/group scoring rule below. Add new groups here as they show up in someone's top 25.
+- **`app/src/data/types.ts`** — shared shape (`Dataset` / `MonthlyList` / `Track`) for the JSON produced
+  by the build script and consumed by the frontend. Each `Track` carries both `creditedArtists` (as
+  literally written in the CSV) and `scoringArtists` (after group expansion) — stats/charts should
+  always aggregate on `scoringArtists`.
+- **`app/src/lib/stats.ts`** — pure aggregation functions (artist totals, per-month counts, cumulative
+  time series) over a `Dataset`. UI components call these rather than recomputing aggregates inline.
+- **`app/src/lib/colors.ts`** — assigns each artist a fixed categorical color slot by stable rank order
+  (see the dataviz skill's "color follows the entity, never its rank" rule) — a toggled-off artist must
+  never cause the remaining artists to repaint.
+- **`app/src/components/`** — `Leaderboard` (songs-per-artist bar list), `Timeline` (cumulative line
+  chart with per-artist toggle legend), `Replay` (month-by-month animated reveal), plus `Layout` /
+  `StatsRow` / `StatTile` shell pieces. `App.tsx` just wires person/view selection state and imports
+  `data.json` directly (no runtime CSV parsing, no backend/API).
+- Styling is CSS Modules per-component, with design tokens (colors, surfaces) as CSS custom properties
+  in `src/index.css`, following the project's dataviz skill palette for both light and dark mode.
 
 ### Scoring rules (per the project owner — not derivable from the data itself)
 
