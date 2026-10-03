@@ -1,0 +1,93 @@
+.wrap {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  padding: 20px 24px 24px;
+}
+
+.headRow {
+  margin-bottom: 18px;
+}
+
+.heading {
+  font-size: 16px;
+}
+
+.sub {
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 24px 160px 1fr 36px;
+  align-items: center;
+  gap: 10px;
+}
+
+.rank {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.name {
+  font-size: 13px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.barTrack {
+  height: 16px;
+  background: var(--surface-1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  border-radius: 8px;
+  min-width: 2px;
+}
+
+.value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.more {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  width: 100%;
+}
+
+.more:hover {
+  color: var(--text-primary);
+}
+
+@media (max-width: 560px) {
+  .row {
+    grid-template-columns: 20px 90px 1fr 32px;
+  }
+}
