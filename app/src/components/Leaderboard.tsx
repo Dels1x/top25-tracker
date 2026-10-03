@@ -15,6 +15,16 @@ interface LeaderboardProps {
 
 const PAGE_SIZE = 20;
 
+type SongSortKey = "date" | "rank" | "title" | "album";
+type SortDirection = "asc" | "desc";
+
+const SONG_SORT_COLUMNS: Array<{ key: SongSortKey; label: string }> = [
+  { key: "date", label: "Date" },
+  { key: "rank", label: "Placement" },
+  { key: "title", label: "Song" },
+  { key: "album", label: "Album" },
+];
+
 function formatMonth(month: string): string {
   const [year, m] = month.split("-");
   const date = new Date(Number(year), Number(m) - 1, 1);
@@ -24,6 +34,8 @@ function formatMonth(month: string): string {
 export function Leaderboard({ dataset, person, includeDuplicates }: LeaderboardProps) {
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<SongSortKey>("date");
+  const [sortDir, setSortDir] = useState<SortDirection>("desc");
 
   const availableMonths = useMemo(() => sortedMonths(dataset, person), [dataset, person]);
   const { startIndex, endIndex, lastIndex, rangeOptions, handleSliderChange, applyPreset } =
@@ -54,16 +66,46 @@ export function Leaderboard({ dataset, person, includeDuplicates }: LeaderboardP
   );
   const activeExpanded = isExpandedStillPresent ? expanded : null;
 
-  const expandedTracks = useMemo(
-    () =>
-      activeExpanded
-        ? tracksForArtist(dataset, activeExpanded, person, { includeDuplicates, ...rangeOptions })
-        : [],
-    [dataset, activeExpanded, person, includeDuplicates, rangeOptions]
-  );
+  const expandedTracks = useMemo(() => {
+    if (!activeExpanded) return [];
+    const tracks = tracksForArtist(dataset, activeExpanded, person, {
+      includeDuplicates,
+      ...rangeOptions,
+    });
+    const sorted = [...tracks].sort((a, b) => {
+      let cmp: number;
+      switch (sortKey) {
+        case "date":
+          cmp = a.month.localeCompare(b.month);
+          break;
+        case "rank":
+          cmp = a.rank - b.rank;
+          break;
+        case "title":
+          cmp = a.title.localeCompare(b.title);
+          break;
+        case "album":
+          cmp = a.album.localeCompare(b.album);
+          break;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return sorted;
+  }, [dataset, activeExpanded, person, includeDuplicates, rangeOptions, sortKey, sortDir]);
 
   function toggle(artist: string) {
     setExpanded((prev) => (prev === artist ? null : artist));
+  }
+
+  function handleSort(key: SongSortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      // Date/rank read most naturally starting from newest/best; title/album
+      // read most naturally starting A-first.
+      setSortDir(key === "date" || key === "rank" ? "desc" : "asc");
+    }
   }
 
   return (
@@ -127,6 +169,29 @@ export function Leaderboard({ dataset, person, includeDuplicates }: LeaderboardP
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.22, ease: "easeOut" }}
                   >
+                    <div className={styles.songHeaderRow}>
+                      {SONG_SORT_COLUMNS.map((col) => (
+                        <button
+                          key={col.key}
+                          type="button"
+                          className={
+                            col.key === "album"
+                              ? `${styles.songHeaderButton} ${styles.hideOnMobile}`
+                              : styles.songHeaderButton
+                          }
+                          onClick={() => handleSort(col.key)}
+                          data-active={sortKey === col.key}
+                        >
+                          {col.label}
+                          {sortKey === col.key && (
+                            <span className={styles.sortArrow} aria-hidden="true">
+                              {sortDir === "asc" ? "↑" : "↓"}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                      <span className={styles.songHeaderStatic}>Artist(s)</span>
+                    </div>
                     <ul className={styles.songList}>
                       {expandedTracks.map((track, i) => (
                         <li key={`${track.month}-${track.rank}-${i}`} className={styles.songRow}>
@@ -134,6 +199,9 @@ export function Leaderboard({ dataset, person, includeDuplicates }: LeaderboardP
                           <span className={styles.songRank}>#{track.rank}</span>
                           <span className={styles.songTitle} title={track.title}>
                             {track.title}
+                          </span>
+                          <span className={styles.songAlbum} title={track.album}>
+                            {track.album}
                           </span>
                           <span className={styles.songArtists} title={track.creditedArtists.join(", ")}>
                             {track.creditedArtists.join(", ")}
