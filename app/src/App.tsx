@@ -7,6 +7,7 @@ import { Leaderboard } from "./components/Leaderboard";
 import { Timeline } from "./components/Timeline";
 import { Replay } from "./components/Replay";
 import { DuplicatesToggle } from "./components/DuplicatesToggle";
+import { usePersistedState } from "./lib/usePersistedState";
 
 const dataset = rawData as Dataset;
 
@@ -15,7 +16,10 @@ type View = "leaderboard" | "timeline" | "replay";
 function App() {
   const [person, setPerson] = useState(dataset.people[0]);
   const [view, setView] = useState<View>("leaderboard");
-  const [includeDuplicates, setIncludeDuplicates] = useState(true);
+  const [includeDuplicates, setIncludeDuplicates] = usePersistedState(
+    "top25tracker:includeDuplicates",
+    true
+  );
 
   return (
     <Layout
