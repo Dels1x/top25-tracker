@@ -110,9 +110,11 @@ There is no test runner configured yet.
   correctly). Current cases: "Kill Bill the Rapper" (missing colon, wrong case) → "Kill Bill: The
   Rapper"; "RAP FERRERIA" (typo'd/all-caps) → "R.A.P. Ferreira"; "KA" (all-caps, used on a few feature
   credits) → "Ka" (the dominant spelling on his own tracks); "Alchemist" (missing "The", used on a
-  handful of credits) → "The Alchemist". Add new ones here as they're spotted —
-  there's no automatic way to detect a typo'd artist name, so this is manual, same as the other tables
-  here.
+  handful of credits) → "The Alchemist"; "Laurie Bird" → "Natural Snow Buildings" (Spotify mislabels
+  this project under one member's name instead of the actual project name — not a small typo like the
+  others, but the same class of fix: credited wrong on Spotify's end, not a real alternate identity).
+  Add new ones here as they're spotted — there's no automatic way to detect a mislabeled artist name,
+  so this is manual, same as the other tables here.
 - **Alias merging** (always on, build-time): if the same real person has released music under more
   than one artist name (a rename, a side project that's really just them, an "FKA"), every alias
   should count toward ONE canonical name in the stats — don't let someone's songs get split across

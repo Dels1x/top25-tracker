@@ -40,6 +40,7 @@ export const SPOTIFY_MISSPELLINGS: Record<string, string> = {
   "RAP FERRERIA": "R.A.P. Ferreira",
   KA: "Ka",
   Alchemist: "The Alchemist", // missing "The", a handful of credits drop it
+  "Laurie Bird": "Natural Snow Buildings", // Spotify mislabels this project under a member's name
   // Add more here as they turn up, e.g.:
   // "Kendrik Lamar": "Kendrick Lamar",
 };
