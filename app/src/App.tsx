@@ -57,12 +57,12 @@ function App() {
           <ToggleCheckbox
             checked={uniteRelatedProjects}
             onChange={setUniteRelatedProjects}
-            label="Unite similar artists/groups (e.g. Team Sleep → Deftones)"
+            label="Unite similar artists/groups"
           />
           <ToggleCheckbox
             checked={showProducers}
             onChange={setShowProducers}
-            label="Show producers (credits are inconsistent, off by default)"
+            label="Show producers"
           />
         </div>
       )}
