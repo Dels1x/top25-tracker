@@ -11,8 +11,9 @@ import {
 import type { Dataset } from "../data/types";
 import { artistTotals, cumulativeArtistSeries, sortedMonths } from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
-import { usePersistedSetState, usePersistedState } from "../lib/usePersistedState";
-import { MonthRangeSlider } from "./MonthRangeSlider";
+import { usePersistedSetState } from "../lib/usePersistedState";
+import { useMonthRange } from "../lib/useMonthRange";
+import { RangePicker } from "./RangePicker";
 import styles from "./Timeline.module.css";
 
 interface TimelineProps {
@@ -23,13 +24,6 @@ interface TimelineProps {
 
 const DEFAULT_SHOWN = 6;
 
-const PRESETS = [
-  { label: "All time", months: null },
-  { label: "Last 6 months", months: 6 },
-  { label: "Last 12 months", months: 12 },
-  { label: "Last 24 months", months: 24 },
-] as const;
-
 function formatMonth(month: string): string {
   const [year, m] = month.split("-");
   const date = new Date(Number(year), Number(m) - 1, 1);
@@ -38,33 +32,9 @@ function formatMonth(month: string): string {
 
 export function Timeline({ dataset, person, includeDuplicates }: TimelineProps) {
   const availableMonths = useMemo(() => sortedMonths(dataset, person), [dataset, person]);
-  const lastIndex = Math.max(availableMonths.length - 1, 0);
 
-  // Persisted per person as actual month strings (stable even if the number
-  // of available months changes between sessions), but the slider/preset UI
-  // operates on indices into availableMonths - converted both ways below.
-  const [startMonth, setStartMonth] = usePersistedState(
-    `top25tracker:timelineStart:${person}`,
-    availableMonths[0] ?? ""
-  );
-  const [endMonth, setEndMonth] = usePersistedState(
-    `top25tracker:timelineEnd:${person}`,
-    availableMonths[lastIndex] ?? ""
-  );
-
-  const startIndex = Math.max(availableMonths.indexOf(startMonth), 0);
-  const endIndexRaw = availableMonths.indexOf(endMonth);
-  const endIndex = endIndexRaw === -1 ? lastIndex : endIndexRaw;
-
-  const isFullRange = startIndex === 0 && endIndex === lastIndex;
-
-  const rangeOptions = useMemo(
-    () => ({
-      startMonth: isFullRange ? undefined : availableMonths[startIndex],
-      endMonth: isFullRange ? undefined : availableMonths[endIndex],
-    }),
-    [isFullRange, availableMonths, startIndex, endIndex]
-  );
+  const { startIndex, endIndex, lastIndex, rangeOptions, handleSliderChange, applyPreset } =
+    useMonthRange(availableMonths, `timeline:${person}`);
 
   const totals = useMemo(
     () => artistTotals(dataset, person, { includeDuplicates, ...rangeOptions }),
@@ -85,20 +55,6 @@ export function Timeline({ dataset, person, includeDuplicates }: TimelineProps) 
     () => cumulativeArtistSeries(dataset, person, allArtists, { includeDuplicates, ...rangeOptions }),
     [dataset, person, allArtists, includeDuplicates, rangeOptions]
   );
-
-  function handleSliderChange(newStartIndex: number, newEndIndex: number) {
-    setStartMonth(availableMonths[newStartIndex]);
-    setEndMonth(availableMonths[newEndIndex]);
-  }
-
-  function applyPreset(monthsBack: number | null) {
-    if (monthsBack === null) {
-      setStartMonth(availableMonths[0]);
-    } else {
-      setStartMonth(availableMonths[Math.max(lastIndex - monthsBack + 1, 0)]);
-    }
-    setEndMonth(availableMonths[lastIndex]);
-  }
 
   function toggle(artist: string) {
     setShown((prev) => {
@@ -136,33 +92,14 @@ export function Timeline({ dataset, person, includeDuplicates }: TimelineProps) 
         </div>
       </div>
 
-      <div className={styles.rangeRow}>
-        <div className={styles.rangeHeadRow}>
-          <span className={styles.rangeLabel}>
-            {formatMonth(availableMonths[startIndex] ?? "")} &rarr;{" "}
-            {endIndex === lastIndex ? "now" : formatMonth(availableMonths[endIndex] ?? "")}
-          </span>
-          <div className={styles.presets}>
-            {PRESETS.map((preset) => (
-              <button
-                key={preset.label}
-                type="button"
-                className={styles.presetButton}
-                onClick={() => applyPreset(preset.months)}
-              >
-                {preset.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <MonthRangeSlider
-          months={availableMonths}
-          startIndex={startIndex}
-          endIndex={endIndex}
-          onChange={handleSliderChange}
-        />
-      </div>
+      <RangePicker
+        months={availableMonths}
+        startIndex={startIndex}
+        endIndex={endIndex}
+        lastIndex={lastIndex}
+        onSliderChange={handleSliderChange}
+        onPreset={applyPreset}
+      />
 
       <div className={styles.chartArea}>
         <ResponsiveContainer width="100%" height={380}>

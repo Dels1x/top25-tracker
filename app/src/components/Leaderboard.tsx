@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Dataset } from "../data/types";
-import { artistTotals, tracksForArtist } from "../lib/stats";
+import { artistTotals, sortedMonths, tracksForArtist } from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
+import { useMonthRange } from "../lib/useMonthRange";
+import { RangePicker } from "./RangePicker";
 import styles from "./Leaderboard.module.css";
 
 interface LeaderboardProps {
@@ -23,9 +25,13 @@ export function Leaderboard({ dataset, person, includeDuplicates }: LeaderboardP
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [expanded, setExpanded] = useState<string | null>(null);
 
+  const availableMonths = useMemo(() => sortedMonths(dataset, person), [dataset, person]);
+  const { startIndex, endIndex, lastIndex, rangeOptions, handleSliderChange, applyPreset } =
+    useMonthRange(availableMonths, `leaderboard:${person}`);
+
   const totals = useMemo(
-    () => artistTotals(dataset, person, { includeDuplicates }),
-    [dataset, person, includeDuplicates]
+    () => artistTotals(dataset, person, { includeDuplicates, ...rangeOptions }),
+    [dataset, person, includeDuplicates, rangeOptions]
   );
   const colorMap = useMemo(
     () => buildArtistColorMap(totals.map((t) => t.artist)),
@@ -34,10 +40,26 @@ export function Leaderboard({ dataset, person, includeDuplicates }: LeaderboardP
   const max = totals[0]?.total ?? 1;
   const visible = totals.slice(0, limit);
 
+  // Changing the range or duplicate-counting mode changes which artists
+  // qualify at all - start back at the top rather than keep a "show more"
+  // depth from a different filtered view.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => setLimit(PAGE_SIZE), [person, includeDuplicates, rangeOptions]);
+
+  // If the range narrows and the expanded artist drops out of it entirely,
+  // close the panel rather than show an empty "songs" list for them.
+  const isExpandedStillPresent = useMemo(
+    () => expanded !== null && totals.some((t) => t.artist === expanded),
+    [expanded, totals]
+  );
+  const activeExpanded = isExpandedStillPresent ? expanded : null;
+
   const expandedTracks = useMemo(
     () =>
-      expanded ? tracksForArtist(dataset, expanded, person, { includeDuplicates }) : [],
-    [dataset, expanded, person, includeDuplicates]
+      activeExpanded
+        ? tracksForArtist(dataset, activeExpanded, person, { includeDuplicates, ...rangeOptions })
+        : [],
+    [dataset, activeExpanded, person, includeDuplicates, rangeOptions]
   );
 
   function toggle(artist: string) {
@@ -55,11 +77,20 @@ export function Leaderboard({ dataset, person, includeDuplicates }: LeaderboardP
         </p>
       </div>
 
+      <RangePicker
+        months={availableMonths}
+        startIndex={startIndex}
+        endIndex={endIndex}
+        lastIndex={lastIndex}
+        onSliderChange={handleSliderChange}
+        onPreset={applyPreset}
+      />
+
       <ol className={styles.list}>
         {visible.map((row, index) => {
           const pct = (row.total / max) * 100;
           const color = colorMap.get(row.artist) ?? "var(--text-muted)";
-          const isOpen = expanded === row.artist;
+          const isOpen = activeExpanded === row.artist;
           return (
             <li key={row.artist} className={styles.item}>
               <button
