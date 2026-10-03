@@ -1,6 +1,7 @@
 import type { Dataset, MonthlyList, Track } from "../data/types";
 import { uniteRelatedProject } from "./relatedProjects";
 import { isKnownProducer } from "./knownProducers";
+import { genresForTrack, UNTAGGED_GENRE } from "./genreParents";
 
 /** One point per occurrence of an artist in `scoringArtists` across a track. */
 export interface ArtistMonthCount {
@@ -239,6 +240,112 @@ export function tracksForArtist(
 export interface CumulativeSeriesPoint {
   month: string;
   [artist: string]: number | string;
+}
+
+export interface GenreTotal {
+  genre: string;
+  total: number;
+}
+
+export interface GenreMonthCount {
+  genre: string;
+  month: string;
+  count: number;
+}
+
+/**
+ * The major genre(s) a track counts toward, or [UNTAGGED_GENRE] if it has no
+ * Spotify genre data at all. A track with tags spanning more than one major
+ * genre (e.g. "rap metal" -> Hip-Hop AND Metal) counts toward every one of
+ * them - same "counts toward everything it touches" rule as scoringArtists.
+ */
+function genreBucketsForTrack(track: Track): string[] {
+  if (track.genres.length === 0) return [UNTAGGED_GENRE];
+  return genresForTrack(track.genres);
+}
+
+/** Total tracks per major genre across all months (optionally for one person). */
+export function genreTotals(
+  dataset: Dataset,
+  person?: string,
+  options?: StatsOptions
+): GenreTotal[] {
+  const totals = new Map<string, number>();
+  for (const track of allTracks(dataset, person, options)) {
+    for (const genre of genreBucketsForTrack(track)) {
+      totals.set(genre, (totals.get(genre) ?? 0) + 1);
+    }
+  }
+  return Array.from(totals.entries())
+    .map(([genre, total]) => ({ genre, total }))
+    .sort((a, b) => b.total - a.total);
+}
+
+/** Per-month track counts per major genre, for building a time series chart. */
+export function genreMonthCounts(
+  dataset: Dataset,
+  person?: string,
+  options?: StatsOptions
+): GenreMonthCount[] {
+  const counts = new Map<string, number>(); // key: `${genre}\u0000${month}`
+  for (const track of allTracks(dataset, person, options)) {
+    for (const genre of genreBucketsForTrack(track)) {
+      const key = `${genre}\u0000${track.month}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+  }
+  return Array.from(counts.entries()).map(([key, count]) => {
+    const [genre, month] = key.split("\u0000");
+    return { genre, month, count };
+  });
+}
+
+/**
+ * All tracks counting toward a given major genre, newest month first - the
+ * exact set backing its number in genreTotals (same options, same dedup
+ * rule), for display in a "show me the songs" dropdown.
+ */
+export function tracksForGenre(
+  dataset: Dataset,
+  genre: string,
+  person?: string,
+  options?: StatsOptions
+): Array<Track & { month: string; person: string }> {
+  return allTracks(dataset, person, options)
+    .filter((track) => genreBucketsForTrack(track).includes(genre))
+    .sort((a, b) => b.month.localeCompare(a.month));
+}
+
+/** Same shape as cumulativeArtistSeries, but for major genres. */
+export function cumulativeGenreSeries(
+  dataset: Dataset,
+  person: string | undefined,
+  topGenres: string[],
+  options?: StatsOptions
+): CumulativeSeriesPoint[] {
+  const months = sortedMonths(dataset, person, options);
+  const perMonth = genreMonthCounts(dataset, person, options);
+
+  const lookup = new Map<string, number>();
+  for (const { genre, month, count } of perMonth) {
+    lookup.set(`${genre}\u0000${month}`, count);
+  }
+
+  const running = new Map<string, number>(topGenres.map((g) => [g, 0]));
+  const series: CumulativeSeriesPoint[] = [];
+
+  for (const month of months) {
+    const point: CumulativeSeriesPoint = { month };
+    for (const genre of topGenres) {
+      const delta = lookup.get(`${genre}\u0000${month}`) ?? 0;
+      const newTotal = (running.get(genre) ?? 0) + delta;
+      running.set(genre, newTotal);
+      point[genre] = newTotal;
+    }
+    series.push(point);
+  }
+
+  return series;
 }
 
 /** One song that every person has had in their top 25 at some point, and when. */

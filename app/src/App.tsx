@@ -4,6 +4,8 @@ import { Layout } from "./components/Layout";
 import { StatsRow } from "./components/StatsRow";
 import { Leaderboard } from "./components/Leaderboard";
 import { Timeline } from "./components/Timeline";
+import { GenreLeaderboard } from "./components/GenreLeaderboard";
+import { GenreTimeline } from "./components/GenreTimeline";
 import { Replay } from "./components/Replay";
 import { Shared } from "./components/Shared";
 import { ToggleCheckbox } from "./components/ToggleCheckbox";
@@ -12,8 +14,18 @@ import type { StatsOptions } from "./lib/stats";
 
 const dataset = rawData as Dataset;
 
-type View = "leaderboard" | "timeline" | "replay" | "shared";
-const VALID_VIEWS: View[] = ["leaderboard", "timeline", "replay", "shared"];
+type View = "leaderboard" | "timeline" | "genres" | "genreTimeline" | "replay" | "shared";
+const VALID_VIEWS: View[] = [
+  "leaderboard",
+  "timeline",
+  "genres",
+  "genreTimeline",
+  "replay",
+  "shared",
+];
+const GENRE_VIEWS: View[] = ["genres", "genreTimeline"];
+const NO_STATS_ROW_VIEWS: View[] = ["shared"];
+const NO_TOGGLES_VIEWS: View[] = ["replay", "shared"];
 
 function App() {
   const [person, setPerson] = usePersistedState("top25tracker:person", dataset.people[0]);
@@ -52,28 +64,33 @@ function App() {
       view={activeView}
       onViewChange={setView}
     >
-      {activeView !== "shared" && (
+      {!NO_STATS_ROW_VIEWS.includes(activeView) && (
         <StatsRow dataset={dataset} person={activePerson} scoringOptions={scoringOptions} />
       )}
 
-      {activeView !== "replay" && activeView !== "shared" && (
+      {!NO_TOGGLES_VIEWS.includes(activeView) && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 16 }}>
           <ToggleCheckbox
             checked={includeDuplicates}
             onChange={setIncludeDuplicates}
             label="Count repeat songs every time they appear"
           />
-          <ToggleCheckbox
-            checked={uniteRelatedProjects}
-            onChange={setUniteRelatedProjects}
-            label="Unite similar artists/groups"
-          />
-          <ToggleCheckbox
-            checked={showProducers}
-            onChange={setShowProducers}
-            label="Show producers"
-          />
-          <ToggleCheckbox checked={showDuos} onChange={setShowDuos} label="Show duos" />
+          {/* Artist-identity options only affect artist-scoped views, not genres. */}
+          {!GENRE_VIEWS.includes(activeView) && (
+            <>
+              <ToggleCheckbox
+                checked={uniteRelatedProjects}
+                onChange={setUniteRelatedProjects}
+                label="Unite similar artists/groups"
+              />
+              <ToggleCheckbox
+                checked={showProducers}
+                onChange={setShowProducers}
+                label="Show producers"
+              />
+              <ToggleCheckbox checked={showDuos} onChange={setShowDuos} label="Show duos" />
+            </>
+          )}
         </div>
       )}
 
@@ -82,6 +99,12 @@ function App() {
       )}
       {activeView === "timeline" && (
         <Timeline dataset={dataset} person={activePerson} scoringOptions={scoringOptions} />
+      )}
+      {activeView === "genres" && (
+        <GenreLeaderboard dataset={dataset} person={activePerson} scoringOptions={scoringOptions} />
+      )}
+      {activeView === "genreTimeline" && (
+        <GenreTimeline dataset={dataset} person={activePerson} scoringOptions={scoringOptions} />
       )}
       {activeView === "replay" && <Replay dataset={dataset} person={activePerson} />}
       {activeView === "shared" && <Shared dataset={dataset} />}

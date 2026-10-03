@@ -59,16 +59,32 @@ There is no test runner configured yet.
   of `dataset.lists` and finds songs that have appeared (at any rank, in any month) in literally every
   person's top 25, matched via the same `trackKey` used for duplicate detection (so re-release title
   variants still count as the same song across people, not just within one person's history).
+  `genreTotals`/`genreMonthCounts`/`tracksForGenre`/`cumulativeGenreSeries` mirror the artist-scoped
+  functions but bucket by major genre instead (see `genreParents.ts`) - they only honor
+  `includeDuplicates`/`startMonth`/`endMonth` from `StatsOptions`; the artist-identity options
+  (`uniteRelatedProjects`/`showProducers`/`showDuos`) don't apply to genres and the genre UI components
+  don't pass them through.
+- **`app/src/lib/genreParents.ts`** — `GENRES` (the ~10 major-genre buckets) and the hand-maintained
+  map from every Spotify micro-genre tag actually seen in this dataset (e.g. "g-funk", "shoegaze") to
+  the bucket(s) it belongs to. A track with tags spanning more than one bucket (e.g. "rap metal") counts
+  toward every bucket it touches - same "counts toward everything" rule as multi-artist credits. A tag
+  with no mapped entry falls back to "Other" rather than crashing; `UNTAGGED_GENRE` is the separate
+  bucket for a track with zero Spotify genre tags at all (~17% of tracks, mostly locally-matched files
+  that never got full metadata - a real data gap, not a bug). Not derivable algorithmically - built by
+  walking every tag present in the real data; if a future CSV introduces a brand-new tag, it'll quietly
+  fall into "Other" until someone adds a real mapping here.
 - **`app/src/lib/colors.ts`** — assigns each artist a fixed categorical color slot by stable rank order
   (see the dataviz skill's "color follows the entity, never its rank" rule) — a toggled-off artist must
   never cause the remaining artists to repaint.
 - **`app/src/components/`** — `Leaderboard` (songs-per-artist bar list), `Timeline` (cumulative line
-  chart with per-artist toggle legend), `Replay` (month-by-month animated reveal), `Shared` (songs
-  that have appeared in every person's top 25 at some point — see `sharedSongs` in `stats.ts`; unlike
-  every other view this one is NOT scoped to the active person, so `App.tsx` skips rendering
-  `StatsRow`/the scoring-option checkboxes for it), plus `Layout` / `StatsRow` / `StatTile` shell
-  pieces. `App.tsx` just wires person/view selection state and imports `data.json` directly (no
-  runtime CSV parsing, no backend/API).
+  chart with per-artist toggle legend), `GenreLeaderboard`/`GenreTimeline` (the same two shapes but
+  ranking major genres instead of artists — reuse `Leaderboard.module.css`/`Timeline.module.css`
+  directly rather than duplicating styles, since the layouts are identical), `Replay` (month-by-month
+  animated reveal), `Shared` (songs that have appeared in every person's top 25 at some point — see
+  `sharedSongs` in `stats.ts`; unlike every other view this one is NOT scoped to the active person, so
+  `App.tsx` skips rendering `StatsRow`/the scoring-option checkboxes for it), plus `Layout` / `StatsRow`
+  / `StatTile` shell pieces. `App.tsx` just wires person/view selection state and imports `data.json`
+  directly (no runtime CSV parsing, no backend/API).
 - Styling is CSS Modules per-component, with design tokens (colors, surfaces) as CSS custom properties
   in `src/index.css`, following the project's dataviz skill palette for both light and dark mode.
 - **`app/src/lib/usePersistedState.ts`** — `usePersistedState`/`usePersistedSetState` wrap `useState`

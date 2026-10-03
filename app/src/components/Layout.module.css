@@ -117,11 +117,16 @@
   .titleBlock {
     margin-right: 0;
   }
-  .tabs,
+  .tabs {
+    flex-wrap: wrap;
+  }
   .personSwitch {
     flex: 1;
   }
-  .tab,
+  .tab {
+    flex: 1 1 calc(33.333% - 4px);
+    text-align: center;
+  }
   .personButton {
     flex: 1;
     text-align: center;
