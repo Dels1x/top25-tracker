@@ -7,13 +7,14 @@ import styles from "./StatsRow.module.css";
 interface StatsRowProps {
   dataset: Dataset;
   person: string;
+  includeDuplicates: boolean;
 }
 
-export function StatsRow({ dataset, person }: StatsRowProps) {
+export function StatsRow({ dataset, person, includeDuplicates }: StatsRowProps) {
   const stats = useMemo(() => {
     const lists = listsForPerson(dataset, person);
-    const tracks = allTracks(dataset, person);
-    const totals = artistTotals(dataset, person);
+    const tracks = allTracks(dataset, person, { includeDuplicates });
+    const totals = artistTotals(dataset, person, { includeDuplicates });
     const uniqueTitles = new Set(tracks.map((t) => `${t.title}\u0000${t.creditedArtists.join(",")}`));
     const topArtist = totals[0];
     const months = lists.map((l) => l.month).sort();
@@ -26,7 +27,7 @@ export function StatsRow({ dataset, person }: StatsRowProps) {
       firstMonth: months[0],
       lastMonth: months[months.length - 1],
     };
-  }, [dataset, person]);
+  }, [dataset, person, includeDuplicates]);
 
   return (
     <div className={styles.row}>

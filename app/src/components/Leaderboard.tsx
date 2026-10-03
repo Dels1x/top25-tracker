@@ -8,14 +8,18 @@ import styles from "./Leaderboard.module.css";
 interface LeaderboardProps {
   dataset: Dataset;
   person: string;
+  includeDuplicates: boolean;
 }
 
 const PAGE_SIZE = 20;
 
-export function Leaderboard({ dataset, person }: LeaderboardProps) {
+export function Leaderboard({ dataset, person, includeDuplicates }: LeaderboardProps) {
   const [limit, setLimit] = useState(PAGE_SIZE);
 
-  const totals = useMemo(() => artistTotals(dataset, person), [dataset, person]);
+  const totals = useMemo(
+    () => artistTotals(dataset, person, { includeDuplicates }),
+    [dataset, person, includeDuplicates]
+  );
   const colorMap = useMemo(
     () => buildArtistColorMap(totals.map((t) => t.artist)),
     [totals]
@@ -29,7 +33,7 @@ export function Leaderboard({ dataset, person }: LeaderboardProps) {
         <h2 className={styles.heading}>Songs per artist</h2>
         <p className={styles.sub}>
           {totals.length} artists &middot; counts include feature credits and group/member
-          attribution
+          attribution{!includeDuplicates && " · repeat songs counted once"}
         </p>
       </div>
 

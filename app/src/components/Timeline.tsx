@@ -16,6 +16,7 @@ import styles from "./Timeline.module.css";
 interface TimelineProps {
   dataset: Dataset;
   person: string;
+  includeDuplicates: boolean;
 }
 
 const DEFAULT_SHOWN = 6;
@@ -26,8 +27,11 @@ function formatMonth(month: string): string {
   return date.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
 }
 
-export function Timeline({ dataset, person }: TimelineProps) {
-  const totals = useMemo(() => artistTotals(dataset, person), [dataset, person]);
+export function Timeline({ dataset, person, includeDuplicates }: TimelineProps) {
+  const totals = useMemo(
+    () => artistTotals(dataset, person, { includeDuplicates }),
+    [dataset, person, includeDuplicates]
+  );
   const allArtists = useMemo(() => totals.map((t) => t.artist), [totals]);
   const colorMap = useMemo(() => buildArtistColorMap(allArtists), [allArtists]);
 
@@ -43,8 +47,8 @@ export function Timeline({ dataset, person }: TimelineProps) {
   }
 
   const series = useMemo(
-    () => cumulativeArtistSeries(dataset, person, allArtists),
-    [dataset, person, allArtists]
+    () => cumulativeArtistSeries(dataset, person, allArtists, { includeDuplicates }),
+    [dataset, person, allArtists, includeDuplicates]
   );
 
   function toggle(artist: string) {
