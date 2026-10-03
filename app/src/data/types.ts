@@ -33,4 +33,13 @@ export interface Dataset {
   people: string[];
   lists: MonthlyList[];
   generatedAt: string;
+  /**
+   * Every group/duo name from GROUP_MEMBERS (scripts/artistAttribution.ts),
+   * copied here so the frontend can know "is this scoringArtists entry a
+   * duo/group name, or an individual" without re-deriving the build-time
+   * table - powers the "show duos" checkbox, which hides the group's own
+   * entry (its members already get full credit via expansion, so showing
+   * the group too is additional, optional context rather than new points).
+   */
+  groupNames: string[];
 }

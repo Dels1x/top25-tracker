@@ -95,6 +95,17 @@ export interface StatsOptions {
    * setting.
    */
   showProducers?: boolean;
+  /**
+   * When false (default - "show duos" checkbox OFF), a group/duo name
+   * itself (dataset.groupNames, from GROUP_MEMBERS) is dropped from
+   * scoringArtists - its members already get full credit via expansion
+   * (see expandCreditedArtists in artistAttribution.ts), so showing the
+   * group's own entry too is additional/optional context, not new points.
+   * Does NOT touch `creditedArtists` - the raw per-track credit list (song
+   * dropdown, Replay) always shows the group name if that's what's
+   * literally on the record, regardless of this setting.
+   */
+  showDuos?: boolean;
 }
 
 function inRange(month: string, options?: StatsOptions): boolean {
@@ -142,6 +153,8 @@ export function allTracks(
   person?: string,
   options?: StatsOptions
 ): Array<Track & { month: string; person: string }> {
+  const groupNames = options?.showDuos ? null : new Set(dataset.groupNames);
+
   const out: Array<Track & { month: string; person: string }> = [];
   for (const list of dataset.lists) {
     if (person && list.person !== person) continue;
@@ -153,6 +166,9 @@ export function allTracks(
       }
       if (!options?.showProducers) {
         scoringArtists = scoringArtists.filter((a) => !isKnownProducer(a));
+      }
+      if (groupNames) {
+        scoringArtists = scoringArtists.filter((a) => !groupNames.has(a));
       }
       out.push({ ...track, scoringArtists, month: list.month, person: list.person });
     }

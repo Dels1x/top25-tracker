@@ -10,7 +10,7 @@ import { readdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import Papa from "papaparse";
-import { expandCreditedArtists } from "./artistAttribution.ts";
+import { expandCreditedArtists, GROUP_MEMBERS } from "./artistAttribution.ts";
 import type { Dataset, MonthlyList, Track } from "../src/data/types.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -155,6 +155,7 @@ function buildDataset(): Dataset {
     people,
     lists,
     generatedAt: new Date().toISOString(),
+    groupNames: Object.keys(GROUP_MEMBERS),
   };
 }
 

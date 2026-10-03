@@ -29,13 +29,19 @@ function App() {
     "top25tracker:showProducers",
     false
   );
+  const [showDuos, setShowDuos] = usePersistedState("top25tracker:showDuos", false);
 
   // A stored person/view can go stale (a friend's folder renamed, or an old
   // build used a different View id) - fall back rather than render garbage.
   const activePerson = dataset.people.includes(person) ? person : dataset.people[0];
   const activeView = VALID_VIEWS.includes(view) ? view : "leaderboard";
 
-  const scoringOptions: StatsOptions = { includeDuplicates, uniteRelatedProjects, showProducers };
+  const scoringOptions: StatsOptions = {
+    includeDuplicates,
+    uniteRelatedProjects,
+    showProducers,
+    showDuos,
+  };
 
   return (
     <Layout
@@ -64,6 +70,7 @@ function App() {
             onChange={setShowProducers}
             label="Show producers"
           />
+          <ToggleCheckbox checked={showDuos} onChange={setShowDuos} label="Show duos" />
         </div>
       )}
 

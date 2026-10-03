@@ -46,7 +46,9 @@ There is no test runner configured yet.
 - **`app/src/data/types.ts`** — shared shape (`Dataset` / `MonthlyList` / `Track`) for the JSON produced
   by the build script and consumed by the frontend. Each `Track` carries both `creditedArtists` (as
   literally written in the CSV) and `scoringArtists` (after group expansion) — stats/charts should
-  always aggregate on `scoringArtists`.
+  always aggregate on `scoringArtists`. `Dataset.groupNames` carries the `GROUP_MEMBERS` keys through
+  to the frontend (see the "show duos" toggle below) — it's how the frontend learns which names are
+  groups without duplicating that build-time table in `src/lib/`.
 - **`app/src/lib/stats.ts`** — pure aggregation functions (artist totals, per-month counts, cumulative
   time series) over a `Dataset`. UI components call these rather than recomputing aggregates inline.
   `StatsOptions.startMonth`/`endMonth` ("YYYY-MM", inclusive) restrict to a date range *before* dedup
@@ -65,7 +67,8 @@ There is no test runner configured yet.
 - **`app/src/lib/usePersistedState.ts`** — `usePersistedState`/`usePersistedSetState` wrap `useState`
   with a `localStorage` round-trip (no cookies/server — this is purely a per-browser UI convenience).
   Used for the active person, active view, the "include duplicates", "unite similar artists/groups",
-  and "show producers" checkboxes, and the Timeline's selected-artist set. The Timeline's selection is persisted **per
+  "show producers", and "show duos" checkboxes, and the Timeline's selected-artist set. The Timeline's
+  selection is persisted **per
   person** (key includes the person name) since each person has a different artist pool. A stored
   person/view can go stale (dataset changes, old build) — `App.tsx` validates against
   `dataset.people`/the known view ids and falls back rather than rendering garbage; don't assume a
@@ -135,6 +138,17 @@ There is no test runner configured yet.
   somewhere in the data - e.g. J Dilla (sole credited artist on his own instrumental album, "Donuts")
   and El-P (a vocalist in Run The Jewels, already in `GROUP_MEMBERS`) - check for a dual-role case like
   that before adding a new name here.
+- **"Show duos" toggle** (opt-in, runtime, **default OFF** — `showDuos` option in `src/lib/stats.ts`):
+  since a group/duo's members already get full credit via `GROUP_MEMBERS` expansion (see "Group/duo
+  attribution" above), the group's OWN name showing up as a separate leaderboard/timeline entry too is
+  additional/optional context rather than new information - OFF hides the group name itself (e.g.
+  "Armand Hammer", "Clipse") while its members (billy woods, E L U C I D, Pusha T, Malice, ...) keep
+  their points exactly as before; ON shows the group as its own entry too, as it always did before this
+  toggle existed. `Dataset.groupNames` (populated in `buildData.ts` from `Object.keys(GROUP_MEMBERS)`)
+  is what lets the frontend know which `scoringArtists` entries are group names without re-deriving the
+  build-time table - if you add a new entry to `GROUP_MEMBERS`, it's automatically covered by this
+  toggle too, no separate list to update. Like the other runtime toggles, never touches
+  `creditedArtists`.
 - **"Include duplicates" toggle** (`includeDuplicates` option throughout `src/lib/stats.ts`): when off,
   a song that appears in more than one month's top 25 counts once overall per artist (toward its first
   chronological appearance), not once per occurrence. "The same song" is matched via `trackKey`
