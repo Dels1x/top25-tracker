@@ -13,12 +13,42 @@ export interface ArtistTotal {
 }
 
 /**
- * Identifies "the same song" for duplicate-counting purposes: title + the
- * credited artist list, as written (not the group-expanded scoring list).
- * ISRC/Spotify ID aren't used because locally-matched tracks lack them.
+ * Strips a trailing release-tag segment from a track title - e.g.
+ * "Paradise II (feat. Norah Jones) - Single Version" and the same song's
+ * album-release entry "Paradise II (feat. Norah Jones)" are the same
+ * recording re-tagged by the distributor, not two different songs. Only
+ * matches a segment built from a known descriptor word (a year, "explicit",
+ * "album", "single", "radio", "extended", "anniversary", "deluxe", "tv",
+ * "digital", "clean", "mono", "stereo") followed by a release noun
+ * ("version"/"edit"/"edition"/"remaster[ed]") - so "(Remix)", "- Live", and
+ * other suffixes that denote a genuinely different recording are left alone
+ * and still count as distinct songs. "(feat. ...)" is never touched.
+ */
+const RELEASE_DESCRIPTOR =
+  "(?:\\d{4}|digital|explicit|clean|album|single|radio|extended|anniversary|deluxe|tv|mono|stereo)";
+const RELEASE_NOUN = "(?:version|edit|edition|remaster(?:ed)?)";
+const RELEASE_TAG = `${RELEASE_DESCRIPTOR}(?:\\s+${RELEASE_DESCRIPTOR})*\\s+${RELEASE_NOUN}`;
+const TRAILING_DASH_TAG = new RegExp(`\\s*[-–—]\\s*(${RELEASE_TAG})\\s*$`, "i");
+const TRAILING_PAREN_TAG = new RegExp(`\\s*[([]\\s*(${RELEASE_TAG})\\s*[)\\]]\\s*$`, "i");
+
+export function normalizeTitle(title: string): string {
+  let t = title.trim();
+  let prev: string;
+  do {
+    prev = t;
+    t = t.replace(TRAILING_DASH_TAG, "").replace(TRAILING_PAREN_TAG, "").trim();
+  } while (t !== prev);
+  return t;
+}
+
+/**
+ * Identifies "the same song" for duplicate-counting purposes: normalized
+ * title + the credited artist list, as written (not the group-expanded
+ * scoring list). ISRC/Spotify ID aren't used because locally-matched tracks
+ * lack them.
  */
 export function trackKey(track: Pick<Track, "title" | "creditedArtists">): string {
-  return `${track.title.toLowerCase().trim()}\u0000${track.creditedArtists
+  return `${normalizeTitle(track.title).toLowerCase()}\u0000${track.creditedArtists
     .map((a) => a.toLowerCase().trim())
     .sort()
     .join(",")}`;

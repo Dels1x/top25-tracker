@@ -61,6 +61,19 @@ There is no test runner configured yet.
   billy woods or E L U C I D should award a full point to both billy woods and E L U C I D individually.
   This mapping (group → constituent members) is not in the CSVs and will need a manually maintained
   lookup table when implementing scoring logic.
+- **"Include duplicates" toggle** (`includeDuplicates` option throughout `src/lib/stats.ts`): when off,
+  a song that appears in more than one month's top 25 counts once overall per artist (toward its first
+  chronological appearance), not once per occurrence. "The same song" is matched via `trackKey`
+  (normalized title + credited-artist list), not raw title equality — Spotify/Exportify re-releases the
+  same recording under multiple catalog titles (e.g. `"X - Single Version"` vs `"X"`, `"X - 2005
+  Remaster"`), and those must still collapse together or the toggle undercounts. `normalizeTitle` in
+  `stats.ts` strips a known, narrow set of trailing release-tag words (version/edit/edition/remaster +
+  a descriptor like year/explicit/album/single/radio/extended/deluxe/tv/digital/mono/stereo) — it
+  deliberately does NOT strip "(Remix)", "- Live", or other suffixes that denote an actually different
+  recording someone chose on purpose, and never touches "(feat. ...)". If a future CSV introduces a new
+  re-release tag style that isn't collapsing correctly, extend the descriptor/noun word lists there
+  rather than loosening the match to something broader (a false merge of two genuinely different songs
+  is worse than missing an exotic tag).
 
 ## Data layout
 
