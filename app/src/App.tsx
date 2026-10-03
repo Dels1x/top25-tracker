@@ -25,13 +25,17 @@ function App() {
     "top25tracker:uniteRelatedProjects",
     true
   );
+  const [showProducers, setShowProducers] = usePersistedState(
+    "top25tracker:showProducers",
+    false
+  );
 
   // A stored person/view can go stale (a friend's folder renamed, or an old
   // build used a different View id) - fall back rather than render garbage.
   const activePerson = dataset.people.includes(person) ? person : dataset.people[0];
   const activeView = VALID_VIEWS.includes(view) ? view : "leaderboard";
 
-  const scoringOptions: StatsOptions = { includeDuplicates, uniteRelatedProjects };
+  const scoringOptions: StatsOptions = { includeDuplicates, uniteRelatedProjects, showProducers };
 
   return (
     <Layout
@@ -54,6 +58,11 @@ function App() {
             checked={uniteRelatedProjects}
             onChange={setUniteRelatedProjects}
             label="Unite similar artists/groups (e.g. Team Sleep → Deftones)"
+          />
+          <ToggleCheckbox
+            checked={showProducers}
+            onChange={setShowProducers}
+            label="Show producers (credits are inconsistent, off by default)"
           />
         </div>
       )}

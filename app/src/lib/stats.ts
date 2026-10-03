@@ -1,5 +1,6 @@
 import type { Dataset, MonthlyList, Track } from "../data/types";
 import { uniteRelatedProject } from "./relatedProjects";
+import { isKnownProducer } from "./knownProducers";
 
 /** One point per occurrence of an artist in `scoringArtists` across a track. */
 export interface ArtistMonthCount {
@@ -83,6 +84,17 @@ export interface StatsOptions {
    * unconditionally.
    */
   uniteRelatedProjects?: boolean;
+  /**
+   * When false (default - "show producers" checkbox OFF), credited names in
+   * KNOWN_PRODUCERS (src/lib/knownProducers.ts) are dropped from
+   * scoringArtists entirely - no points, invisible in Leaderboard/Timeline -
+   * since whether a given track credits its producer at all is inconsistent
+   * in this data, making producer counts unreliable by default. Does NOT
+   * touch `creditedArtists` - the raw per-track credit list (song dropdown,
+   * Replay) always shows what's literally on the record regardless of this
+   * setting.
+   */
+  showProducers?: boolean;
 }
 
 function inRange(month: string, options?: StatsOptions): boolean {
@@ -135,9 +147,13 @@ export function allTracks(
     if (person && list.person !== person) continue;
     if (!inRange(list.month, options)) continue;
     for (const track of list.tracks) {
-      const scoringArtists = options?.uniteRelatedProjects
-        ? Array.from(new Set(track.scoringArtists.map(uniteRelatedProject)))
-        : track.scoringArtists;
+      let scoringArtists = track.scoringArtists;
+      if (options?.uniteRelatedProjects) {
+        scoringArtists = Array.from(new Set(scoringArtists.map(uniteRelatedProject)));
+      }
+      if (!options?.showProducers) {
+        scoringArtists = scoringArtists.filter((a) => !isKnownProducer(a));
+      }
       out.push({ ...track, scoringArtists, month: list.month, person: list.person });
     }
   }

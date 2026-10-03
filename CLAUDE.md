@@ -40,6 +40,9 @@ There is no test runner configured yet.
 - **`app/src/lib/relatedProjects.ts`** — a separate, OPT-IN `RELATED_PROJECTS` table applied at
   RUNTIME (not baked into data.json) behind the "unite similar artists/groups" checkbox, for merges
   that are a reasonable judgment call rather than a certainty - see the scoring rules below.
+- **`app/src/lib/knownProducers.ts`** — the `KNOWN_PRODUCERS` set behind the "show producers" checkbox
+  (opt-in, default OFF), also applied at runtime - see the scoring rules below for why this can't be
+  derived from the CSV and has to be a hand-maintained allowlist.
 - **`app/src/data/types.ts`** — shared shape (`Dataset` / `MonthlyList` / `Track`) for the JSON produced
   by the build script and consumed by the frontend. Each `Track` carries both `creditedArtists` (as
   literally written in the CSV) and `scoringArtists` (after group expansion) — stats/charts should
@@ -61,8 +64,8 @@ There is no test runner configured yet.
   in `src/index.css`, following the project's dataviz skill palette for both light and dark mode.
 - **`app/src/lib/usePersistedState.ts`** — `usePersistedState`/`usePersistedSetState` wrap `useState`
   with a `localStorage` round-trip (no cookies/server — this is purely a per-browser UI convenience).
-  Used for the active person, active view, the "include duplicates" and "unite similar artists/groups"
-  checkboxes, and the Timeline's selected-artist set. The Timeline's selection is persisted **per
+  Used for the active person, active view, the "include duplicates", "unite similar artists/groups",
+  and "show producers" checkboxes, and the Timeline's selected-artist set. The Timeline's selection is persisted **per
   person** (key includes the person name) since each person has a different artist pool. A stored
   person/view can go stale (dataset changes, old build) — `App.tsx` validates against
   `dataset.people`/the known view ids and falls back rather than rendering garbage; don't assume a
@@ -80,7 +83,8 @@ There is no test runner configured yet.
   `artistAttribution.ts` (checked before `ARTIST_ALIASES`, so a misspelled alias still resolves
   correctly). Current cases: "Kill Bill the Rapper" (missing colon, wrong case) → "Kill Bill: The
   Rapper"; "RAP FERRERIA" (typo'd/all-caps) → "R.A.P. Ferreira"; "KA" (all-caps, used on a few feature
-  credits) → "Ka" (the dominant spelling on his own tracks). Add new ones here as they're spotted —
+  credits) → "Ka" (the dominant spelling on his own tracks); "Alchemist" (missing "The", used on a
+  handful of credits) → "The Alchemist". Add new ones here as they're spotted —
   there's no automatic way to detect a typo'd artist name, so this is manual, same as the other tables
   here.
 - **Alias merging** (always on, build-time): if the same real person has released music under more
@@ -117,6 +121,20 @@ There is no test runner configured yet.
   membership/frontperson overlap — Chino Moreno — that uniting them is a reasonable view of
   "Deftones-adjacent" output). When OFF, every name in `RELATED_PROJECTS` keeps its own separate count
   instead.
+- **"Show producers" toggle** (opt-in, runtime, **default OFF** — `showProducers` option in
+  `src/lib/stats.ts`, set in `src/lib/knownProducers.ts`): the Spotify/Exportify CSV schema has no
+  dedicated producer column, so a producer only ever shows up because they happen to also be listed
+  in `Artist Name(s)`, the same field a track's rapper/singer is listed in - and whether a given track
+  credits its producer at all is inconsistent (most don't). Because of that, producer counts can't be
+  trusted the way other artist counts can, so `KNOWN_PRODUCERS` is a hand-maintained allowlist of
+  names that are unambiguously producer-only in this data (Kenny Segal, The Alchemist, Madlib, DJ
+  Premier, etc.) - when the checkbox is off, those names are dropped from `scoringArtists` entirely
+  (zero points, invisible in Leaderboard/Timeline), and restored when it's on. This never touches
+  `creditedArtists` - the raw per-track list (song dropdown, Replay) always shows the literal credit
+  regardless of the setting. Deliberately excludes anyone who is ALSO a legitimate lead artist
+  somewhere in the data - e.g. J Dilla (sole credited artist on his own instrumental album, "Donuts")
+  and El-P (a vocalist in Run The Jewels, already in `GROUP_MEMBERS`) - check for a dual-role case like
+  that before adding a new name here.
 - **"Include duplicates" toggle** (`includeDuplicates` option throughout `src/lib/stats.ts`): when off,
   a song that appears in more than one month's top 25 counts once overall per artist (toward its first
   chronological appearance), not once per occurrence. "The same song" is matched via `trackKey`

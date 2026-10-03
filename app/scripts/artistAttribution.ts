@@ -39,6 +39,7 @@ export const SPOTIFY_MISSPELLINGS: Record<string, string> = {
   "Kill Bill the Rapper": "Kill Bill: The Rapper",
   "RAP FERRERIA": "R.A.P. Ferreira",
   KA: "Ka",
+  Alchemist: "The Alchemist", // missing "The", a handful of credits drop it
   // Add more here as they turn up, e.g.:
   // "Kendrik Lamar": "Kendrick Lamar",
 };
