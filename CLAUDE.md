@@ -55,13 +55,20 @@ There is no test runner configured yet.
   and before any totals/series are computed — so Timeline's range picker makes cumulative counts
   **restart from zero at the range start**, not just crop the x-axis of an otherwise all-time running
   total. Keep it that way; it's what "songs since January 2025" is supposed to mean here.
+  `sharedSongs` is the one function here that isn't scoped to a single person - it looks across ALL
+  of `dataset.lists` and finds songs that have appeared (at any rank, in any month) in literally every
+  person's top 25, matched via the same `trackKey` used for duplicate detection (so re-release title
+  variants still count as the same song across people, not just within one person's history).
 - **`app/src/lib/colors.ts`** — assigns each artist a fixed categorical color slot by stable rank order
   (see the dataviz skill's "color follows the entity, never its rank" rule) — a toggled-off artist must
   never cause the remaining artists to repaint.
 - **`app/src/components/`** — `Leaderboard` (songs-per-artist bar list), `Timeline` (cumulative line
-  chart with per-artist toggle legend), `Replay` (month-by-month animated reveal), plus `Layout` /
-  `StatsRow` / `StatTile` shell pieces. `App.tsx` just wires person/view selection state and imports
-  `data.json` directly (no runtime CSV parsing, no backend/API).
+  chart with per-artist toggle legend), `Replay` (month-by-month animated reveal), `Shared` (songs
+  that have appeared in every person's top 25 at some point — see `sharedSongs` in `stats.ts`; unlike
+  every other view this one is NOT scoped to the active person, so `App.tsx` skips rendering
+  `StatsRow`/the scoring-option checkboxes for it), plus `Layout` / `StatsRow` / `StatTile` shell
+  pieces. `App.tsx` just wires person/view selection state and imports `data.json` directly (no
+  runtime CSV parsing, no backend/API).
 - Styling is CSS Modules per-component, with design tokens (colors, surfaces) as CSS custom properties
   in `src/index.css`, following the project's dataviz skill palette for both light and dark mode.
 - **`app/src/lib/usePersistedState.ts`** — `usePersistedState`/`usePersistedSetState` wrap `useState`

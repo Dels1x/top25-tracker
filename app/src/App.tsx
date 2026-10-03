@@ -5,14 +5,15 @@ import { StatsRow } from "./components/StatsRow";
 import { Leaderboard } from "./components/Leaderboard";
 import { Timeline } from "./components/Timeline";
 import { Replay } from "./components/Replay";
+import { Shared } from "./components/Shared";
 import { ToggleCheckbox } from "./components/ToggleCheckbox";
 import { usePersistedState } from "./lib/usePersistedState";
 import type { StatsOptions } from "./lib/stats";
 
 const dataset = rawData as Dataset;
 
-type View = "leaderboard" | "timeline" | "replay";
-const VALID_VIEWS: View[] = ["leaderboard", "timeline", "replay"];
+type View = "leaderboard" | "timeline" | "replay" | "shared";
+const VALID_VIEWS: View[] = ["leaderboard", "timeline", "replay", "shared"];
 
 function App() {
   const [person, setPerson] = usePersistedState("top25tracker:person", dataset.people[0]);
@@ -51,9 +52,11 @@ function App() {
       view={activeView}
       onViewChange={setView}
     >
-      <StatsRow dataset={dataset} person={activePerson} scoringOptions={scoringOptions} />
+      {activeView !== "shared" && (
+        <StatsRow dataset={dataset} person={activePerson} scoringOptions={scoringOptions} />
+      )}
 
-      {activeView !== "replay" && (
+      {activeView !== "replay" && activeView !== "shared" && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 16 }}>
           <ToggleCheckbox
             checked={includeDuplicates}
@@ -81,6 +84,7 @@ function App() {
         <Timeline dataset={dataset} person={activePerson} scoringOptions={scoringOptions} />
       )}
       {activeView === "replay" && <Replay dataset={dataset} person={activePerson} />}
+      {activeView === "shared" && <Shared dataset={dataset} />}
     </Layout>
   );
 }

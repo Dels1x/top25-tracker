@@ -2,19 +2,22 @@ import type { ReactNode } from "react";
 import { useTheme } from "../lib/useTheme";
 import styles from "./Layout.module.css";
 
+type View = "leaderboard" | "timeline" | "replay" | "shared";
+
 interface LayoutProps {
   people: string[];
   activePerson: string;
   onPersonChange: (person: string) => void;
-  view: "leaderboard" | "timeline" | "replay";
-  onViewChange: (view: "leaderboard" | "timeline" | "replay") => void;
+  view: View;
+  onViewChange: (view: View) => void;
   children: ReactNode;
 }
 
-const VIEWS: Array<{ id: "leaderboard" | "timeline" | "replay"; label: string }> = [
+const VIEWS: Array<{ id: View; label: string }> = [
   { id: "leaderboard", label: "Leaderboard" },
   { id: "timeline", label: "Timeline" },
   { id: "replay", label: "Replay" },
+  { id: "shared", label: "Shared" },
 ];
 
 export function Layout({

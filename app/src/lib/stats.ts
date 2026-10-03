@@ -241,6 +241,56 @@ export interface CumulativeSeriesPoint {
   [artist: string]: number | string;
 }
 
+/** One song that every person has had in their top 25 at some point, and when. */
+export interface SharedSong {
+  trackKey: string;
+  title: string;
+  creditedArtists: string[];
+  /** Every month (across every person) this song appeared, for display/sorting. */
+  appearances: Array<{ person: string; month: string; rank: number }>;
+}
+
+/**
+ * Finds every song that has appeared in EVERY person's top 25 at some point
+ * (not necessarily the same month) - matched the same way duplicate songs
+ * are matched elsewhere (trackKey: normalized title + credited-artist list),
+ * so re-release title variants ("- Single Version" etc.) still count as the
+ * same song across people the same way they do within one person's history.
+ * Always considers each person's FULL history regardless of includeDuplicates
+ * (that option is about counting repeats, not about which songs exist at
+ * all) - startMonth/endMonth still apply if the caller wants to scope the
+ * search to a date range.
+ */
+export function sharedSongs(dataset: Dataset, options?: StatsOptions): SharedSong[] {
+  const byKey = new Map<string, SharedSong>();
+
+  for (const list of dataset.lists) {
+    if (!inRange(list.month, options)) continue;
+    for (const track of list.tracks) {
+      const key = trackKey(track);
+      let entry = byKey.get(key);
+      if (!entry) {
+        entry = {
+          trackKey: key,
+          title: track.title,
+          creditedArtists: track.creditedArtists,
+          appearances: [],
+        };
+        byKey.set(key, entry);
+      }
+      entry.appearances.push({ person: list.person, month: list.month, rank: track.rank });
+    }
+  }
+
+  const everyone = new Set(dataset.people);
+  return Array.from(byKey.values())
+    .filter((entry) => {
+      const peoplePresent = new Set(entry.appearances.map((a) => a.person));
+      return everyone.size > 0 && peoplePresent.size === everyone.size;
+    })
+    .sort((a, b) => a.title.localeCompare(b.title));
+}
+
 export function cumulativeArtistSeries(
   dataset: Dataset,
   person: string | undefined,
