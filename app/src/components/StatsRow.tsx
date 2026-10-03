@@ -1,20 +1,20 @@
 import { useMemo } from "react";
 import type { Dataset } from "../data/types";
-import { allTracks, artistTotals, listsForPerson } from "../lib/stats";
+import { allTracks, artistTotals, listsForPerson, type StatsOptions } from "../lib/stats";
 import { StatTile } from "./StatTile";
 import styles from "./StatsRow.module.css";
 
 interface StatsRowProps {
   dataset: Dataset;
   person: string;
-  includeDuplicates: boolean;
+  scoringOptions: StatsOptions;
 }
 
-export function StatsRow({ dataset, person, includeDuplicates }: StatsRowProps) {
+export function StatsRow({ dataset, person, scoringOptions }: StatsRowProps) {
   const stats = useMemo(() => {
     const lists = listsForPerson(dataset, person);
-    const tracks = allTracks(dataset, person, { includeDuplicates });
-    const totals = artistTotals(dataset, person, { includeDuplicates });
+    const tracks = allTracks(dataset, person, scoringOptions);
+    const totals = artistTotals(dataset, person, scoringOptions);
     const uniqueTitles = new Set(tracks.map((t) => `${t.title}\u0000${t.creditedArtists.join(",")}`));
     const topArtist = totals[0];
     const months = lists.map((l) => l.month).sort();
@@ -27,7 +27,7 @@ export function StatsRow({ dataset, person, includeDuplicates }: StatsRowProps) 
       firstMonth: months[0],
       lastMonth: months[months.length - 1],
     };
-  }, [dataset, person, includeDuplicates]);
+  }, [dataset, person, scoringOptions]);
 
   return (
     <div className={styles.row}>

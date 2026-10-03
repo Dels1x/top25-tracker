@@ -31,11 +31,15 @@ There is no test runner configured yet.
   **gitignored and regenerated on every dev/build** (see `predev`/`prebuild` in `package.json`) — the
   CSVs are the single source of truth, never hand-edit `data.json`.
 - **`app/scripts/artistAttribution.ts`** — the hand-maintained `SPOTIFY_MISSPELLINGS`,
-  `ARTIST_ALIASES`, and `GROUP_MEMBERS` lookup tables implementing the misspelling-correction,
-  alias-merging, and duo/group scoring rules below. Add new cases here as they show up in someone's
-  top 25. Resolution order matters: misspellings correct first, then aliases, then group expansion —
-  so a group whose listed members are themselves aliased or misspelled still collapses to the right
-  canonical person.
+  `ARTIST_ALIASES`, and `GROUP_MEMBERS` lookup tables, all applied at BUILD TIME (baked into
+  `scoringArtists` in data.json) because they're certainties, not judgment calls. Add new cases here
+  as they show up in someone's top 25. Resolution order matters: misspellings correct first, then
+  aliases, then group expansion — so a group whose listed members are themselves aliased or
+  misspelled still collapses to the right canonical person. See the scoring rules below for what each
+  table is for and the current entries.
+- **`app/src/lib/relatedProjects.ts`** — a separate, OPT-IN `RELATED_PROJECTS` table applied at
+  RUNTIME (not baked into data.json) behind the "unite similar artists/groups" checkbox, for merges
+  that are a reasonable judgment call rather than a certainty - see the scoring rules below.
 - **`app/src/data/types.ts`** — shared shape (`Dataset` / `MonthlyList` / `Track`) for the JSON produced
   by the build script and consumed by the frontend. Each `Track` carries both `creditedArtists` (as
   literally written in the CSV) and `scoringArtists` (after group expansion) — stats/charts should
@@ -57,11 +61,12 @@ There is no test runner configured yet.
   in `src/index.css`, following the project's dataviz skill palette for both light and dark mode.
 - **`app/src/lib/usePersistedState.ts`** — `usePersistedState`/`usePersistedSetState` wrap `useState`
   with a `localStorage` round-trip (no cookies/server — this is purely a per-browser UI convenience).
-  Used for the active person, active view, the "include duplicates" checkbox, and the Timeline's
-  selected-artist set. The Timeline's selection is persisted **per person** (key includes the person
-  name) since each person has a different artist pool. A stored person/view can go stale (dataset
-  changes, old build) — `App.tsx` validates against `dataset.people`/the known view ids and falls back
-  rather than rendering garbage; don't assume a value read back from storage is still valid.
+  Used for the active person, active view, the "include duplicates" and "unite similar artists/groups"
+  checkboxes, and the Timeline's selected-artist set. The Timeline's selection is persisted **per
+  person** (key includes the person name) since each person has a different artist pool. A stored
+  person/view can go stale (dataset changes, old build) — `App.tsx` validates against
+  `dataset.people`/the known view ids and falls back rather than rendering garbage; don't assume a
+  value read back from storage is still valid.
 
 ### Scoring rules (per the project owner — not derivable from the data itself)
 
@@ -69,29 +74,49 @@ There is no test runner configured yet.
   position (1–25) matters for "best of" framing but a track counts even at #25.
 - **Features count**: if a track has a featured artist (e.g. "feat. X" in the title, or a secondary
   name in the artist field), the featured artist gets a full point too — same as the primary artist.
-- **Misspelling correction**: Spotify's own catalog occasionally credits an artist under a typo'd or
-  malformed spelling (not a deliberate alias — just bad metadata on their end). These merge silently
-  into the correctly-spelled name via `SPOTIFY_MISSPELLINGS` in `artistAttribution.ts` (checked before
-  `ARTIST_ALIASES`, so a misspelled alias still resolves correctly). Current cases: "Kill Bill the
-  Rapper" (missing colon, wrong case) → "Kill Bill: The Rapper"; "RAP FERRERIA" (typo'd/all-caps) →
-  "R.A.P. Ferreira". Add new ones here as they're spotted — there's no automatic way to detect a typo'd
-  artist name, so this is manual, same as the other two tables below.
-- **Alias merging**: if the same real person has released music under more than one artist name (a
-  rename, a side project that's really just them, an "FKA"), every alias should count toward ONE
-  canonical name in the stats — don't let someone's songs get split across multiple "artists" just
-  because the CSV credits them under whichever name was current at release time. Current cases (see
-  `ARTIST_ALIASES` in `artistAttribution.ts`): "Mount Eerie" and "The Microphones" are both Phil
-  Elverum; "Milo" is an earlier stage name for the artist now credited as "R.A.P. Ferreira". If a track
-  credits two aliases of the same person together (this happens — e.g. a track crediting both "Milo"
-  and "R.A.P. Ferreira"), that's still one point for that person, not two. This mapping is not
-  derivable from the CSVs and needs manual upkeep as new alias cases show up.
-- **Group/duo attribution**: if a track is credited to a duo/group whose individual members also have
-  independent solo careers, and the track credit does NOT separately name those members, each member
-  individually gets a full point in addition to (or standing in for) the group credit. Canonical
-  example from the owner: a track credited to "Armand Hammer" (the duo) with no separate mention of
-  billy woods or E L U C I D should award a full point to both billy woods and E L U C I D individually.
-  This mapping (group → constituent members) is not in the CSVs and will need a manually maintained
-  lookup table when implementing scoring logic.
+- **Misspelling correction** (always on, build-time): Spotify's own catalog occasionally credits an
+  artist under a typo'd or malformed spelling (not a deliberate alias — just bad metadata on their
+  end). These merge silently into the correctly-spelled name via `SPOTIFY_MISSPELLINGS` in
+  `artistAttribution.ts` (checked before `ARTIST_ALIASES`, so a misspelled alias still resolves
+  correctly). Current cases: "Kill Bill the Rapper" (missing colon, wrong case) → "Kill Bill: The
+  Rapper"; "RAP FERRERIA" (typo'd/all-caps) → "R.A.P. Ferreira"; "KA" (all-caps, used on a few feature
+  credits) → "Ka" (the dominant spelling on his own tracks). Add new ones here as they're spotted —
+  there's no automatic way to detect a typo'd artist name, so this is manual, same as the other tables
+  here.
+- **Alias merging** (always on, build-time): if the same real person has released music under more
+  than one artist name (a rename, a side project that's really just them, an "FKA"), every alias
+  should count toward ONE canonical name in the stats — don't let someone's songs get split across
+  multiple "artists" just because the CSV credits them under whichever name was current at release
+  time. Current cases (see `ARTIST_ALIASES` in `artistAttribution.ts`): "Milo" is an earlier stage name
+  for the artist now credited as "R.A.P. Ferreira"; "Tariq Trotter" is Black Thought's government
+  name, used interchangeably by Spotify; "No Malice" is an alias Clipse's Malice has also recorded
+  under (added proactively — doesn't appear in the data yet, but will merge correctly whenever it
+  does). If a track credits two aliases of the same person together (this happens — e.g. a track
+  crediting both "Milo" and "R.A.P. Ferreira"), that's still one point for that person, not two. This
+  table is reserved for an unambiguous rename of the SAME stage identity — a softer case (a genuinely
+  different PROJECT name for the same person, or different entities with overlapping membership) is a
+  judgment call instead and belongs in the opt-in `RELATED_PROJECTS` table described below, not here.
+- **Group/duo attribution** (always on, build-time): if a track is credited to a duo/group whose
+  individual members also have independent solo careers, and the track credit does NOT separately
+  name those members, each member individually gets a full point in addition to (or standing in for)
+  the group credit. Canonical example from the owner: a track credited to "Armand Hammer" (the duo)
+  with no separate mention of billy woods or E L U C I D should award a full point to both billy woods
+  and E L U C I D individually. Current entries in `GROUP_MEMBERS` (`artistAttribution.ts`): Armand
+  Hammer, Run The Jewels, Bad Meets Evil, The Roots (only its MC Black Thought — it's had a large,
+  shifting lineup over the years, unlike the clean duos), Clipse, Black Star, Gang Starr, Mobb Deep,
+  Outkast, Smif-N-Wessun. This mapping is not in the CSVs and needs manual upkeep as new
+  groups/duos show up.
+- **"Unite similar artists/groups" toggle** (opt-in, runtime, default ON — `uniteRelatedProjects`
+  option in `src/lib/stats.ts`, table in `src/lib/relatedProjects.ts`): for cases that are a reasonable
+  judgment call rather than a certainty — a different PROJECT name for the same person (not just a
+  renamed stage identity), or different bands/entities with meaningfully overlapping membership — this
+  merges them into one name ONLY when the viewer opts in, unlike the always-on tables above. Current
+  cases: "Mount Eerie" and "The Microphones" both unify under "Phil Elverum" (his main recording
+  project was renamed partway through his career — the project names aren't interchangeable, but the
+  person is); "Team Sleep" unifies under "Deftones" (a different band, but enough shared
+  membership/frontperson overlap — Chino Moreno — that uniting them is a reasonable view of
+  "Deftones-adjacent" output). When OFF, every name in `RELATED_PROJECTS` keeps its own separate count
+  instead.
 - **"Include duplicates" toggle** (`includeDuplicates` option throughout `src/lib/stats.ts`): when off,
   a song that appears in more than one month's top 25 counts once overall per artist (toward its first
   chronological appearance), not once per occurrence. "The same song" is matched via `trackKey`

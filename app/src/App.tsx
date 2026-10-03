@@ -5,8 +5,9 @@ import { StatsRow } from "./components/StatsRow";
 import { Leaderboard } from "./components/Leaderboard";
 import { Timeline } from "./components/Timeline";
 import { Replay } from "./components/Replay";
-import { DuplicatesToggle } from "./components/DuplicatesToggle";
+import { ToggleCheckbox } from "./components/ToggleCheckbox";
 import { usePersistedState } from "./lib/usePersistedState";
+import type { StatsOptions } from "./lib/stats";
 
 const dataset = rawData as Dataset;
 
@@ -20,11 +21,17 @@ function App() {
     "top25tracker:includeDuplicates",
     true
   );
+  const [uniteRelatedProjects, setUniteRelatedProjects] = usePersistedState(
+    "top25tracker:uniteRelatedProjects",
+    true
+  );
 
   // A stored person/view can go stale (a friend's folder renamed, or an old
   // build used a different View id) - fall back rather than render garbage.
   const activePerson = dataset.people.includes(person) ? person : dataset.people[0];
   const activeView = VALID_VIEWS.includes(view) ? view : "leaderboard";
+
+  const scoringOptions: StatsOptions = { includeDuplicates, uniteRelatedProjects };
 
   return (
     <Layout
@@ -34,22 +41,28 @@ function App() {
       view={activeView}
       onViewChange={setView}
     >
-      <StatsRow dataset={dataset} person={activePerson} includeDuplicates={includeDuplicates} />
+      <StatsRow dataset={dataset} person={activePerson} scoringOptions={scoringOptions} />
 
       {activeView !== "replay" && (
-        <div style={{ marginBottom: 16 }}>
-          <DuplicatesToggle
-            includeDuplicates={includeDuplicates}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 16 }}>
+          <ToggleCheckbox
+            checked={includeDuplicates}
             onChange={setIncludeDuplicates}
+            label="Count repeat songs every time they appear"
+          />
+          <ToggleCheckbox
+            checked={uniteRelatedProjects}
+            onChange={setUniteRelatedProjects}
+            label="Unite similar artists/groups (e.g. Team Sleep → Deftones)"
           />
         </div>
       )}
 
       {activeView === "leaderboard" && (
-        <Leaderboard dataset={dataset} person={activePerson} includeDuplicates={includeDuplicates} />
+        <Leaderboard dataset={dataset} person={activePerson} scoringOptions={scoringOptions} />
       )}
       {activeView === "timeline" && (
-        <Timeline dataset={dataset} person={activePerson} includeDuplicates={includeDuplicates} />
+        <Timeline dataset={dataset} person={activePerson} scoringOptions={scoringOptions} />
       )}
       {activeView === "replay" && <Replay dataset={dataset} person={activePerson} />}
     </Layout>

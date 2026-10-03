@@ -9,7 +9,7 @@ import {
   YAxis,
 } from "recharts";
 import type { Dataset } from "../data/types";
-import { artistTotals, cumulativeArtistSeries, sortedMonths } from "../lib/stats";
+import { artistTotals, cumulativeArtistSeries, sortedMonths, type StatsOptions } from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
 import { usePersistedSetState } from "../lib/usePersistedState";
 import { useMonthRange } from "../lib/useMonthRange";
@@ -19,7 +19,7 @@ import styles from "./Timeline.module.css";
 interface TimelineProps {
   dataset: Dataset;
   person: string;
-  includeDuplicates: boolean;
+  scoringOptions: StatsOptions;
 }
 
 const DEFAULT_SHOWN = 6;
@@ -30,15 +30,15 @@ function formatMonth(month: string): string {
   return date.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
 }
 
-export function Timeline({ dataset, person, includeDuplicates }: TimelineProps) {
+export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
   const availableMonths = useMemo(() => sortedMonths(dataset, person), [dataset, person]);
 
   const { startIndex, endIndex, lastIndex, rangeOptions, handleSliderChange, applyPreset } =
     useMonthRange(availableMonths, `timeline:${person}`);
 
   const totals = useMemo(
-    () => artistTotals(dataset, person, { includeDuplicates, ...rangeOptions }),
-    [dataset, person, includeDuplicates, rangeOptions]
+    () => artistTotals(dataset, person, { ...scoringOptions, ...rangeOptions }),
+    [dataset, person, scoringOptions, rangeOptions]
   );
   const allArtists = useMemo(() => totals.map((t) => t.artist), [totals]);
   const colorMap = useMemo(() => buildArtistColorMap(allArtists), [allArtists]);
@@ -52,8 +52,8 @@ export function Timeline({ dataset, person, includeDuplicates }: TimelineProps) 
   );
 
   const series = useMemo(
-    () => cumulativeArtistSeries(dataset, person, allArtists, { includeDuplicates, ...rangeOptions }),
-    [dataset, person, allArtists, includeDuplicates, rangeOptions]
+    () => cumulativeArtistSeries(dataset, person, allArtists, { ...scoringOptions, ...rangeOptions }),
+    [dataset, person, allArtists, scoringOptions, rangeOptions]
   );
 
   function toggle(artist: string) {

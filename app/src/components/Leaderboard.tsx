@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Dataset } from "../data/types";
-import { artistTotals, sortedMonths, tracksForArtist } from "../lib/stats";
+import { artistTotals, sortedMonths, tracksForArtist, type StatsOptions } from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
 import { useMonthRange } from "../lib/useMonthRange";
 import { RangePicker } from "./RangePicker";
@@ -10,7 +10,7 @@ import styles from "./Leaderboard.module.css";
 interface LeaderboardProps {
   dataset: Dataset;
   person: string;
-  includeDuplicates: boolean;
+  scoringOptions: StatsOptions;
 }
 
 const PAGE_SIZE = 20;
@@ -31,7 +31,7 @@ function formatMonth(month: string): string {
   return date.toLocaleDateString(undefined, { month: "short", year: "numeric" });
 }
 
-export function Leaderboard({ dataset, person, includeDuplicates }: LeaderboardProps) {
+export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProps) {
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SongSortKey>("date");
@@ -42,8 +42,8 @@ export function Leaderboard({ dataset, person, includeDuplicates }: LeaderboardP
     useMonthRange(availableMonths, `leaderboard:${person}`);
 
   const totals = useMemo(
-    () => artistTotals(dataset, person, { includeDuplicates, ...rangeOptions }),
-    [dataset, person, includeDuplicates, rangeOptions]
+    () => artistTotals(dataset, person, { ...scoringOptions, ...rangeOptions }),
+    [dataset, person, scoringOptions, rangeOptions]
   );
   const colorMap = useMemo(
     () => buildArtistColorMap(totals.map((t) => t.artist)),
@@ -52,11 +52,11 @@ export function Leaderboard({ dataset, person, includeDuplicates }: LeaderboardP
   const max = totals[0]?.total ?? 1;
   const visible = totals.slice(0, limit);
 
-  // Changing the range or duplicate-counting mode changes which artists
-  // qualify at all - start back at the top rather than keep a "show more"
-  // depth from a different filtered view.
+  // Changing the range or scoring options changes which artists qualify at
+  // all - start back at the top rather than keep a "show more" depth from a
+  // different filtered view.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => setLimit(PAGE_SIZE), [person, includeDuplicates, rangeOptions]);
+  useEffect(() => setLimit(PAGE_SIZE), [person, scoringOptions, rangeOptions]);
 
   // If the range narrows and the expanded artist drops out of it entirely,
   // close the panel rather than show an empty "songs" list for them.
@@ -69,7 +69,7 @@ export function Leaderboard({ dataset, person, includeDuplicates }: LeaderboardP
   const expandedTracks = useMemo(() => {
     if (!activeExpanded) return [];
     const tracks = tracksForArtist(dataset, activeExpanded, person, {
-      includeDuplicates,
+      ...scoringOptions,
       ...rangeOptions,
     });
     const sorted = [...tracks].sort((a, b) => {
@@ -91,7 +91,7 @@ export function Leaderboard({ dataset, person, includeDuplicates }: LeaderboardP
       return sortDir === "asc" ? cmp : -cmp;
     });
     return sorted;
-  }, [dataset, activeExpanded, person, includeDuplicates, rangeOptions, sortKey, sortDir]);
+  }, [dataset, activeExpanded, person, scoringOptions, rangeOptions, sortKey, sortDir]);
 
   function toggle(artist: string) {
     setExpanded((prev) => (prev === artist ? null : artist));
@@ -114,8 +114,8 @@ export function Leaderboard({ dataset, person, includeDuplicates }: LeaderboardP
         <h2 className={styles.heading}>Songs per artist</h2>
         <p className={styles.sub}>
           {totals.length} artists &middot; counts include feature credits and group/member
-          attribution{!includeDuplicates && " · repeat songs counted once"} &middot; click an
-          artist to see their songs
+          attribution{scoringOptions.includeDuplicates === false &&
+            " · repeat songs counted once"} &middot; click an artist to see their songs
         </p>
       </div>
 

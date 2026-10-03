@@ -1,4 +1,5 @@
 import type { Dataset, MonthlyList, Track } from "../data/types";
+import { uniteRelatedProject } from "./relatedProjects";
 
 /** One point per occurrence of an artist in `scoringArtists` across a track. */
 export interface ArtistMonthCount {
@@ -72,6 +73,16 @@ export interface StatsOptions {
    */
   startMonth?: string;
   endMonth?: string;
+  /**
+   * When true (default false), credits for a project in RELATED_PROJECTS
+   * (src/lib/relatedProjects.ts) count toward its unified name instead of
+   * the project's own name - e.g. "Team Sleep" credits count as "Deftones".
+   * Unlike the build-time ARTIST_ALIASES/SPOTIFY_MISSPELLINGS tables baked
+   * into scoringArtists, this is a judgment call the viewer opts into via
+   * the "unite similar artists/groups" checkbox, not a certainty applied
+   * unconditionally.
+   */
+  uniteRelatedProjects?: boolean;
 }
 
 function inRange(month: string, options?: StatsOptions): boolean {
@@ -124,7 +135,10 @@ export function allTracks(
     if (person && list.person !== person) continue;
     if (!inRange(list.month, options)) continue;
     for (const track of list.tracks) {
-      out.push({ ...track, month: list.month, person: list.person });
+      const scoringArtists = options?.uniteRelatedProjects
+        ? Array.from(new Set(track.scoringArtists.map(uniteRelatedProject)))
+        : track.scoringArtists;
+      out.push({ ...track, scoringArtists, month: list.month, person: list.person });
     }
   }
   if (options?.includeDuplicates === false) {
