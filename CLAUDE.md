@@ -30,10 +30,12 @@ There is no test runner configured yet.
   attribution, and writes the normalized result to `app/src/data/data.json`. This file is
   **gitignored and regenerated on every dev/build** (see `predev`/`prebuild` in `package.json`) — the
   CSVs are the single source of truth, never hand-edit `data.json`.
-- **`app/scripts/artistAttribution.ts`** — the hand-maintained `ARTIST_ALIASES` and `GROUP_MEMBERS`
-  lookup tables implementing the alias-merging and duo/group scoring rules below. Add new cases here
-  as they show up in someone's top 25. Aliases resolve *before* group expansion, so a group whose
-  listed members are themselves aliases still collapses to the right canonical person.
+- **`app/scripts/artistAttribution.ts`** — the hand-maintained `SPOTIFY_MISSPELLINGS`,
+  `ARTIST_ALIASES`, and `GROUP_MEMBERS` lookup tables implementing the misspelling-correction,
+  alias-merging, and duo/group scoring rules below. Add new cases here as they show up in someone's
+  top 25. Resolution order matters: misspellings correct first, then aliases, then group expansion —
+  so a group whose listed members are themselves aliased or misspelled still collapses to the right
+  canonical person.
 - **`app/src/data/types.ts`** — shared shape (`Dataset` / `MonthlyList` / `Track`) for the JSON produced
   by the build script and consumed by the frontend. Each `Track` carries both `creditedArtists` (as
   literally written in the CSV) and `scoringArtists` (after group expansion) — stats/charts should
@@ -67,6 +69,13 @@ There is no test runner configured yet.
   position (1–25) matters for "best of" framing but a track counts even at #25.
 - **Features count**: if a track has a featured artist (e.g. "feat. X" in the title, or a secondary
   name in the artist field), the featured artist gets a full point too — same as the primary artist.
+- **Misspelling correction**: Spotify's own catalog occasionally credits an artist under a typo'd or
+  malformed spelling (not a deliberate alias — just bad metadata on their end). These merge silently
+  into the correctly-spelled name via `SPOTIFY_MISSPELLINGS` in `artistAttribution.ts` (checked before
+  `ARTIST_ALIASES`, so a misspelled alias still resolves correctly). Current cases: "Kill Bill the
+  Rapper" (missing colon, wrong case) → "Kill Bill: The Rapper"; "RAP FERRERIA" (typo'd/all-caps) →
+  "R.A.P. Ferreira". Add new ones here as they're spotted — there's no automatic way to detect a typo'd
+  artist name, so this is manual, same as the other two tables below.
 - **Alias merging**: if the same real person has released music under more than one artist name (a
   rename, a side project that's really just them, an "FKA"), every alias should count toward ONE
   canonical name in the stats — don't let someone's songs get split across multiple "artists" just

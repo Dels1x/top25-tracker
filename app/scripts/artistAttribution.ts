@@ -1,23 +1,45 @@
 /**
  * Artist-identity rules: deciding who actually gets credit/points for a
- * track, beyond what's literally written in the CSV. Two separate concerns
- * live here, applied in order (aliases first, then group expansion, so a
- * group whose listed "members" are themselves aliases still resolves to the
- * right canonical person):
+ * track, beyond what's literally written in the CSV. Three separate concerns
+ * live here, applied in order (misspellings and aliases both resolve before
+ * group expansion, so a group whose listed "members" are themselves aliases
+ * or misspelled still resolves to the right canonical person):
  *
- * 1. ALIAS canonicalization - the same person released music under more
+ * 1. MISSPELLING correction - Spotify's own catalog occasionally credits an
+ *    artist under a typo'd or malformed spelling of their real name (not a
+ *    deliberate alias - just bad metadata on their end). These should merge
+ *    silently into the correctly-spelled name; there's no "both spellings
+ *    are valid" nuance the way there is with a real alias.
+ * 2. ALIAS canonicalization - the same person released music under more
  *    than one artist name over time (a rename, a side alias, a "FKA"). Every
  *    alias should collapse into ONE canonical name for scoring, so the
  *    person's songs aren't split across multiple "artists" in the stats.
- * 2. GROUP -> MEMBER expansion - a duo/group whose individual members also
+ * 3. GROUP -> MEMBER expansion - a duo/group whose individual members also
  *    have independent solo careers; crediting the group implicitly credits
  *    each member too (see expandCreditedArtists below).
  *
- * Neither table is derivable from the CSVs - both are hand-maintained as new
- * cases show up in someone's top 25. Keys/values must match the artist name
- * exactly as it appears in the CSV `Artist Name(s)` field (case-sensitive,
- * after the per-row name is split on the schema's artist delimiter).
+ * None of these tables are derivable from the CSVs - all are hand-maintained
+ * as new cases show up in someone's top 25. Keys/values must match the
+ * artist name exactly as it appears in the CSV `Artist Name(s)` field
+ * (case-sensitive, after the per-row name is split on the schema's artist
+ * delimiter).
  */
+
+/**
+ * misspelled/malformed credit -> correctly spelled name, as it should read
+ * everywhere in the app. Unlike ARTIST_ALIASES below, these aren't a
+ * different name the artist actually used - they're just how Spotify's
+ * catalog happened to credit the track, and should be invisible once fixed.
+ * Found so far: "Kill Bill the Rapper" (missing colon/wrong case, vs. the
+ * correct "Kill Bill: The Rapper" used elsewhere in the catalog) and "RAP
+ * FERRERIA" (typo'd/all-caps vs. "R.A.P. Ferreira").
+ */
+export const SPOTIFY_MISSPELLINGS: Record<string, string> = {
+  "Kill Bill the Rapper": "Kill Bill: The Rapper",
+  "RAP FERRERIA": "R.A.P. Ferreira",
+  // Add more here as they turn up, e.g.:
+  // "Kendrik Lamar": "Kendrick Lamar",
+};
 
 /**
  * alias name -> canonical name. Every occurrence of the alias (as a credited
@@ -50,7 +72,8 @@ export const GROUP_MEMBERS: Record<string, string[]> = {
 };
 
 function canonicalize(name: string): string {
-  return ARTIST_ALIASES[name] ?? name;
+  const corrected = SPOTIFY_MISSPELLINGS[name] ?? name;
+  return ARTIST_ALIASES[corrected] ?? corrected;
 }
 
 /**
