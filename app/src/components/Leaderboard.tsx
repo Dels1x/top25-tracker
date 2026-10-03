@@ -20,7 +20,7 @@ type SortDirection = "asc" | "desc";
 
 const SONG_SORT_COLUMNS: Array<{ key: SongSortKey; label: string }> = [
   { key: "date", label: "Date" },
-  { key: "rank", label: "Placement" },
+  { key: "rank", label: "#" },
   { key: "title", label: "Song" },
   { key: "album", label: "Album" },
 ];
