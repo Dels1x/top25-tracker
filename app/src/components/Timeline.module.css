@@ -45,57 +45,45 @@
 }
 
 .rangeRow {
-  display: flex;
-  align-items: flex-end;
-  gap: 10px;
   margin-top: 14px;
   padding-top: 14px;
   border-top: 1px solid var(--border);
+}
+
+.rangeHeadRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
-.rangeField {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-}
-
 .rangeLabel {
-  font-size: 11px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
 }
 
-.rangeSelect {
+.presets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.presetButton {
   border: 1px solid var(--border);
   background: var(--surface-1);
-  color: var(--text-primary);
-  padding: 6px 10px;
+  color: var(--text-secondary);
+  padding: 5px 10px;
   border-radius: 8px;
-  font-size: 13px;
-  max-width: 180px;
-}
-
-.rangeDash {
-  color: var(--text-muted);
-  font-size: 13px;
-  padding-bottom: 8px;
-}
-
-.rangeReset {
-  border: none;
-  background: transparent;
-  color: var(--series-1);
   cursor: pointer;
   font-size: 12px;
-  font-weight: 500;
-  padding-bottom: 8px;
+  white-space: nowrap;
 }
 
-.rangeReset:hover {
-  text-decoration: underline;
+.presetButton:hover {
+  color: var(--text-primary);
 }
 
 .chartArea {
@@ -191,16 +179,16 @@
     flex: 1;
   }
 
-  .rangeRow {
+  .rangeHeadRow {
     flex-direction: column;
     align-items: stretch;
   }
 
-  .rangeSelect {
-    max-width: none;
+  .presets {
+    width: 100%;
   }
 
-  .rangeDash {
-    display: none;
+  .presetButton {
+    flex: 1;
   }
 }

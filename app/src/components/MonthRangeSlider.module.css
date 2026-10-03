@@ -1,0 +1,103 @@
+.wrap {
+  position: relative;
+  padding: 4px 0 22px;
+  margin-top: 4px;
+}
+
+.track {
+  position: relative;
+  height: 4px;
+  background: var(--gridline);
+  border-radius: 2px;
+}
+
+.selectedRange {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--series-1);
+  border-radius: 2px;
+}
+
+/* Two overlapping native range inputs share this track. Each is transparent
+   and full-width; only its thumb is interactive (the track itself is inert
+   so clicking/dragging the shared visual track below doesn't fight between
+   the two inputs - only a thumb drag moves anything). */
+.thumb {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+  transform: translateY(-50%);
+}
+
+.thumb::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 4px;
+}
+
+.thumb::-moz-range-track {
+  background: transparent;
+  height: 4px;
+}
+
+.thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  pointer-events: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--series-1);
+  border: 2px solid var(--card-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  cursor: grab;
+}
+
+.thumb::-moz-range-thumb {
+  pointer-events: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--series-1);
+  border: 2px solid var(--card-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  cursor: grab;
+}
+
+.thumb:active::-webkit-slider-thumb {
+  cursor: grabbing;
+}
+
+.thumb:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--series-1);
+  outline-offset: 2px;
+}
+
+.ticks {
+  position: relative;
+  height: 16px;
+  margin-top: 6px;
+}
+
+.tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.tick:first-child {
+  transform: translateX(0);
+}
+
+.tick:last-child {
+  transform: translateX(-100%);
+}
