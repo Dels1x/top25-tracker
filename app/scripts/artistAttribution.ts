@@ -64,6 +64,7 @@ export const ARTIST_ALIASES: Record<string, string> = {
   Milo: "R.A.P. Ferreira",
   "Tariq Trotter": "Black Thought", // his government name, used interchangeably by Spotify
   "No Malice": "Malice", // Clipse's Malice also records under "No Malice" (post-rededication alias)
+  "By Storm": "Injury Reserve", // rename/relaunch of the same group, not a distinct project
   // Add more here only for a genuine rename of the same identity, e.g.:
   // "Lil Ugly Mane": "Shawn Kemp",
 };

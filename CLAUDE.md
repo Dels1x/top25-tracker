@@ -105,7 +105,10 @@ There is no test runner configured yet.
   for the artist now credited as "R.A.P. Ferreira"; "Tariq Trotter" is Black Thought's government
   name, used interchangeably by Spotify; "No Malice" is an alias Clipse's Malice has also recorded
   under (added proactively — doesn't appear in the data yet, but will merge correctly whenever it
-  does). If a track credits two aliases of the same person together (this happens — e.g. a track
+  does); "By Storm" is a rename/relaunch of the same group now credited as "Injury Reserve" (always
+  co-credited together on every track, never shows up alone — an unambiguous rename, not a distinct
+  project, so it's here rather than in the opt-in `RELATED_PROJECTS` table). If a track credits two
+  aliases of the same person together (this happens — e.g. a track
   crediting both "Milo" and "R.A.P. Ferreira"), that's still one point for that person, not two. This
   table is reserved for an unambiguous rename of the SAME stage identity — a softer case (a genuinely
   different PROJECT name for the same person, or different entities with overlapping membership) is a
@@ -193,9 +196,13 @@ styles, decorative suffixes like "_ANNIVERSARY"/"_ITS_BEEN_4_YEARS_BABY", a "Jul
 even Cyrillic-prefixed filenames for one person). Some of delsix's months had been exported twice by
 different tools as redundant re-exports of the same 25 tracks (different columns, same songs) — those
 extras were deleted, keeping one canonical file per month; hryash and Kazimir UH2O had no such
-duplicates, only renames. Not every person has a file for every month — e.g. Kazimir UH2O is missing
-several months (`2023-10`, `2024-04`, `2026-01`) and has 27 tracks instead of 25 for `2022-10` — these
-are real gaps/quirks in that person's data, not bugs to "fix" by inventing or dropping rows.
+duplicates, only renames. As of now every person has a file for every month, July 2022 through
+September 2025 — three of Kazimir UH2O's months (`2023-10`, `2024-04`, `2026-01`) were initially
+missed on disk and added later under their original free-form names, then renamed to the convention.
+Kazimir UH2O's `2022-10` has 27 tracks instead of 25 — a real quirk in that person's data, not a bug
+to "fix" by dropping rows. Don't assume every month will always have a file for every person going
+forward though — a gap can still be real (someone skipped a month) rather than something merely
+forgotten on disk; if a month is missing, worth asking rather than assuming either way.
 **New monthly files should be added directly as `YYYY-MM.csv`** to keep this consistent going forward —
 don't reintroduce free-form naming for any person.
 
