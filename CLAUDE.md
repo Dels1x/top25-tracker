@@ -38,6 +38,10 @@ There is no test runner configured yet.
   always aggregate on `scoringArtists`.
 - **`app/src/lib/stats.ts`** — pure aggregation functions (artist totals, per-month counts, cumulative
   time series) over a `Dataset`. UI components call these rather than recomputing aggregates inline.
+  `StatsOptions.startMonth`/`endMonth` ("YYYY-MM", inclusive) restrict to a date range *before* dedup
+  and before any totals/series are computed — so Timeline's range picker makes cumulative counts
+  **restart from zero at the range start**, not just crop the x-axis of an otherwise all-time running
+  total. Keep it that way; it's what "songs since January 2025" is supposed to mean here.
 - **`app/src/lib/colors.ts`** — assigns each artist a fixed categorical color slot by stable rank order
   (see the dataviz skill's "color follows the entity, never its rank" rule) — a toggled-off artist must
   never cause the remaining artists to repaint.

@@ -9,9 +9,9 @@ import {
   YAxis,
 } from "recharts";
 import type { Dataset } from "../data/types";
-import { artistTotals, cumulativeArtistSeries } from "../lib/stats";
+import { artistTotals, cumulativeArtistSeries, sortedMonths } from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
-import { usePersistedSetState } from "../lib/usePersistedState";
+import { usePersistedSetState, usePersistedState } from "../lib/usePersistedState";
 import styles from "./Timeline.module.css";
 
 interface TimelineProps {
@@ -21,6 +21,8 @@ interface TimelineProps {
 }
 
 const DEFAULT_SHOWN = 6;
+/** Sentinel meaning "no restriction" - stored instead of undefined so it round-trips through JSON. */
+const NO_BOUND = "";
 
 function formatMonth(month: string): string {
   const [year, m] = month.split("-");
@@ -28,10 +30,37 @@ function formatMonth(month: string): string {
   return date.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
 }
 
+function formatMonthOption(month: string): string {
+  const [year, m] = month.split("-");
+  const date = new Date(Number(year), Number(m) - 1, 1);
+  return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+}
+
 export function Timeline({ dataset, person, includeDuplicates }: TimelineProps) {
+  const availableMonths = useMemo(() => sortedMonths(dataset, person), [dataset, person]);
+
+  // Persisted per person, since each person's data can span a different
+  // range. "" means "no restriction on this side" (earliest/latest available).
+  const [startMonth, setStartMonth] = usePersistedState(
+    `top25tracker:timelineStart:${person}`,
+    NO_BOUND
+  );
+  const [endMonth, setEndMonth] = usePersistedState(
+    `top25tracker:timelineEnd:${person}`,
+    NO_BOUND
+  );
+
+  const rangeOptions = useMemo(
+    () => ({
+      startMonth: startMonth || undefined,
+      endMonth: endMonth || undefined,
+    }),
+    [startMonth, endMonth]
+  );
+
   const totals = useMemo(
-    () => artistTotals(dataset, person, { includeDuplicates }),
-    [dataset, person, includeDuplicates]
+    () => artistTotals(dataset, person, { includeDuplicates, ...rangeOptions }),
+    [dataset, person, includeDuplicates, rangeOptions]
   );
   const allArtists = useMemo(() => totals.map((t) => t.artist), [totals]);
   const colorMap = useMemo(() => buildArtistColorMap(allArtists), [allArtists]);
@@ -45,9 +74,32 @@ export function Timeline({ dataset, person, includeDuplicates }: TimelineProps) 
   );
 
   const series = useMemo(
-    () => cumulativeArtistSeries(dataset, person, allArtists, { includeDuplicates }),
-    [dataset, person, allArtists, includeDuplicates]
+    () => cumulativeArtistSeries(dataset, person, allArtists, { includeDuplicates, ...rangeOptions }),
+    [dataset, person, allArtists, includeDuplicates, rangeOptions]
   );
+
+  function handleStartChange(value: string) {
+    // Keep start <= end: if the new start would be after the current end,
+    // push the end forward to match rather than silently producing an empty range.
+    setStartMonth(value);
+    if (value && endMonth && value > endMonth) {
+      setEndMonth(value);
+    }
+  }
+
+  function handleEndChange(value: string) {
+    setEndMonth(value);
+    if (value && startMonth && value < startMonth) {
+      setStartMonth(value);
+    }
+  }
+
+  function resetRange() {
+    setStartMonth(NO_BOUND);
+    setEndMonth(NO_BOUND);
+  }
+
+  const hasRange = Boolean(startMonth || endMonth);
 
   function toggle(artist: string) {
     setShown((prev) => {
@@ -83,6 +135,50 @@ export function Timeline({ dataset, person, includeDuplicates }: TimelineProps) 
             Select none
           </button>
         </div>
+      </div>
+
+      <div className={styles.rangeRow}>
+        <label className={styles.rangeField}>
+          <span className={styles.rangeLabel}>From</span>
+          <select
+            className={styles.rangeSelect}
+            value={startMonth}
+            onChange={(e) => handleStartChange(e.target.value)}
+          >
+            <option value={NO_BOUND}>Earliest</option>
+            {availableMonths.map((m) => (
+              <option key={m} value={m}>
+                {formatMonthOption(m)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <span className={styles.rangeDash} aria-hidden="true">
+          &rarr;
+        </span>
+
+        <label className={styles.rangeField}>
+          <span className={styles.rangeLabel}>To</span>
+          <select
+            className={styles.rangeSelect}
+            value={endMonth}
+            onChange={(e) => handleEndChange(e.target.value)}
+          >
+            <option value={NO_BOUND}>Latest (now)</option>
+            {availableMonths.map((m) => (
+              <option key={m} value={m}>
+                {formatMonthOption(m)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {hasRange && (
+          <button type="button" className={styles.rangeReset} onClick={resetRange}>
+            Reset range
+          </button>
+        )}
       </div>
 
       <div className={styles.chartArea}>

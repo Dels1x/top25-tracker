@@ -62,6 +62,22 @@ export interface StatsOptions {
    * "include duplicates" checkbox in the UI.
    */
   includeDuplicates?: boolean;
+  /**
+   * Restrict to months >= startMonth and/or <= endMonth (both "YYYY-MM",
+   * inclusive). Applied BEFORE dedup, so "include duplicates off" only
+   * considers a song's first occurrence within the range, not its first
+   * occurrence ever - e.g. a song whose only in-range appearance is a repeat
+   * of something from before the range still counts once, since within the
+   * range it only shows up the one time.
+   */
+  startMonth?: string;
+  endMonth?: string;
+}
+
+function inRange(month: string, options?: StatsOptions): boolean {
+  if (options?.startMonth && month < options.startMonth) return false;
+  if (options?.endMonth && month > options.endMonth) return false;
+  return true;
 }
 
 /**
@@ -83,10 +99,11 @@ function dedupeFirstOccurrence<T extends Track & { month: string }>(tracks: T[])
 }
 
 /** Sort key helper: "YYYY-MM" strings sort correctly as plain strings already. */
-export function sortedMonths(dataset: Dataset, person?: string): string[] {
+export function sortedMonths(dataset: Dataset, person?: string, options?: StatsOptions): string[] {
   const months = new Set<string>();
   for (const list of dataset.lists) {
     if (person && list.person !== person) continue;
+    if (!inRange(list.month, options)) continue;
     months.add(list.month);
   }
   return Array.from(months).sort();
@@ -105,6 +122,7 @@ export function allTracks(
   const out: Array<Track & { month: string; person: string }> = [];
   for (const list of dataset.lists) {
     if (person && list.person !== person) continue;
+    if (!inRange(list.month, options)) continue;
     for (const track of list.tracks) {
       out.push({ ...track, month: list.month, person: list.person });
     }
@@ -183,7 +201,7 @@ export function cumulativeArtistSeries(
   topArtists: string[],
   options?: StatsOptions
 ): CumulativeSeriesPoint[] {
-  const months = sortedMonths(dataset, person);
+  const months = sortedMonths(dataset, person, options);
   const perMonth = artistMonthCounts(dataset, person, options);
 
   const lookup = new Map<string, number>(); // `${artist}\u0000${month}` -> count this month
