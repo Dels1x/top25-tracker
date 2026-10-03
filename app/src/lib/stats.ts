@@ -122,6 +122,22 @@ export function artistMonthCounts(
 }
 
 /**
+ * All tracks counting toward a given artist's score, newest month first -
+ * the exact set backing their number in artistTotals (same options, same
+ * dedup rule), for display in a "show me the songs" dropdown.
+ */
+export function tracksForArtist(
+  dataset: Dataset,
+  artist: string,
+  person?: string,
+  options?: StatsOptions
+): Array<Track & { month: string; person: string }> {
+  return allTracks(dataset, person, options)
+    .filter((track) => track.scoringArtists.includes(artist))
+    .sort((a, b) => b.month.localeCompare(a.month));
+}
+
+/**
  * Builds a cumulative running-total series per artist across all months in
  * the dataset (filling months with no new tracks as a flat carry-forward),
  * suitable for a line chart with one line per artist.
