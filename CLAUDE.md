@@ -47,6 +47,13 @@ There is no test runner configured yet.
   `data.json` directly (no runtime CSV parsing, no backend/API).
 - Styling is CSS Modules per-component, with design tokens (colors, surfaces) as CSS custom properties
   in `src/index.css`, following the project's dataviz skill palette for both light and dark mode.
+- **`app/src/lib/usePersistedState.ts`** — `usePersistedState`/`usePersistedSetState` wrap `useState`
+  with a `localStorage` round-trip (no cookies/server — this is purely a per-browser UI convenience).
+  Used for the active person, active view, the "include duplicates" checkbox, and the Timeline's
+  selected-artist set. The Timeline's selection is persisted **per person** (key includes the person
+  name) since each person has a different artist pool. A stored person/view can go stale (dataset
+  changes, old build) — `App.tsx` validates against `dataset.people`/the known view ids and falls back
+  rather than rendering garbage; don't assume a value read back from storage is still valid.
 
 ### Scoring rules (per the project owner — not derivable from the data itself)
 

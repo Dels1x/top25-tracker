@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import {
   CartesianGrid,
   Line,
@@ -11,6 +11,7 @@ import {
 import type { Dataset } from "../data/types";
 import { artistTotals, cumulativeArtistSeries } from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
+import { usePersistedSetState } from "../lib/usePersistedState";
 import styles from "./Timeline.module.css";
 
 interface TimelineProps {
@@ -35,16 +36,13 @@ export function Timeline({ dataset, person, includeDuplicates }: TimelineProps) 
   const allArtists = useMemo(() => totals.map((t) => t.artist), [totals]);
   const colorMap = useMemo(() => buildArtistColorMap(allArtists), [allArtists]);
 
-  const [shown, setShown] = useState<Set<string>>(
-    () => new Set(allArtists.slice(0, DEFAULT_SHOWN))
+  // Keyed per person - each person has a different artist pool, so "shown"
+  // selections shouldn't bleed across people. Defaults to the top N artists
+  // the first time this person is viewed; after that, whatever was saved.
+  const [shown, setShown] = usePersistedSetState(
+    `top25tracker:timelineShown:${person}`,
+    () => allArtists.slice(0, DEFAULT_SHOWN)
   );
-
-  // Reset the default selection when switching person (different artist pool).
-  const [lastPerson, setLastPerson] = useState(person);
-  if (lastPerson !== person) {
-    setLastPerson(person);
-    setShown(new Set(allArtists.slice(0, DEFAULT_SHOWN)));
-  }
 
   const series = useMemo(
     () => cumulativeArtistSeries(dataset, person, allArtists, { includeDuplicates }),
@@ -60,13 +58,31 @@ export function Timeline({ dataset, person, includeDuplicates }: TimelineProps) 
     });
   }
 
+  function selectAll() {
+    setShown(new Set(allArtists));
+  }
+
+  function selectNone() {
+    setShown(new Set());
+  }
+
   const visibleArtists = allArtists.filter((a) => shown.has(a));
 
   return (
     <div className={styles.wrap}>
       <div className={styles.headRow}>
-        <h2 className={styles.heading}>Cumulative songs over time</h2>
-        <p className={styles.sub}>Toggle artists to compare their growth month over month</p>
+        <div>
+          <h2 className={styles.heading}>Cumulative songs over time</h2>
+          <p className={styles.sub}>Toggle artists to compare their growth month over month</p>
+        </div>
+        <div className={styles.bulkActions}>
+          <button type="button" className={styles.bulkButton} onClick={selectAll}>
+            Select all
+          </button>
+          <button type="button" className={styles.bulkButton} onClick={selectNone}>
+            Select none
+          </button>
+        </div>
       </div>
 
       <div className={styles.chartArea}>

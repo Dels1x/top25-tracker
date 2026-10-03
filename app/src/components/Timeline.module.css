@@ -6,6 +6,10 @@
 }
 
 .headRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 8px;
 }
 
@@ -16,6 +20,28 @@
 .sub {
   font-size: 13px;
   margin-top: 4px;
+}
+
+.bulkActions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.bulkButton {
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  padding: 6px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.bulkButton:hover {
+  color: var(--text-primary);
 }
 
 .chartArea {
@@ -96,4 +122,18 @@
   color: var(--text-secondary);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 560px) {
+  .headRow {
+    flex-direction: column;
+  }
+
+  .bulkActions {
+    width: 100%;
+  }
+
+  .bulkButton {
+    flex: 1;
+  }
 }
