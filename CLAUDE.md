@@ -93,21 +93,27 @@ top25/csv/<person>/<YYYY>-<MM>.csv
 ```
 
 e.g. `top25/csv/delsix/2024-04.csv` for the user's April 2024 top 25. One file per person per month —
-this is an enforced naming convention, not something to detect. `top25/csv/delsix/` is the user's own
-folder; two more sibling folders (one per friend) will be added later with the same structure. Code
-that discovers/parses these files should treat the folder name under `csv/` as the person identifier
-and not hardcode `delsix`, and should get the month/year for a file **from its filename**, never from
-any in-file "Added At"/date column — tracks get retroactively re-added (e.g. swapping a single for the
-album version after it releases, or re-adding after an accidental removal), so a track's add timestamp
-does not reliably reflect which month's top-25 list it belongs to. The filename (i.e. which list it was
-placed in) is the source of truth for month attribution.
+this is an enforced naming convention, not something to detect. Three person folders exist today:
+`delsix` (the project owner), `hryash`, and `Kazimir UH2O` (note the space in that folder name — it's
+a valid person identifier, not a typo; code must not assume folder names are single tokens or lack
+spaces). Code that discovers/parses these files should treat the folder name under `csv/` as an opaque
+person identifier, never hardcode a specific name, and should get the month/year for a file **from its
+filename**, never from any in-file "Added At"/date column — tracks get retroactively re-added (e.g.
+swapping a single for the album version after it releases, or re-adding after an accidental removal),
+so a track's add timestamp does not reliably reflect which month's top-25 list it belongs to. The
+filename (i.e. which list it was placed in) is the source of truth for month attribution.
 
-This convention was established by migrating from the original export filenames (which used
-inconsistent "Top 25 (Month Year).csv" / "Top_25_(Month_Year).csv" styles, including a "Jule" typo for
-July). Some months had been exported twice by different tools as redundant re-exports of the same
-25 tracks (different columns, same songs) — those extras were deleted, keeping one canonical file per
-month. **New monthly files should be added directly as `YYYY-MM.csv`** to keep this consistent — don't
-reintroduce free-form naming.
+This convention was established by migrating from each person's original free-form export filenames
+(inconsistent "Top 25 (Month Year).csv" / "Top_25_(Month_Year).csv" / "Apr25.csv" / "April_2023.csv"
+styles, decorative suffixes like "_ANNIVERSARY"/"_ITS_BEEN_4_YEARS_BABY", a "Jule" typo for July, and
+even Cyrillic-prefixed filenames for one person). Some of delsix's months had been exported twice by
+different tools as redundant re-exports of the same 25 tracks (different columns, same songs) — those
+extras were deleted, keeping one canonical file per month; hryash and Kazimir UH2O had no such
+duplicates, only renames. Not every person has a file for every month — e.g. Kazimir UH2O is missing
+several months (`2023-10`, `2024-04`, `2026-01`) and has 27 tracks instead of 25 for `2022-10` — these
+are real gaps/quirks in that person's data, not bugs to "fix" by inventing or dropping rows.
+**New monthly files should be added directly as `YYYY-MM.csv`** to keep this consistent going forward —
+don't reintroduce free-form naming for any person.
 
 Note: filenames (and in-file `Added At` columns, where present) can carry dates in 2026 and later —
 this is placeholder/test data reaching into the future, not a bug to "fix" to the current date.
