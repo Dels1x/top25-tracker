@@ -89,7 +89,9 @@ export const GENRES = [
   "Other",
     "Indie Folk",
     "Psychedelic Folk",
-    "Slacker Rock"
+    "Slacker Rock",
+  "Chamber Folk",
+    "Singer-Songwriter"
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -147,7 +149,9 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Disco": ["R&B/Soul"],
   "Indie Folk": ["Folk"],
   "Psychedelic Folk": ["Folk"],
-  "Slacker Rock": ["Rock"]
+  "Slacker Rock": ["Rock"],
+  "Chamber Folk": ["Folk"],
+  "Singer-Songwriter": ["Folk"]
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -545,7 +549,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Jack White": ["Rock"],
   "Benjamin Booker": ["Art Rock"],
   "kessoku band": ["Rock"], // j-rock, per user
-  "Ichiko Aoba": ["Folk"],
+  "Ichiko Aoba": ["Folk", "Chamber Folk", "Singer-Songwriter"],
   "Taeko Onuki": ["Pop"],
   "Queen": ["Hard Rock", "Pop Rock"],
 
@@ -562,7 +566,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   // ===== Shoegaze / Slowcore / Post-Rock / Ambient family =====
   "The Microphones": ["Folk", "Rock"],
   "Mount Eerie": ["Folk", "Rock"],
-  "Phil Elverum": ["Folk", "Rock", "Indie Folk", "Psychedelic Folk", "Slacker Rock"],
+  "Phil Elverum": ["Folk", "Rock", "Indie Folk", "Psychedelic Folk", "Slacker Rock", "Singer-Songwriter"],
   Slowdive: ["Shoegaze"],
   "my bloody valentine": ["Shoegaze"],
   "Beach House": ["Shoegaze", "Pop"],
