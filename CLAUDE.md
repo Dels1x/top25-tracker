@@ -244,13 +244,15 @@ There is no test runner configured yet.
   appeared, not "this artist had a #5 song somewhere, so count everything they have." A song ranked
   #12 that month is simply excluded, even for an artist who also has a #3 song - this is a per-track
   cutoff, not a per-artist qualifying filter. The "Top 25" button is the default/unfiltered state - the
-  UI translates it to `maxRank: undefined` rather than the literal number 25, which matters because a
-  couple of months genuinely have MORE than 25 tracks (Kazimir UH2O's `2022-10` has 27, and delsix's
-  `2023-04` has 26 - see the data-layout quirks note below) and passing a literal `maxRank: 25` would
-  incorrectly drop those extra, legitimately-counted tracks; verified this directly (`allTracks` with
-  `maxRank: undefined` produces the exact same track count as calling it with no options at all, 1275
-  for delsix, while a literal `maxRank: 25` undercounts by excluding the one real #26 track that
-  month). Persisted per person via `usePersistedState`, defaulting to 25 (unfiltered), same convention
+  UI translates it to `maxRank: undefined` rather than the literal number 25, which matters because at
+  least one month genuinely has MORE than 25 tracks (Kazimir UH2O's `2022-10` has 27 - see the
+  data-layout quirks note below) and passing a literal `maxRank: 25` would incorrectly drop that
+  extra, legitimately-counted track; verified this directly (`allTracks` with `maxRank: undefined`
+  produces the exact same track count as calling it with no options at all). Keep this `undefined`
+  convention even if every month in the data happens to have exactly 25 tracks at some point in the
+  future - a real month with more than 25 is a possibility this filter has to handle correctly, not
+  just a historical artifact to special-case around. Persisted per person via `usePersistedState`,
+  defaulting to 25 (unfiltered), same convention
   as the genre filter. The per-artist drill-down (`tracksForArtist` call in `Leaderboard.tsx`) also
   passes `maxRank` through - a song excluded from an artist's total by the rank filter shouldn't
   reappear in their own song list either - but deliberately does NOT pass `genreFilter`, matching its
@@ -409,10 +411,14 @@ extras were deleted, keeping one canonical file per month; hryash and Kazimir UH
 duplicates, only renames. As of now every person has a file for every month, July 2022 through
 September 2025 — three of Kazimir UH2O's months (`2023-10`, `2024-04`, `2026-01`) were initially
 missed on disk and added later under their original free-form names, then renamed to the convention.
-Kazimir UH2O's `2022-10` has 27 tracks instead of 25, and delsix's `2023-04` has 26 — real quirks in
-those people's data, not bugs to "fix" by dropping rows (confirmed directly against the CSVs, not just
-inferred from a count mismatch elsewhere - both files genuinely have that many data rows). Don't
-assume every month will always have a file for every person going
+Kazimir UH2O's `2022-10` has 27 tracks instead of 25 — a real quirk in that person's data, not a bug
+to "fix" by dropping rows (confirmed directly against the CSV, not just inferred from a count mismatch
+elsewhere). delsix's `2023-04` briefly had the same situation (26 rows) but for a DIFFERENT reason -
+its #1 slot was a joke entry ("18" credited to "Kazimir UH2O", clearly not a real pick) rather than a
+genuine 26th song - so that one row was removed (the project owner's own call, not an inference) and
+the file is back to a normal 25, with every other track's rank shifting up by one. Don't conflate the
+two cases: Kazimir UH2O's extra 25th-plus track is real data to keep, delsix's was a joke row that
+needed deleting. Don't assume every month will always have a file for every person going
 forward though — a gap can still be real (someone skipped a month) rather than something merely
 forgotten on disk; if a month is missing, worth asking rather than assuming either way.
 **New monthly files should be added directly as `YYYY-MM.csv`** to keep this consistent going forward —
