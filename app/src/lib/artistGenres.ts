@@ -202,7 +202,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Run The Jewels": ["East Coast Hip-Hop"],
   "Killer Mike": ["Southern Hip-Hop"],
   MIKE: ["Abstract Hip-Hop", "East Coast Hip-Hop", "Jazz Rap"],
-  "Open Mike Eagle": ["Abstract Hip-Hop"],
+  "Open Mike Eagle": ["Abstract Hip-Hop", "Jazz Rap", "West Coast Hip-Hop"],
   "AKAI SOLO": ["Abstract Hip-Hop", "East Coast Hip-Hop"],
   "Navy Blue": ["Abstract Hip-Hop", "East Coast Hip-Hop", "Jazz Rap"],
   "Mos Def": ["East Coast Hip-Hop"],
