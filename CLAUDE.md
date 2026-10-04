@@ -74,13 +74,19 @@ There is no test runner configured yet.
   and a track with no recognized artist falls back to `UNTAGGED_GENRE`, rather than guessing. An artist
   can genuinely have more than one genre (Phil Elverum -> Folk AND Rock across his two projects;
   Deftones -> Metal AND Shoegaze) - not a mistake to "clean up". `GENRES` includes both major genres
-  (Hip-Hop, Rock, Metal, Jazz, R&B/Soul, Folk, Electronic, Pop, Reggae, Shoegaze, Slowcore, Post-Rock,
-  Trip Hop, Ambient, Other) and hip-hop regional/style subgenres (East Coast, West Coast, Southern,
-  Abstract) - subgenres are ADDITIVE, never a replacement: an artist with a subgenre still also counts
-  toward the plain major genre (billy woods -> both "Hip-Hop" and "Abstract Hip-Hop" and "East Coast
-  Hip-Hop"). Maintenance: add new artists highest-song-count-first (check actual counts via
-  `scoringArtists` frequency in `data.json`, don't guess the ordering); if an artist isn't confidently
-  recognized, leave them unmapped and ask, rather than guess.
+  and subgenres (regional/style hip-hop - East Coast, West Coast, Southern, Abstract, Experimental,
+  Conscious, Gangsta Rap, Coke Rap, Chipmunk Soul; rock/other - Art Rock, Alternative Rock, Grunge,
+  Emo, Neo-Psychedelia; pop/electronic - Noise Pop, Dream Pop, Glitch Pop, Indietronica; Shoegaze,
+  Slowcore, Post-Rock, Trip Hop, Ambient).
+  **`PARENT_GENRE` auto-expands every subgenre to its parent major genre(s) inside `genresForArtists`**
+  (e.g. "Abstract Hip-Hop" -> also "Hip-Hop"; "Dream Pop" -> also "Pop"; "Shoegaze"/"Post-Rock"/"Art
+  Rock"/etc. -> also "Rock") - this means an `ARTIST_GENRES` entry should list ONLY the most specific
+  genre(s) that apply and must NEVER also list the parent by hand (billy woods is
+  `["Abstract Hip-Hop", "East Coast Hip-Hop"]`, not `[..., "Hip-Hop"]` too - "Hip-Hop" is added
+  automatically). If you add a new subgenre to `GENRES`, add its parent(s) to `PARENT_GENRE` in the
+  same change, or it'll silently fail to roll up. Maintenance: add new artists highest-song-count-first
+  (check actual counts via `scoringArtists` frequency in `data.json`, don't guess the ordering); if an
+  artist isn't confidently recognized, leave them unmapped and ask, rather than guess.
   **Why artist-based instead of Spotify's own genre tags**: Spotify's per-track tags turned out
   unreliable for this dataset specifically - "jazz rap", "plunderphonics", and "experimental" were
   applied as loose vibe-descriptors for ~any sample-heavy/abstract hip-hop (Freddie Gibbs, The
