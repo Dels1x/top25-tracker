@@ -341,6 +341,41 @@ There is no test runner configured yet.
   (`storageKey` like `leaderboard:${person}` / `timeline:${person}` - see `useMonthRange`'s own doc
   comment) - the year buttons don't add a separate persistence key, they just call the same
   `setStartMonth`/`setEndMonth` the slider and relative presets already use.
+- **`app/src/lib/sliderTicks.ts`** — `sliderTickIndices(months, targetMax?)`, the sparse
+  calendar-boundary tick logic shared by `MonthRangeSlider.tsx` (the dual-handle range slider inside
+  `RangePicker`) and `Replay.tsx`'s own scrubber - extracted from `MonthRangeSlider` (which used to
+  have its own inline copy) so both stay in sync rather than risk drifting apart. Snaps to January of
+  each year (falling back to January+July when there's under ~2 years of data, so a short span still
+  gets more than one or two ticks), always keeps the true first/last month too, and thins the result
+  down to `targetMax` (default 8) evenly spaced ticks if a long multi-year span would otherwise be too
+  dense - preferred over an even index-stride through the month array, which ignores what calendar
+  month the data happens to start on and produces an arbitrary-looking sequence like
+  "Jul 22, Apr 23, Jan 24, Oct 24, ...".
+- **`app/src/components/Replay.tsx`** — redesigned for two concrete problems with the original: cards
+  were too small/dense (fixed `220px` min-width, `white-space: nowrap` + ellipsis truncating longer
+  song titles to one line) and the scrubber had no sense of WHERE in calendar time it was besides the
+  live month label. Cards are now noticeably bigger (more padding, bigger rank number, bigger text)
+  and wrap up to 2 lines (`-webkit-line-clamp: 2`) instead of truncating to 1 - a title only ellipsizes
+  past that genuinely long 2-line cap, with the full text still in `title=` for hover. The scrubber
+  gained year tick marks along the track (reusing `sliderTickIndices`, single-handle instead of
+  `MonthRangeSlider`'s dual-handle version) plus year labels underneath, so you can see roughly where
+  2023/2024/2025/... fall without reading the live month label - this was a real, concrete request
+  ("markings on the graph to mark 2022 2023 2024..."), not a cosmetic addition.
+  **Tick LABEL collision required its own fix beyond just reusing `sliderTickIndices`**: every tick
+  here renders just a 4-digit year (`formatTick`, no month precision needed since the exact month is
+  already shown separately as the live label above the scrubber) and two adjacent ticks can still
+  land close enough together - a percentage-distance throttle (`MIN_GAP_PCT`, `tickLabels` in
+  `Replay.tsx`) suppresses a tick's LABEL (never its mark on the track - every tick still gets a
+  visible mark) when it's too close to the last tick that kept its own label, and a tick whose label
+  would exactly repeat the previous one (two ticks landing in the same year) is suppressed outright
+  regardless of spacing. The two true edge ticks (the actual first/last month) are exempt from the
+  distance throttle and always keep their label, since losing the span's actual start/end would be
+  worse than them sitting a little close to their neighbor. Verified against the real dataset at both
+  desktop and phone widths via a headless-browser screenshot check (not just code review) - delsix/
+  Kazimir UH2O's 51-month span (Jul 2022 - Sep 2026) correctly suppresses the too-close "2023" label
+  (its tick mark still shows) and the duplicate trailing "2026" (the true Sep-2026 edge lands in the
+  same year as the Jan-2026 boundary tick), while hryash's shorter 23-month span suppresses "2025"
+  for the same too-close reason and shows a clean "2024 ... 2026".
 - **`app/src/components/RankFilter.tsx`** + **`app/src/lib/useRankFilter.ts`** — the Leaderboard's
   Top 1/3/5/10/25 buttons: a segmented control (`role="radiogroup"`, styled like Compare's mode switch
   - one pill-shaped container, one filled/active button at a time) that acts as a true radio group,

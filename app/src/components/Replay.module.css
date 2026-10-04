@@ -2,110 +2,261 @@
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: var(--card-radius);
-  padding: 20px 24px 24px;
+  padding: 24px 28px 28px;
 }
 
 .headRow {
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
 .heading {
-  font-size: 16px;
+  font-size: 20px;
 }
 
 .sub {
-  font-size: 13px;
+  font-size: 14px;
   margin-top: 4px;
+  color: var(--text-muted);
 }
 
 .controls {
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 20px;
+  gap: 16px;
+  margin-bottom: 8px;
 }
 
 .playButton {
   border: none;
   background: var(--series-1);
   color: white;
-  padding: 8px 18px;
-  border-radius: 8px;
+  padding: 10px 22px;
+  border-radius: 10px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   flex-shrink: 0;
 }
 
-.scrubber {
-  flex: 1;
-  accent-color: var(--series-1);
+.playButton:hover {
+  filter: brightness(1.08);
 }
 
 .monthLabel {
-  font-size: 14px;
-  font-weight: 600;
+  font-size: 18px;
+  font-weight: 700;
   color: var(--text-primary);
-  min-width: 130px;
-  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
+/* The scrubber: a single-handle range input over a track, with a filled
+   "progress" fill behind the thumb and a row of year/half-year tick marks
+   underneath - same calendar-boundary tick logic MonthRangeSlider uses
+   (sliderTickIndices), so switching between Leaderboard/Timeline's range
+   picker and Replay's own scrubber feels like the same visual language. */
+.scrubberWrap {
+  position: relative;
+  padding-bottom: 20px;
+  margin-bottom: 24px;
+}
+
+.track {
+  position: relative;
+  height: 8px;
+  background: var(--gridline);
+  border-radius: 4px;
+}
+
+.progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: var(--series-1);
+  border-radius: 4px;
+}
+
+.yearMark {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 14px;
+  background: var(--card-bg);
+  transform: translateX(-1px);
+  pointer-events: none;
+}
+
+.thumb {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  margin: 0;
+  background: transparent;
+  -webkit-appearance: none;
+  appearance: none;
+  transform: translateY(-50%);
+  cursor: grab;
+}
+
+.thumb:active {
+  cursor: grabbing;
+}
+
+.thumb::-webkit-slider-runnable-track {
+  background: transparent;
+  height: 8px;
+}
+
+.thumb::-moz-range-track {
+  background: transparent;
+  height: 8px;
+}
+
+.thumb::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--series-1);
+  border: 3px solid var(--card-bg);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  cursor: grab;
+}
+
+.thumb::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--series-1);
+  border: 3px solid var(--card-bg);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  cursor: grab;
+}
+
+.thumb:active::-webkit-slider-thumb {
+  cursor: grabbing;
+}
+
+.thumb:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--series-1);
+  outline-offset: 2px;
+}
+
+.ticks {
+  position: relative;
+  height: 16px;
+  margin-top: 8px;
+}
+
+.tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.tick:first-child {
+  transform: translateX(0);
+}
+
+.tick:last-child {
+  transform: translateX(-100%);
+}
+
+/* The song grid: bigger cards than before, and - the actual fix for the
+   original complaint - titles WRAP instead of truncating with an ellipsis.
+   min-height keeps short-titled cards from looking squat next to a
+   2-line-wrapped neighbor in the same row, rather than forcing every card
+   to the tallest one's height via grid auto-rows (which would waste space
+   on a grid that's mostly 1-line cards). */
 .grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
 }
 
 .card {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 14px;
   background: var(--surface-1);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 10px 12px;
+  border-radius: 12px;
+  padding: 16px 18px;
+  min-height: 76px;
 }
 
 .rank {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text-muted);
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--series-1);
   font-variant-numeric: tabular-nums;
   flex-shrink: 0;
-  width: 24px;
+  width: 44px;
+  line-height: 1.2;
 }
 
 .cardBody {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  gap: 1px;
+  gap: 4px;
 }
 
 .cardTitle {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: var(--text-primary);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .cardArtist {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-secondary);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 @media (max-width: 560px) {
+  .wrap {
+    padding: 20px 18px 22px;
+  }
+
+  .heading {
+    font-size: 18px;
+  }
+
+  .controls {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .monthLabel {
+    font-size: 15px;
+  }
+
   .grid {
     grid-template-columns: 1fr;
   }
-  .monthLabel {
-    min-width: 100px;
-    font-size: 12px;
+
+  .rank {
+    font-size: 17px;
+    width: 36px;
   }
 }
