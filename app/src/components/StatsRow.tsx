@@ -37,7 +37,7 @@ export function StatsRow({ dataset, person, scoringOptions }: StatsRowProps) {
       <StatTile
         label="Top artist"
         value={stats.topArtist?.artist ?? "—"}
-        detail={stats.topArtist ? `${stats.topArtist.total} points` : undefined}
+        detail={stats.topArtist ? `${stats.topArtist.total} songs` : undefined}
       />
     </div>
   );
