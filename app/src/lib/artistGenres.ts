@@ -257,6 +257,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Tee Grizzley": ["Hip-Hop", "Trap"],
   "King Von": ["Hip-Hop", "Trap"],
   "Lil Durk": ["Hip-Hop", "Trap"],
+  "Teller Bank$": ["Experimental Hip-Hop", "Abstract Hip-Hop", "Jazz Rap"],
   "Kirk Knight": ["East Coast Hip-Hop"],
   "Nightmargin": ["Ambient"],
   "what is your name?": ["Shoegaze", "Post-Rock", "Indie Rock"],
