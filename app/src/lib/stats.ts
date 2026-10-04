@@ -2,6 +2,7 @@ import type { Dataset, MonthlyList, Track } from "../data/types";
 import { uniteRelatedProject } from "./relatedProjects";
 import { isKnownProducer } from "./knownProducers";
 import { genresForArtists } from "./artistGenres";
+import { isDistinctRecording } from "./trackDisambiguation";
 
 /** One point per occurrence of an artist in `scoringArtists` across a track. */
 export interface ArtistMonthCount {
@@ -47,14 +48,24 @@ export function normalizeTitle(title: string): string {
 /**
  * Identifies "the same song" for duplicate-counting purposes: normalized
  * title + the credited artist list, as written (not the group-expanded
- * scoring list). ISRC/Spotify ID aren't used because locally-matched tracks
- * lack them.
+ * scoring list). ISRC/Spotify ID aren't used GENERALLY because
+ * locally-matched tracks lack them, and because a genuine re-release of the
+ * same song can legitimately get a new ISRC (normalizeTitle's release-tag
+ * stripping already handles that case via title matching instead).
+ *
+ * The one exception: trackDisambiguation.ts's small hand-maintained list of
+ * ISRCs that are known to be GENUINELY DIFFERENT recordings which happen to
+ * share a title + credited-artist list (e.g. two different Lupe Fiasco
+ * songs both just called "Outside") - for those specific tracks, the ISRC
+ * is folded into the key so they stop colliding with each other, instead of
+ * incorrectly looking like one song repeated across two months.
  */
-export function trackKey(track: Pick<Track, "title" | "creditedArtists">): string {
-  return `${normalizeTitle(track.title).toLowerCase()}\u0000${track.creditedArtists
+export function trackKey(track: Pick<Track, "title" | "creditedArtists" | "isrc">): string {
+  const base = `${normalizeTitle(track.title).toLowerCase()}\u0000${track.creditedArtists
     .map((a) => a.toLowerCase().trim())
     .sort()
     .join(",")}`;
+  return isDistinctRecording(track.isrc) ? `${base}\u0000${track.isrc}` : base;
 }
 
 export interface StatsOptions {

@@ -363,6 +363,25 @@ There is no test runner configured yet.
   re-release tag style that isn't collapsing correctly, extend the descriptor/noun word lists there
   rather than loosening the match to something broader (a false merge of two genuinely different songs
   is worse than missing an exotic tag).
+- **`app/src/lib/trackDisambiguation.ts`** — the inverse problem from the above: a hand-maintained
+  exception list for the rare case where two GENUINELY DIFFERENT recordings happen to share both a
+  title and a credited-artist list, which `trackKey` would otherwise incorrectly treat as "the same
+  song" and silently drop one of them when "include duplicates" is off. `DISTINCT_RECORDING_ISRCS` is
+  a `Set<string>` of ISRCs (not title/album, since those can coincidentally repeat too, and not
+  Spotify ID since a locally-matched `spotify:local:...` row has none) - any track whose ISRC is in
+  this set gets that ISRC folded into its `trackKey`, so it stops colliding with the other
+  same-titled/same-artist track. Deliberately a narrow, explicit exception table rather than a general
+  change to `trackKey` (e.g. always matching on ISRC, or on title+artist+album) - ISRC/album aren't
+  safe to use unconditionally because a genuine RE-RELEASE of the same song (what the bullet above is
+  about) can legitimately get a new ISRC or move to a different album, and that case must still
+  collapse together, not split apart. Only add to this table when an identical-title collision between
+  two provably different recordings actually turns up, the same way `SPOTIFY_MISSPELLINGS`/
+  `ARTIST_ALIASES`/`GROUP_MEMBERS` only grow when a real case is spotted. Current case: delsix's
+  "Outside" by Lupe Fiasco appears twice - 2023-07 (ISRC `USVCQ2300006`, album "Outside") and 2024-07
+  (ISRC `US5KD2400018`, album "Samurai") - two different songs that happen to share a title and
+  artist, not a re-release of one song; verified against the real dataset that both now count under
+  "include duplicates off" (previously the 2024-07 one was silently dropped as if it were a repeat of
+  the 2023-07 pick).
 
 ## Data layout
 
