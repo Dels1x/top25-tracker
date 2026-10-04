@@ -91,6 +91,7 @@ export const GROUP_MEMBERS: Record<string, string[]> = {
   "Stove God Cook$, Roc Marciano": ["Stove God Cooks", "Roc Marciano"],
   "Stove God Cook$, Roc Marciano, Earl Sweatshirt": ["Stove God Cooks", "Roc Marciano", "Earl Sweatshirt"],
   "Earl Sweatshirt, The Alchemist": ["Earl Sweatshirt", "The Alchemist"],
+  "ShrapKnel": ["PremRock", "Curly Castro"],
   // The Roots have had a large, shifting lineup over the years - only their
   // MC/frontman is expanded here, not every past member, same pattern as
   // the other duo-style entries above.
