@@ -103,7 +103,8 @@ export const GENRES = [
     "Indie Pop",
     "Midwest Emo",
     "Alternative Hip-Hop",
-    "Lo-Fi Hip-Hop"
+    "Lo-Fi Hip-Hop",
+    "Drumless"
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -187,7 +188,8 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Indie Pop": ["Pop"],
   "Midwest Emo": ["Emo"],
   "Alternative Hip-Hop": ["Hip-Hop"],
-  "Lo-Fi Hip-Hop": ["Alternative Hip-Hop"]
+  "Lo-Fi Hip-Hop": ["Alternative Hip-Hop"],
+  "Drumless": ["Hip-Hop"]
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -284,9 +286,9 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "billy woods": ["Abstract Hip-Hop", "Experimental Hip-Hop", "East Coast Hip-Hop", "Jazz Rap"],
   "E L U C I D": ["Abstract Hip-Hop", "Experimental Hip-Hop", "East Coast Hip-Hop"],
   "Armand Hammer": ["Abstract Hip-Hop", "East Coast Hip-Hop"],
-  "Boldy James": ["East Coast Hip-Hop", "Jazz Rap", "Gangsta Rap"],
-  "Roc Marciano": ["East Coast Hip-Hop", "Coke Rap"],
-  Ka: ["East Coast Hip-Hop", "Abstract Hip-Hop", "Abstract Hip-Hop"],
+  "Boldy James": ["East Coast Hip-Hop", "Jazz Rap", "Gangsta Rap", "Drumless"],
+  "Roc Marciano": ["East Coast Hip-Hop", "Coke Rap", "Drumless"],
+  Ka: ["East Coast Hip-Hop", "Abstract Hip-Hop", "Abstract Hip-Hop", "Drumless"],
   JPEGMAFIA: ["Experimental Hip-Hop"],
   "Westside Gunn": ["East Coast Hip-Hop", "Coke Rap"],
   "Mach-Hommy": ["East Coast Hip-Hop", "Abstract Hip-Hop", "Jazz Rap"],
