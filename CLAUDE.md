@@ -115,7 +115,10 @@ There is no test runner configured yet.
   and subgenres (regional/style hip-hop - East Coast, West Coast, Southern, Abstract, Experimental,
   Jazz Rap, Conscious, Gangsta Rap, Coke Rap, Chipmunk Soul; rock/other - Art Rock, Alternative Rock,
   Grunge, Emo, Neo-Psychedelia; pop/electronic - Noise Pop, Dream Pop, Glitch Pop, Indietronica;
-  Shoegaze, Slowcore, Post-Rock, Trip Hop, Ambient).
+  Shoegaze, Slowcore, Post-Rock, Trip Hop, Ambient) - and, as of the "Punk" addition, a subgenre can
+  itself have its own subgenres (Rock > Punk > {Pop Punk, Post-Punk}) rather than every subgenre
+  necessarily sitting one level below a major genre; see `GENRE_HIERARCHY`'s own doc comment and the
+  `GenreFilter`/`useGenreFilter` entry below for how this nests arbitrarily deep, not just two levels.
   **The "Jazz" major genre is reserved for actual jazz musicians only** (Robert Glasper, Miles Davis,
   Thundercat, etc.) - a hip-hop artist whose sound samples/evokes jazz (Madlib, Nujabes, A Tribe
   Called Quest, Logic, Blu & Exile, McKinley Dixon, Saba, ...) gets the "Jazz Rap" SUBGENRE instead,
@@ -231,10 +234,21 @@ There is no test runner configured yet.
 - **`app/src/components/GenreFilter.tsx`** + **`app/src/lib/useGenreFilter.ts`** — the Leaderboard's
   genre-filter checkboxes: one row per top-level genre from `GENRE_HIERARCHY`
   (`artistGenres.ts`), each with a disclosure arrow (only if it has subgenres) expanding a list of
-  child checkboxes. Checking/unchecking a top-level genre cascades to ALL its subgenres; a subgenre
-  can still be toggled independently once its parent is checked. Multiple genres selected = union (OR)
-  - showing Hip-Hop + Rock shows anyone in either, not just crossover artists. Defaults to everything
-  selected (matches the unfiltered leaderboard) - persisted per person via `usePersistedSetState`.
+  child rows underneath. **The nesting isn't fixed at two levels** - `GENRE_HIERARCHY` is a genuine
+  tree (`GenreNode = { genre, subgenres: GenreNode[] }`) built from `PARENT_GENRE`, as deep as that
+  map implies, and `GenreFilter.tsx` renders it via a single recursive `GenreNodeRow` component rather
+  than a hardcoded two-level loop - a 3rd (or deeper) level just works with no component changes.
+  "Punk" is the first real 3-level example: Rock > Punk > {Pop Punk, Post-Punk} (Pop Punk/Post-Punk
+  used to parent directly to Rock; reparented under the new "Punk" node). Checking/unchecking ANY
+  node (`useGenreFilter`'s single `toggleNode`, replacing the old separate `toggleTopLevel`/
+  `toggleSubgenre` pair now that there's no longer a meaningful distinction between "top-level" and
+  "nested" toggle behavior) cascades to its ENTIRE descendant subtree, however deep - checking "Rock"
+  cascades through "Punk" down to "Pop Punk"/"Post-Punk" too; checking "Punk" on its own only cascades
+  to its own two children, leaving "Rock" and Rock's other subgenres untouched. A node can still be
+  toggled independently of its ancestors/siblings once they're checked - unchecking just "Pop Punk"
+  doesn't touch "Punk" or "Rock". Multiple genres selected = union (OR) - showing Hip-Hop + Rock shows
+  anyone in either, not just crossover artists. Defaults to everything selected (matches the
+  unfiltered leaderboard) - persisted per person via `usePersistedSetState`.
   `StatsOptions.genreFilter` (a `Set<string>`, consumed in `allTracks`) is `undefined` for "no filter"
   and an explicit empty `Set` for "nothing selected, show nobody" - these are deliberately different,
   don't conflate them. `GENRE_HIERARCHY` also carries a synthetic `UNTAGGED_GENRE` ("Unknown/Untagged")
@@ -242,7 +256,20 @@ There is no test runner configured yet.
   shown/hidden unconditionally - when computing "select all", include `UNTAGGED_GENRE` alongside every
   real `GENRES` entry, or an "all checked" selection will silently exclude unclassified artists (this
   was a real bug caught during review - verify count parity with the truly-unfiltered case after any
-  change here).
+  change here). `selectAll` only needs to list TOP-LEVEL genres (never subgenres, however deep) to be
+  a correct "everyone shown" filter - every artist's resolved genre set from `genresForArtists` always
+  includes at least one top-level genre (every ancestor chain terminates there, no matter how many
+  subgenre hops it took to get there), so `filter.has(...)` always finds a match for a tagged artist
+  as long as the top-level entries are all present; this held before the 3-level change and still
+  holds after it, verified directly.
+  **`genresForArtists` (`artistGenres.ts`) walks the FULL transitive ancestor chain**, not just one
+  hop up - via a small recursive `addAncestors` helper - so an `ARTIST_GENRES` entry only ever needs
+  to list the MOST SPECIFIC genre(s) that apply, same convention as before, but now correctly
+  propagating through however many levels exist: an artist tagged just `["Pop Punk"]` automatically
+  also counts toward "Punk" AND "Rock", not just "Punk" (a one-hop-only walk, which is what this
+  function used to do before the 3-level change, would have silently stopped at "Punk" and never
+  reached "Rock" - this was fixed as part of adding the 3rd level, verified against Paramore/Swans/
+  Have A Nice Life, the dataset's real Pop Punk/Post-Punk-tagged artists).
   **The filter is applied per-ARTIST, not per-track** - `allTracks` checks each `scoringArtist`'s OWN
   genre(s) individually and drops that one artist if none of their genres are selected, rather than
   checking whether the track AS A WHOLE has any selected-genre artist on it. This matters for

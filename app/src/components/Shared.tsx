@@ -52,8 +52,7 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
   const {
     selected: selectedGenres,
-    toggleTopLevel,
-    toggleSubgenre,
+    toggleNode: toggleGenre,
     selectAll: selectAllGenres,
     selectNone: selectNoneGenres,
   } = useGenreFilter("shared");
@@ -164,8 +163,7 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
 
       <GenreFilter
         selected={selectedGenres}
-        onToggleTopLevel={toggleTopLevel}
-        onToggleSubgenre={toggleSubgenre}
+        onToggle={toggleGenre}
         onSelectAll={selectAllGenres}
         onSelectNone={selectNoneGenres}
       />

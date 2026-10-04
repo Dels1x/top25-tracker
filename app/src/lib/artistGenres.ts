@@ -93,6 +93,7 @@ export const GENRES = [
   "Chamber Folk",
     "Singer-Songwriter",
     "Stoner Rock",
+  "Punk",
     "Pop Punk",
   "Plunderphonics",
     "Sampledelia",
@@ -105,14 +106,26 @@ export const GENRES = [
 export type Genre = (typeof GENRES)[number];
 
 /**
- * Every subgenre automatically also counts toward its parent major genre(s)
- * - an artist listed under "Dream Pop" should also show up under "Pop", an
- * artist listed under "Abstract Hip-Hop" should also show up under
- * "Hip-Hop", etc. This is applied automatically in genresForArtists, so an
- * ARTIST_GENRES entry only needs to list the MOST SPECIFIC genre(s) that
- * apply - never list both a subgenre and its parent by hand (e.g. just
- * ["Dream Pop"], not ["Dream Pop", "Pop"] - the parent is added for you).
- * Keep this map in sync whenever a new subgenre is added below.
+ * Every subgenre automatically also counts toward its parent genre(s) - an
+ * artist listed under "Dream Pop" should also show up under "Pop", an artist
+ * listed under "Abstract Hip-Hop" should also show up under "Hip-Hop", etc.
+ * This is applied automatically in genresForArtists, so an ARTIST_GENRES
+ * entry only needs to list the MOST SPECIFIC genre(s) that apply - never
+ * list a genre's ancestors by hand (e.g. just ["Dream Pop"], not
+ * ["Dream Pop", "Pop"] - the parent, and ITS parent, and so on, are all
+ * added for you). Keep this map in sync whenever a new subgenre is added
+ * below.
+ *
+ * This chain can be MORE than one level deep - a genre's "parent" can itself
+ * be a subgenre of something else (e.g. "Pop Punk" -> "Punk" -> "Rock": Punk
+ * is Rock's subgenre, Pop Punk is Punk's), and genresForArtists walks the
+ * full ancestor chain transitively, not just one hop - crediting an artist
+ * with "Pop Punk" alone also credits "Punk" AND "Rock". Same for
+ * GENRE_HIERARCHY below, which nests to whatever depth PARENT_GENRE implies
+ * rather than assuming exactly two levels - the Leaderboard's genre filter
+ * UI (GenreFilter.tsx) renders that nesting recursively, so a 3rd (or
+ * deeper) level just works without any UI changes, as long as this map is
+ * correct.
  */
 const PARENT_GENRE: Record<string, Genre[]> = {
   "East Coast Hip-Hop": ["Hip-Hop"],
@@ -142,7 +155,7 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Pop Rock": ["Rock"],
   "Soft Rock": ["Rock"],
   Slowcore: ["Rock"],
-  "Post-Punk": ["Rock"],
+  "Post-Punk": ["Punk"],
   "Gothic Rock": ["Rock"],
   "Experimental Rock": ["Rock"],
   "Trip Hop": ["Electronic"],
@@ -161,7 +174,8 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Chamber Folk": ["Folk"],
   "Singer-Songwriter": ["Folk"],
   "Stoner Rock": ["Rock"],
-  "Pop Punk": ["Rock"],
+  Punk: ["Rock"],
+  "Pop Punk": ["Punk"],
   "Plunderphonics": ["Electronic"],
   "Sampledelia": ["Electronic", "Hip-Hop"],
   "Hyperpop": ["Pop", "Electronic"],
@@ -173,16 +187,28 @@ const PARENT_GENRE: Record<string, Genre[]> = {
 /** Shown for a track with no artist we can classify at all. */
 export const UNTAGGED_GENRE = "Unknown/Untagged";
 
+/** One node in the genre tree - a genre plus its own direct children, recursively. */
+export interface GenreNode {
+  genre: string;
+  subgenres: GenreNode[];
+}
+
 /**
- * Every top-level genre (one with no parent of its own - i.e. not a key in
- * PARENT_GENRE), in GENRES order, with the list of its direct subgenres (if
- * any), derived from PARENT_GENRE. Powers the Leaderboard's genre filter UI:
- * one checkbox per top-level genre, with its subgenres as an expandable
- * list of child checkboxes underneath. A genre with no subgenres (Jazz,
- * Metal, R&B/Soul, Other, ...) just has an empty array - no
- * disclosure arrow needed for those in the UI.
+ * The full genre tree, built from PARENT_GENRE, nested to WHATEVER DEPTH the
+ * data implies - not hardcoded to two levels. A genre is top-level if it has
+ * no parent of its own (not a key in PARENT_GENRE); everything else is
+ * nested under every parent PARENT_GENRE lists for it (a genre can have more
+ * than one parent, e.g. "Indietronica" -> both "Electronic" and "Pop" - it
+ * shows up as a child under both branches). "Punk" -> "Rock" with its own
+ * children "Pop Punk"/"Post-Punk" -> "Punk" is the first 3-level example:
+ * Rock > Punk > {Pop Punk, Post-Punk}. Powers the Leaderboard's genre filter
+ * UI (GenreFilter.tsx), which renders this recursively - one checkbox per
+ * node, a disclosure arrow only when `subgenres.length > 0`, and a nested
+ * node can have its own disclosure arrow for ITS children, so a deeper chain
+ * just works without any UI changes. A genre with no subgenres (Jazz, Metal,
+ * R&B/Soul, Other, ...) just has an empty array - no disclosure arrow needed.
  */
-export const GENRE_HIERARCHY: Array<{ genre: string; subgenres: Genre[] }> = (() => {
+export const GENRE_HIERARCHY: GenreNode[] = (() => {
   const childrenByParent = new Map<Genre, Genre[]>();
   for (const [sub, parents] of Object.entries(PARENT_GENRE) as Array<[Genre, Genre[]]>) {
     for (const p of parents) {
@@ -191,16 +217,17 @@ export const GENRE_HIERARCHY: Array<{ genre: string; subgenres: Genre[] }> = (()
       childrenByParent.set(p, list);
     }
   }
+  function buildNode(g: Genre | typeof UNTAGGED_GENRE): GenreNode {
+    const children = childrenByParent.get(g as Genre) ?? [];
+    return { genre: g, subgenres: children.map(buildNode) };
+  }
   const isSubgenre = new Set(Object.keys(PARENT_GENRE));
-  const topLevel = GENRES.filter((g) => !isSubgenre.has(g)).map((g) => ({
-    genre: g,
-    subgenres: childrenByParent.get(g) ?? [],
-  }));
+  const topLevel = GENRES.filter((g) => !isSubgenre.has(g)).map(buildNode);
   // Unknown/Untagged isn't a real Genre (it's a separate fallback bucket for
   // tracks with no classifiable artist), but it's included here too so the
   // Leaderboard's genre filter can show/hide untagged artists the same way
   // as any other top-level genre, with no subgenres of its own.
-  return [...topLevel, { genre: UNTAGGED_GENRE, subgenres: [] }];
+  return [...topLevel, buildNode(UNTAGGED_GENRE)];
 })();
 
 export const ARTIST_GENRES: Record<string, Genre[]> = {
@@ -621,11 +648,33 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
 };
 
 /**
+ * Walks every ancestor of `genre` per PARENT_GENRE, transitively (not just
+ * one hop) - e.g. "Pop Punk" -> "Punk" -> "Rock" all get added, not just the
+ * direct parent "Punk". A genre with more than one parent (e.g.
+ * "Indietronica" -> "Electronic" AND "Pop") walks every branch. Adds into
+ * `into` directly rather than returning a new Set each call, since this is
+ * called once per genre per artist per track across the whole dataset.
+ */
+function addAncestors(genre: string, into: Set<string>): void {
+  const parents = PARENT_GENRE[genre];
+  if (!parents) return;
+  for (const p of parents) {
+    if (!into.has(p)) {
+      into.add(p);
+      addAncestors(p, into);
+    }
+  }
+}
+
+/**
  * Given a track's resolved scoringArtists, returns every genre any of them
- * are classified under, PLUS every parent genre implied by PARENT_GENRE
- * (deduplicated) - so an ARTIST_GENRES entry only ever needs to list the
- * most specific genre(s), never the parent too. Returns [UNTAGGED_GENRE] if
- * none of the credited/scoring artists are in ARTIST_GENRES at all.
+ * are classified under, PLUS every ANCESTOR genre implied by PARENT_GENRE,
+ * walked transitively up the whole chain (deduplicated) - so an
+ * ARTIST_GENRES entry only ever needs to list the most specific genre(s),
+ * never any of its ancestors too; tagging an artist with just "Pop Punk"
+ * also credits "Punk" and "Rock" automatically, however many levels deep
+ * the chain goes. Returns [UNTAGGED_GENRE] if none of the credited/scoring
+ * artists are in ARTIST_GENRES at all.
  */
 export function genresForArtists(scoringArtists: string[]): string[] {
   const result = new Set<string>();
@@ -634,10 +683,7 @@ export function genresForArtists(scoringArtists: string[]): string[] {
     if (!genres) continue;
     for (const g of genres) {
       result.add(g);
-      const parents = PARENT_GENRE[g];
-      if (parents) {
-        for (const p of parents) result.add(p);
-      }
+      addAncestors(g, result);
     }
   }
   if (result.size === 0) return [UNTAGGED_GENRE];

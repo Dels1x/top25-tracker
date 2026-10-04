@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { GENRE_HIERARCHY, GENRES, UNTAGGED_GENRE } from "./artistGenres";
+import { GENRE_HIERARCHY, GENRES, UNTAGGED_GENRE, type GenreNode } from "./artistGenres";
 import { usePersistedSetState } from "./usePersistedState";
 
 const ALL_TOP_LEVEL = [...GENRES, UNTAGGED_GENRE];
@@ -11,10 +11,13 @@ const ALL_TOP_LEVEL = [...GENRES, UNTAGGED_GENRE];
  * selected - no filtering, matches today's unfiltered leaderboard - rather
  * than empty.
  *
- * Checking/unchecking a top-level genre cascades to all of its subgenres
- * (check parent -> check every child; uncheck parent -> uncheck every
- * child) - per the user's spec. A subgenre can still be toggled
- * independently of its siblings once the parent is checked.
+ * Checking/unchecking ANY node (top-level genre or a subgenre at any depth)
+ * cascades to its ENTIRE descendant subtree, however deep it goes - check
+ * "Rock" -> also checks "Punk" and, through it, "Pop Punk"/"Post-Punk" too;
+ * check "Punk" on its own -> checks its own children without touching
+ * "Rock" or "Rock"'s other subgenres. A node can still be toggled
+ * independently of its siblings/parent once the ancestor chain above it is
+ * checked - unchecking just "Pop Punk" doesn't touch "Punk" or "Rock".
  */
 export function useGenreFilter(storageKey: string) {
   const [selected, setSelected] = usePersistedSetState(
@@ -22,35 +25,34 @@ export function useGenreFilter(storageKey: string) {
     () => ALL_TOP_LEVEL
   );
 
-  const childrenByParent = useMemo(() => {
+  // Every genre's FULL (transitive) descendant list, not just its direct
+  // children - so toggling "Rock" cascades through "Punk" down to
+  // "Pop Punk"/"Post-Punk" too, however many levels deep the tree goes.
+  const descendantsByGenre = useMemo(() => {
     const map = new Map<string, string[]>();
-    for (const { genre, subgenres } of GENRE_HIERARCHY) {
-      map.set(genre, subgenres);
+    function walk(node: GenreNode): string[] {
+      const childLists = node.subgenres.map(walk);
+      const all = node.subgenres.map((c) => c.genre).concat(...childLists);
+      map.set(node.genre, all);
+      return all;
     }
+    for (const node of GENRE_HIERARCHY) walk(node);
     return map;
   }, []);
 
-  function toggleTopLevel(genre: string) {
+  /** Toggle any node (top-level or nested at any depth) - cascades to its whole subtree. */
+  function toggleNode(genre: string) {
     setSelected((prev) => {
       const next = new Set(prev);
-      const children = childrenByParent.get(genre) ?? [];
+      const descendants = descendantsByGenre.get(genre) ?? [];
       const turningOn = !next.has(genre);
       if (turningOn) {
         next.add(genre);
-        for (const c of children) next.add(c);
+        for (const d of descendants) next.add(d);
       } else {
         next.delete(genre);
-        for (const c of children) next.delete(c);
+        for (const d of descendants) next.delete(d);
       }
-      return next;
-    });
-  }
-
-  function toggleSubgenre(genre: string) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(genre)) next.delete(genre);
-      else next.add(genre);
       return next;
     });
   }
@@ -63,5 +65,5 @@ export function useGenreFilter(storageKey: string) {
     setSelected(new Set());
   }
 
-  return { selected, toggleTopLevel, toggleSubgenre, selectAll, selectNone };
+  return { selected, toggleNode, selectAll, selectNone };
 }

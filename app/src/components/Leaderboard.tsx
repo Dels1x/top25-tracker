@@ -57,8 +57,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
   } = useMonthRange(availableMonths, `leaderboard:${person}`);
   const {
     selected: selectedGenres,
-    toggleTopLevel,
-    toggleSubgenre,
+    toggleNode: toggleGenre,
     selectAll: selectAllGenres,
     selectNone: selectNoneGenres,
   } = useGenreFilter(person);
@@ -208,8 +207,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
 
       <GenreFilter
         selected={selectedGenres}
-        onToggleTopLevel={toggleTopLevel}
-        onToggleSubgenre={toggleSubgenre}
+        onToggle={toggleGenre}
         onSelectAll={selectAllGenres}
         onSelectNone={selectNoneGenres}
       />
