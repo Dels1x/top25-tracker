@@ -76,8 +76,11 @@ export const GENRES = [
   "Slowcore",
   "Post-Rock",
   "Math Rock",
+  "Hard Rock",
+  "Pop Rock",
   "Trip Hop",
   "Ambient",
+  "Disco",
   "Other",
 ] as const;
 
@@ -116,6 +119,8 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Post-Rock": ["Rock"],
   "Math Rock": ["Rock"],
   "Indie Rock": ["Rock"],
+  "Hard Rock": ["Rock"],
+  "Pop Rock": ["Rock"],
   Slowcore: ["Rock"],
   "Trip Hop": ["Electronic"],
   Ambient: ["Electronic"],
@@ -125,7 +130,8 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   Indietronica: ["Electronic", "Pop"],
   "Alternative Metal": ["Metal"],
   "Heavy Metal": ["Metal"],
-  "Nu Jazz": ["Jazz"]
+  "Nu Jazz": ["Jazz"],
+  "Disco": ["R&B/Soul"]
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -501,6 +507,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Esthero": ["R&B/Soul", "Trip Hop"],
   "Ari Lennox": ["R&B/Soul"],
   "Anna Wise": ["R&B/Soul"],
+  "Bee Gees": ["Disco"],
 
   // ===== Rock =====
   "Queens of the Stone Age": ["Art Rock", "Alternative Rock"],
@@ -520,6 +527,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "kessoku band": ["Rock"], // j-rock, per user
   "Ichiko Aoba": ["Folk"],
   "Taeko Onuki": ["Pop"],
+  "Queen": ["Hard Rock", "Pop Rock"],
 
   // ===== Metal =====
   "Black Sabbath": ["Metal", "Rock", "Heavy Metal"],
