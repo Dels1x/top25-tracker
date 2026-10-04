@@ -189,6 +189,13 @@
   gap: 14px;
 }
 
+/* #1 spans the full row by itself, so the remaining 24 cards (#2-25) fill
+   the 2-column grid symmetrically - 12 full rows, ending with #24/#25
+   together on the last row instead of an off-by-one leftover. */
+.cardFirst {
+  grid-column: 1 / -1;
+}
+
 .card {
   display: flex;
   align-items: flex-start;

@@ -191,7 +191,7 @@ export function Replay({ dataset, person }: ReplayProps) {
           {current.tracks.map((track) => (
             <motion.li
               key={`${current.month}-${track.rank}`}
-              className={styles.card}
+              className={track.rank === 1 ? `${styles.card} ${styles.cardFirst}` : styles.card}
               layout
               initial={{ opacity: 0, scale: 0.92, y: 12 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
