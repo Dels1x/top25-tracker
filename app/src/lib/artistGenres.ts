@@ -112,7 +112,7 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   Shoegaze: ["Rock"],
   "Post-Rock": ["Rock"],
   "Indie Rock": ["Rock"],
-  Slowcore: ["Folk"],
+  Slowcore: ["Rock"],
   "Trip Hop": ["Electronic"],
   Ambient: ["Electronic"],
   "Noise Pop": ["Pop"],
