@@ -68,6 +68,7 @@ export const ARTIST_ALIASES: Record<string, string> = {
   Milo: "R.A.P. Ferreira",
   "King Geedorah": "MF DOOM",
   "Viktor Vaughn": "MF DOOM",
+  "88:88": "Rome Streetz",
   "Tariq Trotter": "Black Thought", // his government name, used interchangeably by Spotify
   "No Malice": "Malice", // Clipse's Malice also records under "No Malice" (post-rededication alias)
   "By Storm": "Injury Reserve", // rename/relaunch of the same group, not a distinct project
@@ -88,6 +89,8 @@ export const GROUP_MEMBERS: Record<string, string[]> = {
   "Run The Jewels": ["Killer Mike", "El-P"],
   "Bad Meets Evil": ["Eminem", "Royce Da 5'9\""],
   "Stove God Cook$, Roc Marciano": ["Stove God Cooks", "Roc Marciano"],
+  "Stove God Cook$, Roc Marciano, Earl Sweatshirt": ["Stove God Cooks", "Roc Marciano", "Earl Sweatshirt"],
+  "Earl Sweatshirt, The Alchemist": ["Earl Sweatshirt", "The Alchemist"],
   // The Roots have had a large, shifting lineup over the years - only their
   // MC/frontman is expanded here, not every past member, same pattern as
   // the other duo-style entries above.
