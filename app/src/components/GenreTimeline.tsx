@@ -35,7 +35,7 @@ function formatMonth(month: string): string {
 
 /**
  * Same shape as Timeline, but tracking major genres instead of artists -
- * there are only ~11 possible genres (see genreParents.ts) so, unlike
+ * there are only ~19 possible genres/subgenres (see artistGenres.ts) so, unlike
  * Timeline, every genre is shown by default rather than just a top N.
  */
 export function GenreTimeline({ dataset, person, scoringOptions }: GenreTimelineProps) {

@@ -1,7 +1,7 @@
 import type { Dataset, MonthlyList, Track } from "../data/types";
 import { uniteRelatedProject } from "./relatedProjects";
 import { isKnownProducer } from "./knownProducers";
-import { genresForTrack, UNTAGGED_GENRE } from "./genreParents";
+import { genresForArtists } from "./artistGenres";
 
 /** One point per occurrence of an artist in `scoringArtists` across a track. */
 export interface ArtistMonthCount {
@@ -254,14 +254,16 @@ export interface GenreMonthCount {
 }
 
 /**
- * The major genre(s) a track counts toward, or [UNTAGGED_GENRE] if it has no
- * Spotify genre data at all. A track with tags spanning more than one major
- * genre (e.g. "rap metal" -> Hip-Hop AND Metal) counts toward every one of
- * them - same "counts toward everything it touches" rule as scoringArtists.
+ * The major genre(s) a track counts toward, classified by its (already
+ * attribution-resolved) scoringArtists rather than Spotify's own per-track
+ * genre tags - see artistGenres.ts for why. Returns [UNTAGGED_GENRE] if none
+ * of the track's artists are in ARTIST_GENRES. A track whose artists span
+ * more than one genre (e.g. a Deftones feature on a rap song) counts toward
+ * every one of them - same "counts toward everything it touches" rule as
+ * scoringArtists itself.
  */
-function genreBucketsForTrack(track: Track): string[] {
-  if (track.genres.length === 0) return [UNTAGGED_GENRE];
-  return genresForTrack(track.genres);
+function genreBucketsForTrack(track: Pick<Track, "scoringArtists">): string[] {
+  return genresForArtists(track.scoringArtists);
 }
 
 /** Total tracks per major genre across all months (optionally for one person). */

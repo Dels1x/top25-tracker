@@ -32,8 +32,8 @@ function formatMonth(month: string): string {
 /**
  * Same shape as Leaderboard, but ranking major genres instead of artists -
  * reuses Leaderboard.module.css since the list/row/expandable-panel layout
- * is identical. No pagination needed: there are only ~11 major genre
- * buckets total (see src/lib/genreParents.ts), unlike the potentially
+ * is identical. No pagination needed: there are only ~19 genre/subgenre
+ * buckets total (see src/lib/artistGenres.ts), unlike the potentially
  * hundreds of artists Leaderboard has to page through.
  */
 export function GenreLeaderboard({ dataset, person, scoringOptions }: GenreLeaderboardProps) {

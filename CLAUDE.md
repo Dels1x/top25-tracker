@@ -60,31 +60,38 @@ There is no test runner configured yet.
   person's top 25, matched via the same `trackKey` used for duplicate detection (so re-release title
   variants still count as the same song across people, not just within one person's history).
   `genreTotals`/`genreMonthCounts`/`tracksForGenre`/`cumulativeGenreSeries` mirror the artist-scoped
-  functions but bucket by major genre instead (see `genreParents.ts`) - they only honor
+  functions but bucket by genre instead (see `artistGenres.ts`) - they only honor
   `includeDuplicates`/`startMonth`/`endMonth` from `StatsOptions`; the artist-identity options
   (`uniteRelatedProjects`/`showProducers`/`showDuos`) don't apply to genres and the genre UI components
-  don't pass them through.
-- **`app/src/lib/genreParents.ts`** — `GENRES` (Hip-Hop, Rock, Metal, Jazz, R&B/Soul, Folk, Electronic,
-  Pop, Reggae, Shoegaze, Ambient, Other) and the hand-maintained map from every Spotify micro-genre tag
-  actually seen in this dataset (e.g. "g-funk") to the bucket(s) it belongs to. A track with tags
-  spanning more than one bucket (e.g. "rap metal") counts toward every bucket it touches - same "counts
-  toward everything" rule as multi-artist credits. A tag with no mapped entry falls back to "Other"
-  rather than crashing; `UNTAGGED_GENRE` is the separate bucket for a track with zero Spotify genre tags
-  at all (~17% of tracks, mostly locally-matched files that never got full metadata - a real data gap,
-  not a bug). Not derivable algorithmically - built by walking every tag present in the real data; if a
-  future CSV introduces a brand-new tag, it'll quietly fall into "Other" until someone adds a real
-  mapping here.
-  **Spotify's genre tags for this dataset are unreliable for several specific tags** - "jazz rap",
-  "plunderphonics", and "experimental" are applied by Spotify as loose vibe-descriptors for ~any
-  sample-heavy/abstract hip-hop here (Freddie Gibbs, The Alchemist, Westside Gunn, even a straight
-  drill cypher), not because the track has real jazz/electronic content; checked directly (849/116/225
-  tagged tracks, 97%/87% also tagged hip-hop/rap for experimental/plunderphonics), so all three map to
-  Hip-Hop ONLY now, not their literal-sounding bucket. Before "fixing" another tag this way, check its
-  real hip-hop co-occurrence rate the same way - a tag with a genuinely mixed rate (nu jazz 50%,
-  alternative r&b 44%) should stay dual-bucketed, not get force-corrected on a hunch. "shoegaze" and
-  "ambient" (the literal tags only, not drone/dream pop/ambient folk/ambient jazz) get their own
-  dedicated buckets rather than folding into Rock/Electronic, since they're common and distinct enough
-  in this data to be worth seeing on their own.
+  don't pass them through. Genre classification runs on each track's (already attribution-resolved)
+  `scoringArtists`, not on raw `creditedArtists` - so a bare group credit still classifies correctly via
+  the group's own `ARTIST_GENRES` entry even before member-expansion is considered.
+- **`app/src/lib/artistGenres.ts`** — classifies genre by ARTIST, not by Spotify's per-track genre
+  tags (an earlier version, `genreParents.ts`, did the latter and was replaced - see below for why).
+  `ARTIST_GENRES` is a hand-maintained `artist name -> Genre[]` map (keyed by canonical
+  `scoringArtists` spelling), built by going through the real artist list ordered by song count (most
+  first) and classifying everyone confidently recognized; an artist not in the map contributes nothing
+  and a track with no recognized artist falls back to `UNTAGGED_GENRE`, rather than guessing. An artist
+  can genuinely have more than one genre (Phil Elverum -> Folk AND Rock across his two projects;
+  Deftones -> Metal AND Shoegaze) - not a mistake to "clean up". `GENRES` includes both major genres
+  (Hip-Hop, Rock, Metal, Jazz, R&B/Soul, Folk, Electronic, Pop, Reggae, Shoegaze, Slowcore, Post-Rock,
+  Trip Hop, Ambient, Other) and hip-hop regional/style subgenres (East Coast, West Coast, Southern,
+  Abstract) - subgenres are ADDITIVE, never a replacement: an artist with a subgenre still also counts
+  toward the plain major genre (billy woods -> both "Hip-Hop" and "Abstract Hip-Hop" and "East Coast
+  Hip-Hop"). Maintenance: add new artists highest-song-count-first (check actual counts via
+  `scoringArtists` frequency in `data.json`, don't guess the ordering); if an artist isn't confidently
+  recognized, leave them unmapped and ask, rather than guess.
+  **Why artist-based instead of Spotify's own genre tags**: Spotify's per-track tags turned out
+  unreliable for this dataset specifically - "jazz rap", "plunderphonics", and "experimental" were
+  applied as loose vibe-descriptors for ~any sample-heavy/abstract hip-hop (Freddie Gibbs, The
+  Alchemist, Westside Gunn, even a straight drill cypher), not because those tracks have real
+  jazz/electronic content (checked directly: 849/116/225 tagged tracks, 97%/87% also tagged hip-hop/rap
+  for experimental/plunderphonics). An artist's genre doesn't flicker the way a crowd-sourced per-track
+  tag does, and it's something a person who actually knows the artist/scene can just state directly -
+  more stable and more accurate for this dataset, at the cost of needing manual upkeep as new artists
+  show up (same tradeoff as the other hand-maintained tables in this project). The raw Spotify
+  `genres` field is still parsed and stored on `Track.genres` untouched (unused by the Genres
+  tabs now, but kept in the data in case it's useful later).
 - **`app/src/lib/colors.ts`** — assigns each artist a fixed categorical color slot by stable rank order
   (see the dataviz skill's "color follows the entity, never its rank" rule) — a toggled-off artist must
   never cause the remaining artists to repaint.
