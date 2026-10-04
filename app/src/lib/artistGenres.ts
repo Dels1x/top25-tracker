@@ -311,7 +311,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Killer Ben": ["West Coast Hip-Hop"],
 
   // ===== West Coast Hip-Hop =====
-  "Kendrick Lamar": ["West Coast Hip-Hop", "Jazz Rap"],
+  "Kendrick Lamar": ["West Coast Hip-Hop", "Jazz Rap", "Conscious Hip-Hop"],
   "Dr. Dre": ["West Coast Hip-Hop", "Gangsta Rap"],
   Xzibit: ["West Coast Hip-Hop", "Gangsta Rap"],
   "Snoop Dogg": ["West Coast Hip-Hop", "Gangsta Rap"],
@@ -342,10 +342,10 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   Problem: ["West Coast Hip-Hop"],
 
   // ===== Southern Hip-Hop =====
-  Outkast: ["Southern Hip-Hop"],
+  Outkast: ["Southern Hip-Hop", "Jazz Rap"],
   "Big Boi": ["Southern Hip-Hop"],
-  "André 3000": ["Southern Hip-Hop"],
-  "J. Cole": ["Hip-Hop"],
+  "André 3000": ["Southern Hip-Hop", "Jazz Rap"],
+  "J. Cole": ["Hip-Hop", "Conscious Hip-Hop"],
   "Lupe Fiasco": ["Abstract Hip-Hop", "Jazz Rap"],
   "Big K.R.I.T.": ["Southern Hip-Hop"],
   "Curren$y": ["Southern Hip-Hop", "Jazz Rap", "Gangsta Rap"],
@@ -363,7 +363,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Booka600": ["Southern Hip-Hop", "Trap"],
   "Lil Yachty": ["Southern Hip-Hop", "Trap"],
   "Doodie Lo": ["Southern Hip-Hop", "Trap"],
-  "Only The Family": ["Southern Hip-Hop", "Trap"],
+  "Only The Family": ["Southern Hip-Hop", "Trap", "Gangsta Rap"],
   "21 Savage": ["Southern Hip-Hop", "Trap"],
   Bas: ["Hip-Hop"],
   EARTHGANG: ["Southern Hip-Hop", "Trap"],
