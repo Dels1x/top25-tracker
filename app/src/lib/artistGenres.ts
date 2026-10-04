@@ -71,7 +71,6 @@ export const GENRES = [
   "Dream Pop",
   "Glitch Pop",
   "Indietronica",
-  "Reggae",
   "Shoegaze",
   "Slowcore",
   "Post-Rock",
@@ -136,7 +135,7 @@ export const UNTAGGED_GENRE = "Unknown/Untagged";
  * any), derived from PARENT_GENRE. Powers the Leaderboard's genre filter UI:
  * one checkbox per top-level genre, with its subgenres as an expandable
  * list of child checkboxes underneath. A genre with no subgenres (Jazz,
- * Metal, R&B/Soul, Reggae, Other, ...) just has an empty array - no
+ * Metal, R&B/Soul, Other, ...) just has an empty array - no
  * disclosure arrow needed for those in the UI.
  */
 export const GENRE_HIERARCHY: Array<{ genre: string; subgenres: Genre[] }> = (() => {
