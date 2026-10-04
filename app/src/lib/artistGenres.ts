@@ -319,7 +319,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Kid Cudi": ["Hip-Hop"],
   "KIDS SEE GHOSTS": ["Hip-Hop"], // duo: Kanye West + Kid Cudi
   "A$AP Rocky": ["Hip-Hop", "Cloud Rap", "Trap"],
-  "ScHoolboy Q": ["West Coast Hip-Hop", "Trap"],
+  "ScHoolboy Q": ["West Coast Hip-Hop", "Trap", "Gangsta Rap"],
   "Vince Staples": ["West Coast Hip-Hop", "Jazz Rap"],
   "Earl Sweatshirt": ["Abstract Hip-Hop", "Jazz Rap", "Experimental Hip-Hop"],
   "Tyler, The Creator": ["Hip-Hop"],
