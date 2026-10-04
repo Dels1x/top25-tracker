@@ -427,7 +427,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Smino": ["Hip-Hop", "R&B/Soul", "Pop Rap"],
   "Lute": ["Southern Hip-Hop"],
   "Spillage Village": ["Southern Hip-Hop"],
-  "Little Simz": ["Abstract Hip-Hop"],
+  "Little Simz": ["Conscious Hip-Hop"],
   "slowthai": ["Hip-Hop"],
   "Dreamville": ["Hip-Hop"],
 
