@@ -106,8 +106,7 @@ export function GenreLeaderboard({ dataset, person, scoringOptions }: GenreLeade
       <div className={styles.headRow}>
         <h2 className={styles.heading}>Songs per genre</h2>
         <p className={styles.sub}>
-          A song counts toward every major genre its Spotify tags touch (so a "rap metal" track
-          adds to both Hip-Hop and Metal){scoringOptions.includeDuplicates === false &&
+          {scoringOptions.includeDuplicates === false &&
             " · repeat songs counted once"} &middot; click a genre to see its songs
         </p>
       </div>
