@@ -16,6 +16,26 @@ function formatMonthLong(month: string): string {
   return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
 }
 
+/**
+ * Formats a track's raw Spotify releaseDate for display - handles the three
+ * precisions Spotify's API actually returns (full "YYYY-MM-DD", "YYYY-MM",
+ * or just "YYYY" for an older/less-precisely-catalogued release) rather than
+ * assuming full precision always parses cleanly - a bare "YYYY" passed to
+ * `new Date()` would otherwise get misread as UTC midnight and can print the
+ * wrong year in a timezone behind UTC. null (no release date in the source
+ * row) renders nothing rather than "Invalid Date".
+ */
+function formatReleaseDate(releaseDate: string | null): string | null {
+  if (!releaseDate) return null;
+  const parts = releaseDate.split("-");
+  if (parts.length === 1) return parts[0]; // year-only precision
+  const [year, month, day] = parts.map(Number);
+  const date = new Date(year, month - 1, day || 1);
+  return parts.length === 2
+    ? date.toLocaleDateString(undefined, { month: "short", year: "numeric" })
+    : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
 function formatTick(month: string): string {
   // Always just the year ("2024"), even for a half-yearly fallback tick
   // (July - only used when there's under ~2 years of data, see
@@ -186,6 +206,13 @@ export function Replay({ dataset, person }: ReplayProps) {
                 <span className={styles.cardArtist} title={track.creditedArtists.join(", ")}>
                   {track.creditedArtists.join(", ")}
                 </span>
+                {(track.album || track.releaseDate) && (
+                  <span className={styles.cardMeta} title={track.album}>
+                    {track.album}
+                    {track.album && formatReleaseDate(track.releaseDate) && " · "}
+                    {formatReleaseDate(track.releaseDate)}
+                  </span>
+                )}
               </div>
             </motion.li>
           ))}

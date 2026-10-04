@@ -376,6 +376,23 @@ There is no test runner configured yet.
   (its tick mark still shows) and the duplicate trailing "2026" (the true Sep-2026 edge lands in the
   same year as the Jan-2026 boundary tick), while hryash's shorter 23-month span suppresses "2025"
   for the same too-close reason and shows a clean "2024 ... 2026".
+  **A follow-up pass** fixed a deliberate column count (`grid-template-columns: repeat(3, 1fr)`,
+  stepping down to `repeat(2, 1fr)` at `1100px` and `1fr` at the existing `560px` breakpoint) in place
+  of the original `auto-fill`/`minmax(280px, 1fr)` reflow - `auto-fill` chose however many cards
+  happened to fit at the window's current width, which could land on an awkward 4-or-5-across count
+  on a very wide monitor; a fixed 3/2/1 ladder reads as a deliberate layout instead. Also added each
+  track's `album` and `releaseDate` (both already on `Track` from `buildData.ts` - no data-pipeline
+  changes needed) as a small `cardMeta` line under the artist line, joined as `"Album · Mar 15, 2024"`
+  when both are present. `formatReleaseDate` handles all three precisions Spotify's catalog actually
+  returns for `releaseDate` - full `"YYYY-MM-DD"`, month-precision `"YYYY-MM"`, and a bare `"YYYY"`
+  for an older/less-precisely-catalogued release (parsed as a plain string rather than handed to
+  `new Date()` directly, which would otherwise misread a year-only value as UTC midnight and can
+  print the wrong year in a timezone behind UTC) - and returns `null` for a missing `releaseDate`
+  (47 of 3118 tracks in the real dataset have none) rather than rendering "Invalid Date". The
+  `cardMeta` line, and its `" · "` separator specifically, only render pieces that actually exist -
+  album-only, date-only, both, or (rare, 4 tracks in the real dataset) neither, in which case the
+  whole `cardMeta` span is omitted rather than showing an empty line - verified against real
+  null/missing cases in the dataset rather than assumed correct from the JSX alone.
 - **`app/src/components/RankFilter.tsx`** + **`app/src/lib/useRankFilter.ts`** — the Leaderboard's
   Top 1/3/5/10/25 buttons: a segmented control (`role="radiogroup"`, styled like Compare's mode switch
   - one pill-shaped container, one filled/active button at a time) that acts as a true radio group,
