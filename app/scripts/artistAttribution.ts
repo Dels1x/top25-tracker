@@ -41,6 +41,7 @@ export const SPOTIFY_MISSPELLINGS: Record<string, string> = {
   KA: "Ka",
   Alchemist: "The Alchemist", // missing "The", a handful of credits drop it
   "Laurie Bird": "Natural Snow Buildings", // Spotify mislabels this project under a member's name
+  "NSB Archive": "Natural Snow Buildings", // same project, different Spotify artifact/catalog entry
   // Add more here as they turn up, e.g.:
   // "Kendrik Lamar": "Kendrick Lamar",
 };
