@@ -140,10 +140,12 @@ There is no test runner configured yet.
   scoring-option checkboxes for it; now opens with an artist leaderboard — `sharedSongArtistTotals`/
   `sharedSongsForArtist` in `stats.ts` — ranking who shows up on the most shared songs, reusing
   `Leaderboard.module.css`'s bar-list row/rank/chevron styling the same way `GenreLeaderboard` does,
-  but with its own 2-column `artistSongList`/`artistSongRow` in `Shared.module.css` for the
-  click-to-expand song list rather than reusing `Leaderboard`'s 5-column `.songRow` grid, which is
-  sized for date/rank/title/album/artists columns this simpler drill-down doesn't have; the existing
-  song-list section stays unchanged below it, now under its own "The songs" subheading), `Compare`
+  including the same `PAGE_SIZE = 20` / "Show more" button pattern Leaderboard uses rather than
+  rendering every artist at once, but with its own 2-column `artistSongList`/`artistSongRow` in
+  `Shared.module.css` for the click-to-expand song list rather than reusing `Leaderboard`'s 5-column
+  `.songRow` grid, which is sized for date/rank/title/album/artists columns this simpler drill-down
+  doesn't have; the existing song-list section stays unchanged below it, now under its own "The
+  songs" subheading), `Compare`
   (pick one or more artists OR genres — toggled via an
   "Artists"/"Genres" mode switch at the top, mirroring the Leaderboard/GenreLeaderboard split as two
   modes of one view instead of two separate tabs — e.g. a group's members, or a genre like "Hip-Hop" —

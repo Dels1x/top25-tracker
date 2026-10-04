@@ -10,6 +10,8 @@ interface SharedProps {
   dataset: Dataset;
 }
 
+const PAGE_SIZE = 20;
+
 function formatMonth(month: string): string {
   const [year, m] = month.split("-");
   const date = new Date(Number(year), Number(m) - 1, 1);
@@ -19,6 +21,7 @@ function formatMonth(month: string): string {
 export function Shared({ dataset }: SharedProps) {
   const [query, setQuery] = useState("");
   const [expandedArtist, setExpandedArtist] = useState<string | null>(null);
+  const [artistLimit, setArtistLimit] = useState(PAGE_SIZE);
 
   const songs = useMemo(() => sharedSongs(dataset), [dataset]);
 
@@ -33,6 +36,7 @@ export function Shared({ dataset }: SharedProps) {
     [artistTotals]
   );
   const maxArtistTotal = artistTotals[0]?.total ?? 1;
+  const visibleArtistTotals = artistTotals.slice(0, artistLimit);
 
   const isExpandedStillPresent = useMemo(
     () => expandedArtist !== null && artistTotals.some((t) => t.artist === expandedArtist),
@@ -76,7 +80,7 @@ export function Shared({ dataset }: SharedProps) {
       </p>
 
       <ol className={leaderboardStyles.list}>
-        {artistTotals.map((row, index) => {
+        {visibleArtistTotals.map((row, index) => {
           const pct = (row.total / maxArtistTotal) * 100;
           const color = artistColorMap.get(row.artist) ?? "var(--text-muted)";
           const isOpen = activeExpandedArtist === row.artist;
@@ -138,6 +142,16 @@ export function Shared({ dataset }: SharedProps) {
           );
         })}
       </ol>
+
+      {artistLimit < artistTotals.length && (
+        <button
+          type="button"
+          className={leaderboardStyles.more}
+          onClick={() => setArtistLimit((n) => n + PAGE_SIZE)}
+        >
+          Show more ({artistTotals.length - artistLimit} remaining)
+        </button>
+      )}
 
       <h3 className={styles.sectionHeading}>The songs</h3>
 
