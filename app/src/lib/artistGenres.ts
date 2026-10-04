@@ -182,7 +182,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   Futurewave: ["Hip-Hop"], // producer
 
   // ===== East Coast Hip-Hop =====
-  "billy woods": ["Abstract Hip-Hop", "Experimental Hip-Hop", "East Coast Hip-Hop"],
+  "billy woods": ["Abstract Hip-Hop", "Experimental Hip-Hop", "East Coast Hip-Hop", "Jazz Rap"],
   "E L U C I D": ["Abstract Hip-Hop", "Experimental Hip-Hop", "East Coast Hip-Hop"],
   "Armand Hammer": ["Abstract Hip-Hop", "East Coast Hip-Hop"],
   "Boldy James": ["East Coast Hip-Hop", "Jazz Rap", "Gangsta Rap"],
@@ -196,7 +196,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Benny The Butcher": ["East Coast Hip-Hop", "Gangsta Rap", "Coke Rap"],
   "Conway the Machine": ["East Coast Hip-Hop", "Gangsta Rap", "Coke Rap"],
   Griselda: ["East Coast Hip-Hop", "Gangsta Rap", "Coke Rap"],
-  "R.A.P. Ferreira": ["Abstract Hip-Hop", "Experimental Hip-Hop"],
+  "R.A.P. Ferreira": ["Abstract Hip-Hop", "Experimental Hip-Hop", "Jazz Rap"],
   "Aesop Rock": ["Abstract Hip-Hop", "East Coast Hip-Hop"],
   "El-P": ["Abstract Hip-Hop", "East Coast Hip-Hop", "Experimental Hip-Hop"],
   "Run The Jewels": ["East Coast Hip-Hop"],
