@@ -18,6 +18,14 @@
   margin-top: 4px;
 }
 
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
 .list {
   list-style: none;
   margin: 0;
@@ -37,7 +45,7 @@
 
 .row {
   display: grid;
-  grid-template-columns: 24px 160px 1fr 36px 16px;
+  grid-template-columns: 24px 160px 1fr 48px 16px;
   align-items: center;
   gap: 10px;
   width: 100%;
@@ -221,7 +229,7 @@
 
 @media (max-width: 560px) {
   .row {
-    grid-template-columns: 20px 90px 1fr 32px 14px;
+    grid-template-columns: 20px 90px 1fr 42px 14px;
   }
 
   .songHeaderRow,

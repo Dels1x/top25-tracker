@@ -6,9 +6,11 @@ import { buildArtistColorMap } from "../lib/colors";
 import { useMonthRange } from "../lib/useMonthRange";
 import { useGenreFilter } from "../lib/useGenreFilter";
 import { useRankFilter } from "../lib/useRankFilter";
+import { useWeightByRank } from "../lib/useWeightByRank";
 import { RangePicker } from "./RangePicker";
 import { GenreFilter } from "./GenreFilter";
 import { RankFilter } from "./RankFilter";
+import { ToggleCheckbox } from "./ToggleCheckbox";
 import { StatsRow } from "./StatsRow";
 import styles from "./Leaderboard.module.css";
 
@@ -61,6 +63,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
     selectNone: selectNoneGenres,
   } = useGenreFilter(person);
   const [maxRank, setMaxRank] = useRankFilter(person);
+  const [weightByRank, setWeightByRank] = useWeightByRank(person);
 
   // Combined options shared between the leaderboard list itself and the
   // StatsRow tiles above it, so "Top artist"/"Unique artists"/etc. always
@@ -74,8 +77,9 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
       ...rangeOptions,
       genreFilter: selectedGenres,
       maxRank: maxRank === 25 ? undefined : maxRank,
+      weightByRank,
     }),
-    [scoringOptions, rangeOptions, selectedGenres, maxRank]
+    [scoringOptions, rangeOptions, selectedGenres, maxRank, weightByRank]
   );
 
   const totals = useMemo(
@@ -95,7 +99,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(
     () => setLimit(PAGE_SIZE),
-    [person, scoringOptions, rangeOptions, selectedGenres, maxRank]
+    [person, scoringOptions, rangeOptions, selectedGenres, maxRank, weightByRank]
   );
 
   // If the range narrows and the expanded artist drops out of it entirely,
@@ -165,8 +169,9 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
           {totals.length} artists &middot; counts include feature credits and group/member
           attribution{scoringOptions.includeDuplicates === false &&
             " · repeat songs counted once"}
-          {maxRank !== 25 && ` · only counting #1-${maxRank} each month`} &middot; click an artist
-          to see their songs
+          {maxRank !== 25 && ` · only counting #1-${maxRank} each month`}
+          {weightByRank && " · weighted by placement"} &middot; click an artist to see their
+          songs
         </p>
       </div>
 
@@ -181,7 +186,14 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
         onYear={applyYear}
       />
 
-      <RankFilter value={maxRank} onChange={setMaxRank} />
+      <div className={styles.filterRow}>
+        <RankFilter value={maxRank} onChange={setMaxRank} />
+        <ToggleCheckbox
+          checked={weightByRank}
+          onChange={setWeightByRank}
+          label="Weight by placement (#1 worth more than #25)"
+        />
+      </div>
 
       <GenreFilter
         selected={selectedGenres}
@@ -217,7 +229,9 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
                     transition={{ duration: 0.5, ease: "easeOut", delay: index * 0.015 }}
                   />
                 </div>
-                <span className={styles.value}>{row.total}</span>
+                <span className={styles.value}>
+                  {weightByRank ? `${Math.round(row.total)}pts` : row.total}
+                </span>
                 <span className={styles.chevron} data-open={isOpen} aria-hidden="true">
                   ▾
                 </span>

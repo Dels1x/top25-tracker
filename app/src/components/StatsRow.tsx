@@ -43,7 +43,13 @@ export function StatsRow({ dataset, person, options }: StatsRowProps) {
       <StatTile
         label="Top artist"
         value={stats.topArtist?.artist ?? "—"}
-        detail={stats.topArtist ? `${stats.topArtist.total} songs` : undefined}
+        detail={
+          stats.topArtist
+            ? options.weightByRank
+              ? `${Math.round(stats.topArtist.total)} pts`
+              : `${stats.topArtist.total} songs`
+            : undefined
+        }
       />
     </div>
   );

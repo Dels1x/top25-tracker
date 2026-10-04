@@ -274,6 +274,37 @@ There is no test runner configured yet.
   pre-existing behavior of always showing an artist's full song list regardless of the genre
   checkboxes (genreFilter decides whether an artist qualifies at all, not which of their own songs to
   hide once they're shown).
+- **`app/src/lib/useWeightByRank.ts`** + the "Weight by placement" `ToggleCheckbox` next to
+  `RankFilter` in `Leaderboard.tsx` — an opt-in (default OFF), per-person-persisted checkbox that
+  switches the leaderboard from flat "1 point per song" counting to `rankPoints(rank)` (`stats.ts`): a
+  smooth, front-loaded curve (exponential decay down to a floor, `floor + (max-floor)*decay^(rank-1)`,
+  anchored so rank 1 = 100 pts and rank 5 = 50 pts) rather than a flat count, so a #1 placement is
+  worth far more than a #25 one without the curve being a hard cliff - the project owner's own example
+  numbers (top 25 ~10, top 20 ~12.5, top 15 ~15, top 10 ~25, top 5 ~50, top 1 ~100) were the anchors
+  this was fit against. `StatsOptions.weightByRank` is consumed inside `allTracks` itself: every track
+  in its output now carries a `points` field (`rankPoints(track.rank)` when the option is on, else a
+  flat `1`), and every summation in `stats.ts` that used to add a flat `1` per track/match now adds
+  `track.points` instead - `artistTotals`, `artistMonthCounts`, `genreTotals`, `genreMonthCounts` (all
+  consumed by Leaderboard/Timeline/GenreLeaderboard/GenreTimeline) - so turning the checkbox on
+  reshuffles rankings (an artist who charts #1-3 often can overtake one with a higher flat count but
+  lower average placement) while every other toggle/filter (range, genre filter, rank filter, dedup)
+  still composes with it normally, since it's just another multiplier on the same per-track loop.
+  **Deliberately NOT wired into the Shared tab or Compare** (`sharedSongArtistTotals`,
+  `personArtistSummaries`/`cumulativeArtistSeriesByPerson`, `personGenreSummaries`/
+  `cumulativeGenreSeriesByPerson`) - a shared song was ranked differently by each of the three people,
+  so "its placement" has no single meaning the way it does on a per-person Leaderboard row; those
+  call sites simply never pass `weightByRank` through (their own `options`/`genreOptions` objects never
+  set it), so `track.points` is always the flat `1` there regardless of the Leaderboard checkbox's
+  state - this was an explicit scoping decision, not an oversight. `StatsRow`'s "Top artist" tile
+  switches its detail text from "`N` songs" to "`N` pts" (rounded) when `options.weightByRank` is on,
+  since the underlying `ArtistTotal.total` is now a fractional point sum, not a song count, in that
+  mode - same reasoning, the Leaderboard row's own value column shows "`N`pts" instead of a plain
+  integer when the checkbox is on. Verified directly against the real dataset: turning the checkbox on
+  for delsix reshuffles the top 5 (Logic overtakes Eminem, J. Cole enters the top 5) while the total
+  artist count stays identical (439 either way - weighting changes ORDER and VALUE, never which
+  artists qualify at all), and the sum of a drilled-down artist's own song points exactly matches
+  their leaderboard total to the cent, confirming `StatsRow`/the row list/the drill-down all stay in
+  sync off the one shared `combinedOptions` object the same way `maxRank`/`genreFilter` already do.
 - Styling is CSS Modules per-component, with design tokens (colors, surfaces) as CSS custom properties
   in `src/index.css`, following the project's dataviz skill palette for both light and dark mode.
 - **`app/src/lib/usePersistedState.ts`** — `usePersistedState`/`usePersistedSetState` wrap `useState`

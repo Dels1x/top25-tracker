@@ -145,6 +145,43 @@ export interface StatsOptions {
    * undefined ("no filter") from an explicit value.
    */
   maxRank?: number;
+  /**
+   * When true (default false - "Weight by placement" checkbox), every count
+   * this file produces is a sum of per-track POINTS (via rankPoints(rank))
+   * instead of a flat 1 per occurrence - a #1 song is worth far more than a
+   * #25 one. See rankPoints's own doc comment for the curve. Applied in
+   * allTracks as a `points` field on each track (1 when this option is off,
+   * so every downstream aggregator can unconditionally sum `points` instead
+   * of branching on this option itself); every place that used to do
+   * `total + 1` per track now does `total + track.points`.
+   */
+  weightByRank?: boolean;
+}
+
+/**
+ * The point value of a single placement, when "weight by placement" is on -
+ * a smooth, front-loaded curve (not a flat count) so a #1 song is worth
+ * dramatically more than a #25 one, but the curve isn't a cliff: it's an
+ * exponential decay down to a floor of 10 points, i.e.
+ * `floor + (max - floor) * decay^(rank-1)`, anchored so rank 1 = 100 points
+ * and rank 5 = 50 points (decay solved from those two anchors) - chosen to
+ * match the project owner's own example curve (top 25 ~10, top 20 ~12.5, top
+ * 15 ~15, top 10 ~25, top 5 ~50, top 1 ~100) closely across every rank, not
+ * just at those sampled points. Values for rank 1..25: 100, 83.5, 70, 59, 50,
+ * 42.7, 36.7, 31.8, 27.8, 24.5, 21.9, 19.7, 17.9, 16.5, 15.3, 14.3, 13.5,
+ * 12.9, 12.3, 11.9, 11.6, 11.3, 11, 10.8, 10.7 - monotonically decreasing and
+ * always > the floor (never reaches exactly 10, by design - rank 25 is still
+ * "a favorite that month" per the project's own framing, not worthless).
+ * A rank beyond 25 (the two historical overflow months, now cleaned up, or
+ * any future one) still gets a sensible, ever-shrinking value rather than a
+ * hardcoded floor or an error.
+ */
+const RANK_POINTS_FLOOR = 10;
+const RANK_POINTS_MAX = 100;
+const RANK_POINTS_DECAY = Math.pow((50 - RANK_POINTS_FLOOR) / (RANK_POINTS_MAX - RANK_POINTS_FLOOR), 1 / 4);
+
+export function rankPoints(rank: number): number {
+  return RANK_POINTS_FLOOR + (RANK_POINTS_MAX - RANK_POINTS_FLOOR) * Math.pow(RANK_POINTS_DECAY, rank - 1);
 }
 
 function inRange(month: string, options?: StatsOptions): boolean {
@@ -191,10 +228,10 @@ export function allTracks(
   dataset: Dataset,
   person?: string,
   options?: StatsOptions
-): Array<Track & { month: string; person: string }> {
+): Array<Track & { month: string; person: string; points: number }> {
   const groupNames = options?.showDuos ? null : new Set(dataset.groupNames);
 
-  const out: Array<Track & { month: string; person: string }> = [];
+  const out: Array<Track & { month: string; person: string; points: number }> = [];
   for (const list of dataset.lists) {
     if (person && list.person !== person) continue;
     if (!inRange(list.month, options)) continue;
@@ -222,7 +259,8 @@ export function allTracks(
       // Hip-Hop is unchecked and should vanish, not show up with an empty
       // artist list.
       if (scoringArtists.length === 0) continue;
-      out.push({ ...track, scoringArtists, month: list.month, person: list.person });
+      const points = options?.weightByRank ? rankPoints(track.rank) : 1;
+      out.push({ ...track, scoringArtists, month: list.month, person: list.person, points });
     }
   }
   if (options?.includeDuplicates === false) {
@@ -240,7 +278,7 @@ export function artistTotals(
   const totals = new Map<string, number>();
   for (const track of allTracks(dataset, person, options)) {
     for (const artist of track.scoringArtists) {
-      totals.set(artist, (totals.get(artist) ?? 0) + 1);
+      totals.set(artist, (totals.get(artist) ?? 0) + track.points);
     }
   }
   return Array.from(totals.entries())
@@ -258,7 +296,7 @@ export function artistMonthCounts(
   for (const track of allTracks(dataset, person, options)) {
     for (const artist of track.scoringArtists) {
       const key = `${artist}\u0000${track.month}`;
-      counts.set(key, (counts.get(key) ?? 0) + 1);
+      counts.set(key, (counts.get(key) ?? 0) + track.points);
     }
   }
   return Array.from(counts.entries()).map(([key, count]) => {
@@ -326,7 +364,7 @@ export function genreTotals(
   const totals = new Map<string, number>();
   for (const track of allTracks(dataset, person, options)) {
     for (const genre of genreBucketsForTrack(track)) {
-      totals.set(genre, (totals.get(genre) ?? 0) + 1);
+      totals.set(genre, (totals.get(genre) ?? 0) + track.points);
     }
   }
   return Array.from(totals.entries())
@@ -344,7 +382,7 @@ export function genreMonthCounts(
   for (const track of allTracks(dataset, person, options)) {
     for (const genre of genreBucketsForTrack(track)) {
       const key = `${genre}\u0000${track.month}`;
-      counts.set(key, (counts.get(key) ?? 0) + 1);
+      counts.set(key, (counts.get(key) ?? 0) + track.points);
     }
   }
   return Array.from(counts.entries()).map(([key, count]) => {
