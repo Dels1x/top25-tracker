@@ -157,7 +157,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "The Alchemist": ["Hip-Hop"],
   "Freddie Gibbs": ["Southern Hip-Hop", "Gangsta Rap", "Coke Rap", "Boom Bap", "Jazz Rap"],
   Madlib: ["Jazz Rap"],
-  "Kill Bill: The Rapper": ["Hip-Hop", "Jazz Rap"],
+  "Kill Bill: The Rapper": ["Hip-Hop", "Jazz Rap", "Abstract Hip-Hop"],
   "Nicholas Craven": ["Hip-Hop"],
   "Kenny Segal": ["Abstract Hip-Hop"],
   Nujabes: ["Jazz Rap"],
@@ -425,7 +425,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Capital Steez": ["East Coast Hip-Hop"],
   Oxxxymiron: ["Conscious Hip-Hop"],
   Rav: ["Abstract Hip-Hop", "Jazz Rap"], // "lo-fi hip-hop" per user, same bucket as Kill Bill: The Rapper
-  Scuare: ["Abstract Hip-Hop"], // same as Rav per user
+  Scuare: ["Abstract Hip-Hop", "Jazz Rap"], // same as Rav per user
   "Charles Hamilton": ["Chipmunk Soul"],
   "Jonathan Snipes": ["Abstract Hip-Hop"],
   "Slava KPSS": ["Abstract Hip-Hop"],
