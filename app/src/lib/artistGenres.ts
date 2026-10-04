@@ -241,7 +241,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   Guru: ["East Coast Hip-Hop", "Boom Bap"],
   "Black Thought": ["East Coast Hip-Hop", "Conscious Hip-Hop", "Jazz Rap"],
   "The Roots": ["East Coast Hip-Hop", "Jazz Rap"],
-  "The Notorious B.I.G.": ["East Coast Hip-Hop", "Boom Bap"],
+  "The Notorious B.I.G.": ["East Coast Hip-Hop", "Boom Bap", "Gangsta Rap"],
   AZ: ["East Coast Hip-Hop"],
   "Big Pun": ["East Coast Hip-Hop", "Boom Bap"],
   Nas: ["East Coast Hip-Hop", "Boom Bap"],
