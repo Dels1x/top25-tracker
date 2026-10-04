@@ -169,10 +169,11 @@
   transform: translateX(-100%);
 }
 
-/* The song grid: a deliberate column count per breakpoint (3 on a wide
-   screen, 2 on medium, 1 on phones) rather than the previous auto-fill
-   reflow - auto-fill chose however many 280px-wide cards happened to fit,
-   which could land on an awkward 4-or-5-across count on a very wide window.
+/* The song grid: a deliberate column count per breakpoint (2 columns, 1 on
+   phones) rather than the previous auto-fill reflow - auto-fill chose
+   however many 280px-wide cards happened to fit, which could land on an
+   awkward 4-or-5-across count on a very wide window; 3 columns also tried
+   and dropped as looking too cramped.
    Titles WRAP instead of truncating with an ellipsis (the original fix for
    the "titles got cut off" complaint). min-height keeps a short-titled card
    from looking squat next to a 2-line-wrapped neighbor in the same row,
@@ -184,7 +185,7 @@
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 14px;
 }
 
@@ -246,17 +247,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
-}
-
-/* 3 columns down to 2 before cards get uncomfortably narrow for a wrapped
-   2-line title + artist + album/date stack - 1100px is this card's own
-   content-driven breakpoint, not a shared layout token, since the
-   3-column grid only needs to give way once each column drops below
-   roughly 280px. */
-@media (max-width: 1100px) {
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 
 @media (max-width: 560px) {
