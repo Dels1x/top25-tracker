@@ -253,6 +253,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "King Von": ["Hip-Hop", "Trap"],
   "Lil Durk": ["Hip-Hop", "Trap"],
   "Kirk Knight": ["East Coast Hip-Hop"],
+  "Nightmargin": ["Ambient"],
   "CJ Fly": ["East Coast Hip-Hop"],
   "Chuck Strangers": ["East Coast Hip-Hop"],
   "Dyemond Lewis": ["East Coast Hip-Hop"],
