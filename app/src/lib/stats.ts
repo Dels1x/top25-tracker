@@ -108,12 +108,18 @@ export interface StatsOptions {
    */
   showDuos?: boolean;
   /**
-   * When set, restricts to tracks where at least one scoringArtist is
-   * classified (via genresForArtists) under one of these genres - powers
-   * the Leaderboard's genre filter checkboxes. undefined/omitted means no
-   * filter (show everyone), matching the "all checked" default in the UI -
-   * an empty Set means "nothing selected", which correctly shows nobody
-   * rather than silently falling back to unfiltered.
+   * When set, drops any scoringArtist whose OWN genre(s) (via
+   * genresForArtists on that single artist, not the whole track) don't
+   * intersect this set - powers the Leaderboard's genre filter checkboxes.
+   * This is deliberately per-ARTIST, not per-track: a track by Kendrick
+   * Lamar featuring Kali Uchis stays visible for Kali Uchis (R&B/Soul) even
+   * with Hip-Hop unchecked, but Kendrick himself (Hip-Hop) still gets
+   * dropped from that same track - checking the track's combined genre set
+   * instead would incorrectly keep showing Kendrick just because a
+   * differently-genred collaborator is also on the song. undefined/omitted
+   * means no filter (show everyone), matching the "all checked" default in
+   * the UI - an empty Set means "nothing selected", which correctly shows
+   * nobody rather than silently falling back to unfiltered.
    */
   genreFilter?: Set<string>;
 }
@@ -170,11 +176,6 @@ export function allTracks(
     if (person && list.person !== person) continue;
     if (!inRange(list.month, options)) continue;
     for (const track of list.tracks) {
-      if (options?.genreFilter) {
-        const trackGenres = genresForArtists(track.scoringArtists);
-        const matches = trackGenres.some((g) => options.genreFilter!.has(g));
-        if (!matches) continue;
-      }
       let scoringArtists = track.scoringArtists;
       if (options?.uniteRelatedProjects) {
         scoringArtists = Array.from(new Set(scoringArtists.map(uniteRelatedProject)));
@@ -185,6 +186,18 @@ export function allTracks(
       if (groupNames) {
         scoringArtists = scoringArtists.filter((a) => !groupNames.has(a));
       }
+      if (options?.genreFilter) {
+        const filter = options.genreFilter;
+        scoringArtists = scoringArtists.filter((a) =>
+          genresForArtists([a]).some((g) => filter.has(g))
+        );
+      }
+      // A track that no longer credits anyone (every artist filtered out,
+      // by genre or otherwise) shouldn't appear at all - e.g. with the
+      // genre filter, a Kendrick Lamar solo track has nothing left once
+      // Hip-Hop is unchecked and should vanish, not show up with an empty
+      // artist list.
+      if (scoringArtists.length === 0) continue;
       out.push({ ...track, scoringArtists, month: list.month, person: list.person });
     }
   }

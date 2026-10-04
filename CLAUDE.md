@@ -136,6 +136,14 @@ There is no test runner configured yet.
   real `GENRES` entry, or an "all checked" selection will silently exclude unclassified artists (this
   was a real bug caught during review - verify count parity with the truly-unfiltered case after any
   change here).
+  **The filter is applied per-ARTIST, not per-track** - `allTracks` checks each `scoringArtist`'s OWN
+  genre(s) individually and drops that one artist if none of their genres are selected, rather than
+  checking whether the track AS A WHOLE has any selected-genre artist on it. This matters for
+  collabs across genres: with Hip-Hop unchecked, a Kendrick Lamar track featuring Kali Uchis (R&B/Soul)
+  correctly drops Kendrick from that track's scoring but keeps Kali Uchis - checking the track's
+  combined genre set first (an earlier, buggy version did this) would incorrectly keep Kendrick
+  visible just because a differently-genred collaborator is also credited. A track left with zero
+  scoringArtists after this per-artist filter is dropped entirely rather than kept with an empty list.
 - Styling is CSS Modules per-component, with design tokens (colors, surfaces) as CSS custom properties
   in `src/index.css`, following the project's dataviz skill palette for both light and dark mode.
 - **`app/src/lib/usePersistedState.ts`** — `usePersistedState`/`usePersistedSetState` wrap `useState`
