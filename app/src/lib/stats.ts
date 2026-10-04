@@ -122,6 +122,18 @@ export interface StatsOptions {
    * nobody rather than silently falling back to unfiltered.
    */
   genreFilter?: Set<string>;
+  /**
+   * When set, drops any track whose rank (1 = favorite) is greater than this
+   * number entirely - powers the Leaderboard's Top 1/3/5/10/25 buttons. This
+   * is a per-TRACK cutoff, not a per-artist one (unlike genreFilter): an
+   * artist's #12 song is simply excluded from every count/series/drill-down
+   * when maxRank is 10, regardless of whether that same artist also has a
+   * #3 song that month - it doesn't make the artist "qualify" and then count
+   * everything they have. undefined/omitted means no cutoff (same as
+   * "Top 25", the full list) - this mirrors how genreFilter distinguishes
+   * undefined ("no filter") from an explicit value.
+   */
+  maxRank?: number;
 }
 
 function inRange(month: string, options?: StatsOptions): boolean {
@@ -176,6 +188,7 @@ export function allTracks(
     if (person && list.person !== person) continue;
     if (!inRange(list.month, options)) continue;
     for (const track of list.tracks) {
+      if (options?.maxRank !== undefined && track.rank > options.maxRank) continue;
       let scoringArtists = track.scoringArtists;
       if (options?.uniteRelatedProjects) {
         scoringArtists = Array.from(new Set(scoringArtists.map(uniteRelatedProject)));

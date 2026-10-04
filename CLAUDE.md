@@ -149,9 +149,10 @@ There is no test runner configured yet.
 - **`app/src/lib/colors.ts`** — assigns each artist a fixed categorical color slot by stable rank order
   (see the dataviz skill's "color follows the entity, never its rank" rule) — a toggled-off artist must
   never cause the remaining artists to repaint.
-- **`app/src/components/`** — `Leaderboard` (songs-per-artist bar list, with a `GenreFilter` panel —
-  see below — and, above the heading, the `StatsRow` tiles: Months tracked / Unique artists / Unique
-  songs / Top artist). `StatsRow` is rendered ONLY by `Leaderboard`, not by any other view. It used to
+- **`app/src/components/`** — `Leaderboard` (songs-per-artist bar list, with a `GenreFilter` panel and
+  a `RankFilter` Top 1/3/5/10/25 control — both below, see their own entries — and, above the heading,
+  the `StatsRow` tiles: Months tracked / Unique artists / Unique songs / Top artist).
+  `StatsRow` is rendered ONLY by `Leaderboard`, not by any other view. It used to
   live in `App.tsx` and render unconditionally for every view except Shared/Compare, computing its
   numbers from `scoringOptions` alone - always an all-time figure, identical no matter what range was
   selected on whichever tab happened to be active, and shown even on views (Timeline, the genre tabs,
@@ -233,6 +234,29 @@ There is no test runner configured yet.
   combined genre set first (an earlier, buggy version did this) would incorrectly keep Kendrick
   visible just because a differently-genred collaborator is also credited. A track left with zero
   scoringArtists after this per-artist filter is dropped entirely rather than kept with an empty list.
+- **`app/src/components/RankFilter.tsx`** + **`app/src/lib/useRankFilter.ts`** — the Leaderboard's
+  Top 1/3/5/10/25 buttons: a segmented control (`role="radiogroup"`, styled like Compare's mode switch
+  - one pill-shaped container, one filled/active button at a time) that acts as a true radio group,
+  unlike the genre filter's checkboxes. `StatsOptions.maxRank` (consumed in `allTracks`, applied before
+  any artist-level processing since rank is a whole-TRACK property, not a per-artist one like
+  `genreFilter`) drops any track whose `rank` is greater than the selected number entirely - picking
+  "Top 5" means an artist's count only includes tracks that were placed at #1-5 in whatever month they
+  appeared, not "this artist had a #5 song somewhere, so count everything they have." A song ranked
+  #12 that month is simply excluded, even for an artist who also has a #3 song - this is a per-track
+  cutoff, not a per-artist qualifying filter. The "Top 25" button is the default/unfiltered state - the
+  UI translates it to `maxRank: undefined` rather than the literal number 25, which matters because a
+  couple of months genuinely have MORE than 25 tracks (Kazimir UH2O's `2022-10` has 27, and delsix's
+  `2023-04` has 26 - see the data-layout quirks note below) and passing a literal `maxRank: 25` would
+  incorrectly drop those extra, legitimately-counted tracks; verified this directly (`allTracks` with
+  `maxRank: undefined` produces the exact same track count as calling it with no options at all, 1275
+  for delsix, while a literal `maxRank: 25` undercounts by excluding the one real #26 track that
+  month). Persisted per person via `usePersistedState`, defaulting to 25 (unfiltered), same convention
+  as the genre filter. The per-artist drill-down (`tracksForArtist` call in `Leaderboard.tsx`) also
+  passes `maxRank` through - a song excluded from an artist's total by the rank filter shouldn't
+  reappear in their own song list either - but deliberately does NOT pass `genreFilter`, matching its
+  pre-existing behavior of always showing an artist's full song list regardless of the genre
+  checkboxes (genreFilter decides whether an artist qualifies at all, not which of their own songs to
+  hide once they're shown).
 - Styling is CSS Modules per-component, with design tokens (colors, surfaces) as CSS custom properties
   in `src/index.css`, following the project's dataviz skill palette for both light and dark mode.
 - **`app/src/lib/usePersistedState.ts`** — `usePersistedState`/`usePersistedSetState` wrap `useState`
@@ -366,8 +390,10 @@ extras were deleted, keeping one canonical file per month; hryash and Kazimir UH
 duplicates, only renames. As of now every person has a file for every month, July 2022 through
 September 2025 — three of Kazimir UH2O's months (`2023-10`, `2024-04`, `2026-01`) were initially
 missed on disk and added later under their original free-form names, then renamed to the convention.
-Kazimir UH2O's `2022-10` has 27 tracks instead of 25 — a real quirk in that person's data, not a bug
-to "fix" by dropping rows. Don't assume every month will always have a file for every person going
+Kazimir UH2O's `2022-10` has 27 tracks instead of 25, and delsix's `2023-04` has 26 — real quirks in
+those people's data, not bugs to "fix" by dropping rows (confirmed directly against the CSVs, not just
+inferred from a count mismatch elsewhere - both files genuinely have that many data rows). Don't
+assume every month will always have a file for every person going
 forward though — a gap can still be real (someone skipped a month) rather than something merely
 forgotten on disk; if a month is missing, worth asking rather than assuming either way.
 **New monthly files should be added directly as `YYYY-MM.csv`** to keep this consistent going forward —

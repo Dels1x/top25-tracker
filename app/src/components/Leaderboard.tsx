@@ -5,8 +5,10 @@ import { artistTotals, sortedMonths, tracksForArtist, type StatsOptions } from "
 import { buildArtistColorMap } from "../lib/colors";
 import { useMonthRange } from "../lib/useMonthRange";
 import { useGenreFilter } from "../lib/useGenreFilter";
+import { useRankFilter } from "../lib/useRankFilter";
 import { RangePicker } from "./RangePicker";
 import { GenreFilter } from "./GenreFilter";
+import { RankFilter } from "./RankFilter";
 import { StatsRow } from "./StatsRow";
 import styles from "./Leaderboard.module.css";
 
@@ -50,14 +52,22 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
     selectAll: selectAllGenres,
     selectNone: selectNoneGenres,
   } = useGenreFilter(person);
+  const [maxRank, setMaxRank] = useRankFilter(person);
 
   // Combined options shared between the leaderboard list itself and the
   // StatsRow tiles above it, so "Top artist"/"Unique artists"/etc. always
-  // match the currently selected range + genre filter, never a stale
-  // all-time figure independent of what's visibly displayed below.
+  // match the currently selected range + genre + rank filter, never a stale
+  // all-time figure independent of what's visibly displayed below. maxRank
+  // of 25 (the default/full top 25) is passed through as undefined, same
+  // "no filter" convention genreFilter would use if left unset.
   const combinedOptions: StatsOptions = useMemo(
-    () => ({ ...scoringOptions, ...rangeOptions, genreFilter: selectedGenres }),
-    [scoringOptions, rangeOptions, selectedGenres]
+    () => ({
+      ...scoringOptions,
+      ...rangeOptions,
+      genreFilter: selectedGenres,
+      maxRank: maxRank === 25 ? undefined : maxRank,
+    }),
+    [scoringOptions, rangeOptions, selectedGenres, maxRank]
   );
 
   const totals = useMemo(
@@ -71,13 +81,13 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
   const max = totals[0]?.total ?? 1;
   const visible = totals.slice(0, limit);
 
-  // Changing the range, scoring options, or genre filter changes which
-  // artists qualify at all - start back at the top rather than keep a "show
-  // more" depth from a different filtered view.
+  // Changing the range, scoring options, genre filter, or rank filter
+  // changes which artists qualify at all - start back at the top rather
+  // than keep a "show more" depth from a different filtered view.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(
     () => setLimit(PAGE_SIZE),
-    [person, scoringOptions, rangeOptions, selectedGenres]
+    [person, scoringOptions, rangeOptions, selectedGenres, maxRank]
   );
 
   // If the range narrows and the expanded artist drops out of it entirely,
@@ -90,9 +100,16 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
 
   const expandedTracks = useMemo(() => {
     if (!activeExpanded) return [];
+    // Deliberately includes maxRank (so a song excluded from the artist's
+    // total by the rank filter doesn't show up in their drill-down either)
+    // but not genreFilter - the drill-down has always shown an artist's
+    // full song list regardless of the genre checkboxes, since genreFilter
+    // is a per-ARTIST cutoff (did THIS artist qualify), not a reason to
+    // hide one of their own songs from them once they're shown at all.
     const tracks = tracksForArtist(dataset, activeExpanded, person, {
       ...scoringOptions,
       ...rangeOptions,
+      maxRank: maxRank === 25 ? undefined : maxRank,
     });
     const sorted = [...tracks].sort((a, b) => {
       let cmp: number;
@@ -113,7 +130,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
       return sortDir === "asc" ? cmp : -cmp;
     });
     return sorted;
-  }, [dataset, activeExpanded, person, scoringOptions, rangeOptions, sortKey, sortDir]);
+  }, [dataset, activeExpanded, person, scoringOptions, rangeOptions, maxRank, sortKey, sortDir]);
 
   function toggle(artist: string) {
     setExpanded((prev) => (prev === artist ? null : artist));
@@ -139,7 +156,9 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
         <p className={styles.sub}>
           {totals.length} artists &middot; counts include feature credits and group/member
           attribution{scoringOptions.includeDuplicates === false &&
-            " · repeat songs counted once"} &middot; click an artist to see their songs
+            " · repeat songs counted once"}
+          {maxRank !== 25 && ` · only counting #1-${maxRank} each month`} &middot; click an artist
+          to see their songs
         </p>
       </div>
 
@@ -151,6 +170,8 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
         onSliderChange={handleSliderChange}
         onPreset={applyPreset}
       />
+
+      <RankFilter value={maxRank} onChange={setMaxRank} />
 
       <GenreFilter
         selected={selectedGenres}
