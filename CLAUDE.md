@@ -138,6 +138,17 @@ There is no test runner configured yet.
   same change, or it'll silently fail to roll up. Maintenance: add new artists highest-song-count-first
   (check actual counts via `scoringArtists` frequency in `data.json`, don't guess the ordering); if an
   artist isn't confidently recognized, leave them unmapped and ask, rather than guess.
+  **A genre CAN legitimately have more than one parent in `PARENT_GENRE`** (e.g. "Indietronica" ->
+  `["Electronic", "Pop"]`; "Shoegaze" -> `["Alternative Rock", "Indie Rock"]`) and `genresForArtists`
+  correctly credits ALL of them transitively - that part was never the issue. What's different is
+  `GENRE_HIERARCHY` (the tree the Leaderboard's genre filter UI renders): it files a multi-parent
+  genre under its FIRST-listed parent ONLY, not every parent, so it shows up as exactly one checkbox
+  in the filter, not two independent ones. An earlier version nested it under every parent, which put
+  the SAME genre on screen twice with no indication they were the same thing - checking one didn't
+  check the other, which read as broken rather than merely redundant once someone actually looked for
+  it. The parent ORDER in a multi-parent `PARENT_GENRE` entry is therefore a real editorial choice
+  (list the more natural/primary parent first), not an arbitrary tiebreak - it decides which branch
+  the genre is filed under in the UI, while scoring stays unaffected by that ordering either way.
   **Why artist-based instead of Spotify's own genre tags**: Spotify's per-track tags turned out
   unreliable for this dataset specifically - "jazz rap", "plunderphonics", and "experimental" were
   applied as loose vibe-descriptors for ~any sample-heavy/abstract hip-hop (Freddie Gibbs, The

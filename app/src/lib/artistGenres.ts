@@ -148,7 +148,7 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   Grunge: ["Alternative Rock"],
   Emo: ["Rock"],
   "Neo-Psychedelia": ["Rock"],
-  Shoegaze: ["Rock"],
+  Shoegaze: ["Alternative Rock", "Indie Rock"],
   "Post-Rock": ["Rock"],
   "Math Rock": ["Rock"],
   "Indie Rock": ["Rock"],
@@ -198,26 +198,39 @@ export interface GenreNode {
 /**
  * The full genre tree, built from PARENT_GENRE, nested to WHATEVER DEPTH the
  * data implies - not hardcoded to two levels. A genre is top-level if it has
- * no parent of its own (not a key in PARENT_GENRE); everything else is
- * nested under every parent PARENT_GENRE lists for it (a genre can have more
- * than one parent, e.g. "Indietronica" -> both "Electronic" and "Pop" - it
- * shows up as a child under both branches). "Punk" -> "Rock" with its own
- * children "Pop Punk"/"Post-Punk" -> "Punk" is the first 3-level example:
- * Rock > Punk > {Pop Punk, Post-Punk}. Powers the Leaderboard's genre filter
- * UI (GenreFilter.tsx), which renders this recursively - one checkbox per
- * node, a disclosure arrow only when `subgenres.length > 0`, and a nested
- * node can have its own disclosure arrow for ITS children, so a deeper chain
- * just works without any UI changes. A genre with no subgenres (Jazz, Metal,
- * R&B/Soul, Other, ...) just has an empty array - no disclosure arrow needed.
+ * no parent of its own (not a key in PARENT_GENRE).
+ *
+ * A genre with MORE THAN ONE parent (e.g. "Indietronica" -> both "Electronic"
+ * and "Pop"; "Shoegaze" -> both "Alternative Rock" and "Indie Rock") is
+ * nested under its FIRST-LISTED parent only, here in the TREE - not every
+ * parent. Scoring (genresForArtists, below) still credits every listed
+ * parent transitively, same as always; this only affects where the genre
+ * shows up as a checkbox in GenreFilter.tsx. Rendering it under every parent
+ * (an earlier version of this did that) put the SAME genre on screen twice as
+ * independent checkboxes with no indication they were the same thing -
+ * confusing, not merely redundant, since checking one didn't check the
+ * other. Picking one canonical parent keeps "every genre appears exactly
+ * once in the filter" instead. List the most natural/primary parent FIRST
+ * in PARENT_GENRE's array for a multi-parent genre - that ordering is what
+ * decides which branch it's filed under in the UI, so it's a real editorial
+ * choice, not an arbitrary tiebreak.
+ *
+ * "Punk" -> "Rock" with its own children "Pop Punk"/"Post-Punk" -> "Punk" is
+ * the first 3-level example: Rock > Punk > {Pop Punk, Post-Punk}. Powers the
+ * Leaderboard's genre filter UI (GenreFilter.tsx), which renders this
+ * recursively - one checkbox per node, a disclosure arrow only when
+ * `subgenres.length > 0`, and a nested node can have its own disclosure
+ * arrow for ITS children, so a deeper chain just works without any UI
+ * changes. A genre with no subgenres (Jazz, Metal, R&B/Soul, Other, ...)
+ * just has an empty array - no disclosure arrow needed.
  */
 export const GENRE_HIERARCHY: GenreNode[] = (() => {
   const childrenByParent = new Map<Genre, Genre[]>();
   for (const [sub, parents] of Object.entries(PARENT_GENRE) as Array<[Genre, Genre[]]>) {
-    for (const p of parents) {
-      const list = childrenByParent.get(p) ?? [];
-      list.push(sub);
-      childrenByParent.set(p, list);
-    }
+    const primaryParent = parents[0];
+    const list = childrenByParent.get(primaryParent) ?? [];
+    list.push(sub);
+    childrenByParent.set(primaryParent, list);
   }
   function buildNode(g: Genre | typeof UNTAGGED_GENRE): GenreNode {
     const children = childrenByParent.get(g as Genre) ?? [];
