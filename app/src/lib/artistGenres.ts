@@ -325,7 +325,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Tyler, The Creator": ["Hip-Hop"],
   Logic: ["Hip-Hop", "Jazz Rap"],
   "Domo Genesis": ["West Coast Hip-Hop"],
-  "Denzel Curry": ["Southern Hip-Hop", "Trap"],
+  "Denzel Curry": ["Southern Hip-Hop"],
   "Mac Miller": ["Hip-Hop", "Jazz Rap"],
   "Jay Rock": ["West Coast Hip-Hop"],
   "Ab-Soul": ["West Coast Hip-Hop"],
@@ -413,7 +413,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Dreamville": ["Hip-Hop"],
 
   // ===== Rap/metal/rock crossover acts (own entry, not major-genre inferred) =====
-  "JID": ["Southern Hip-Hop", "Trap"],
+  "JID": ["Southern Hip-Hop"],
   "Joyner Lucas": ["Hip-Hop"],
   "Eminem": ["East Coast Hip-Hop"],
   "Bad Meets Evil": ["East Coast Hip-Hop"],
