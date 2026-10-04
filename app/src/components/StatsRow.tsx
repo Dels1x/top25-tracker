@@ -46,7 +46,7 @@ export function StatsRow({ dataset, person, options }: StatsRowProps) {
         detail={
           stats.topArtist
             ? options.weightByRank
-              ? `${Math.round(stats.topArtist.total)} pts`
+              ? `${Math.round(stats.topArtist.total)} pts (${stats.topArtist.count})`
               : `${stats.topArtist.total} songs`
             : undefined
         }

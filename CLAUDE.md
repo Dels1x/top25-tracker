@@ -316,7 +316,16 @@ There is no test runner configured yet.
   switches its detail text from "`N` songs" to "`N` pts" (rounded) when `options.weightByRank` is on,
   since the underlying `ArtistTotal.total` is now a fractional point sum, not a song count, in that
   mode - same reasoning, the Leaderboard row's own value column shows "`N`pts" instead of a plain
-  integer when the checkbox is on. Verified directly against the real dataset: turning the checkbox on
+  integer when the checkbox is on. `ArtistTotal` also carries a `count` field alongside `total` -
+  the plain integer number of qualifying track occurrences, computed in the same pass as `total` in
+  `artistTotals` (and mirrored as `total` itself in `sharedSongArtistTotals`, which never weights) -
+  so when weighting is on, both the leaderboard row value and the `StatsRow` "Top artist" detail can
+  show "`N`pts (`count`)" (e.g. "2413pts (73)"), since a bare points figure alone doesn't communicate
+  how many actual songs are behind it. Chose parentheses over brackets for this - reads as "here's the
+  points, and by the way here's the song count" rather than brackets' more footnote-like connotation.
+  The leaderboard row's value column width switched from a fixed pixel size to `max-content` in the
+  CSS grid (both desktop and the `560px` mobile breakpoint) to accommodate the now-variable-length
+  string without clipping or wrapping. Verified directly against the real dataset: turning the checkbox on
   for delsix reshuffles the top 5 (Logic overtakes Eminem, J. Cole enters the top 5) while the total
   artist count stays identical (439 either way - weighting changes ORDER and VALUE, never which
   artists qualify at all), and the sum of a drilled-down artist's own song points exactly matches

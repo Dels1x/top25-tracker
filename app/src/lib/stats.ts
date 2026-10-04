@@ -14,6 +14,14 @@ export interface ArtistMonthCount {
 export interface ArtistTotal {
   artist: string;
   total: number;
+  /**
+   * Raw number of qualifying track occurrences behind `total` - always a
+   * plain integer count, independent of `weightByRank` (which only scales
+   * `total`'s per-track contribution, never how many tracks there are). Lets
+   * the UI show "303pts (5)" when weighting is on, so the points figure
+   * doesn't read as a mysterious number disconnected from "how many songs."
+   */
+  count: number;
 }
 
 /**
@@ -276,13 +284,15 @@ export function artistTotals(
   options?: StatsOptions
 ): ArtistTotal[] {
   const totals = new Map<string, number>();
+  const counts = new Map<string, number>();
   for (const track of allTracks(dataset, person, options)) {
     for (const artist of track.scoringArtists) {
       totals.set(artist, (totals.get(artist) ?? 0) + track.points);
+      counts.set(artist, (counts.get(artist) ?? 0) + 1);
     }
   }
   return Array.from(totals.entries())
-    .map(([artist, total]) => ({ artist, total }))
+    .map(([artist, total]) => ({ artist, total, count: counts.get(artist) ?? 0 }))
     .sort((a, b) => b.total - a.total);
 }
 
@@ -706,8 +716,11 @@ export function sharedSongArtistTotals(dataset: Dataset, options?: StatsOptions)
       totals.set(artist, (totals.get(artist) ?? 0) + 1);
     }
   }
+  // Shared never weights by placement (see the stats.ts module doc on
+  // weightByRank), so total is already a plain count here - count mirrors
+  // it exactly, just to satisfy ArtistTotal's shape consistently.
   return Array.from(totals.entries())
-    .map(([artist, total]) => ({ artist, total }))
+    .map(([artist, total]) => ({ artist, total, count: total }))
     .sort((a, b) => b.total - a.total);
 }
 

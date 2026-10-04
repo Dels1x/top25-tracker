@@ -241,7 +241,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
                   />
                 </div>
                 <span className={styles.value}>
-                  {weightByRank ? `${Math.round(row.total)}pts` : row.total}
+                  {weightByRank ? `${Math.round(row.total)}pts (${row.count})` : row.total}
                 </span>
                 <span className={styles.chevron} data-open={isOpen} aria-hidden="true">
                   ▾

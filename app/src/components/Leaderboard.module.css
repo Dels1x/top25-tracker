@@ -45,7 +45,7 @@
 
 .row {
   display: grid;
-  grid-template-columns: 24px 160px 1fr 48px 16px;
+  grid-template-columns: 24px 160px 1fr max-content 16px;
   align-items: center;
   gap: 10px;
   width: 100%;
@@ -107,6 +107,7 @@
   color: var(--text-secondary);
   text-align: right;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .more {
@@ -229,7 +230,11 @@
 
 @media (max-width: 560px) {
   .row {
-    grid-template-columns: 20px 90px 1fr 42px 14px;
+    grid-template-columns: 20px 90px 1fr max-content 14px;
+  }
+
+  .value {
+    font-size: 12px;
   }
 
   .songHeaderRow,
