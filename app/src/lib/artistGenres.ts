@@ -101,7 +101,9 @@ export const GENRES = [
     "Synthpop",
     "Darkwave",
     "Indie Pop",
-    "Midwest Emo"
+    "Midwest Emo",
+    "Alternative Hip-Hop",
+    "Lo-Fi Hip-Hop"
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -132,11 +134,11 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "East Coast Hip-Hop": ["Hip-Hop"],
   "West Coast Hip-Hop": ["Hip-Hop"],
   "Southern Hip-Hop": ["Hip-Hop"],
-  "Abstract Hip-Hop": ["Hip-Hop"],
-  "Experimental Hip-Hop": ["Hip-Hop"],
+  "Abstract Hip-Hop": ["Alternative Hip-Hop"],
+  "Experimental Hip-Hop": ["Alternative Hip-Hop"],
   "Trap": ["Hip-Hop"],
-  "Jazz Rap": ["Hip-Hop"],
-  "Cloud Rap": ["Hip-Hop"],
+  "Jazz Rap": ["Alternative Hip-Hop"],
+  "Cloud Rap": ["Alternative Hip-Hop"],
   "Boom Bap": ["Hip-Hop"],
   "Conscious Hip-Hop": ["Hip-Hop"],
   "Gangsta Rap": ["Hip-Hop"],
@@ -183,7 +185,9 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Synthpop": ["Pop", "Electronic"],
   "Darkwave": ["Rock"],
   "Indie Pop": ["Pop"],
-  "Midwest Emo": ["Emo"]
+  "Midwest Emo": ["Emo"],
+  "Alternative Hip-Hop": ["Hip-Hop"],
+  "Lo-Fi Hip-Hop": ["Alternative Hip-Hop"]
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -250,7 +254,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "The Alchemist": ["Hip-Hop"],
   "Freddie Gibbs": ["Southern Hip-Hop", "Coke Rap", "Boom Bap", "Jazz Rap"],
   Madlib: ["Jazz Rap"],
-  "Kill Bill: The Rapper": ["Hip-Hop", "Jazz Rap", "Abstract Hip-Hop"],
+  "Kill Bill: The Rapper": ["Hip-Hop", "Jazz Rap", "Abstract Hip-Hop", "Lo-Fi Hip-Hop"],
   "Nicholas Craven": ["Hip-Hop"],
   "Kenny Segal": ["Abstract Hip-Hop"],
   Nujabes: ["Jazz Rap"],
@@ -383,7 +387,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Black Moon": ["East Coast Hip-Hop", "Boom Bap"],
   "Smif-N-Wessun": ["East Coast Hip-Hop", "Boom Bap"],
   "MC Eiht": ["West Coast Hip-Hop", "Gangsta Rap"],
-  Maxo: ["Abstract Hip-Hop"],
+  Maxo: ["Abstract Hip-Hop", "Lo-Fi Hip-Hop"],
   Cavalier: ["Abstract Hip-Hop", "East Coast Hip-Hop"],
   "Moor Mother": ["Abstract Hip-Hop"],
   "Mike Ladd": ["Abstract Hip-Hop"],
@@ -533,8 +537,8 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Central Cee": ["Hip-Hop", "Trap"],
   "Capital Steez": ["East Coast Hip-Hop"],
   Oxxxymiron: ["Conscious Hip-Hop"],
-  Rav: ["Abstract Hip-Hop", "Jazz Rap"], // "lo-fi hip-hop" per user, same bucket as Kill Bill: The Rapper
-  Scuare: ["Abstract Hip-Hop", "Jazz Rap"], // same as Rav per user
+  Rav: ["Abstract Hip-Hop", "Jazz Rap", "Lo-Fi Hip-Hop"], // "lo-fi hip-hop" per user, same bucket as Kill Bill: The Rapper
+  Scuare: ["Abstract Hip-Hop", "Jazz Rap", "Lo-Fi Hip-Hop"], // same as Rav per user
   "Charles Hamilton": ["Chipmunk Soul", "Pop Rap"],
   "Jonathan Snipes": ["Abstract Hip-Hop"],
   "Slava KPSS": ["Abstract Hip-Hop"],
