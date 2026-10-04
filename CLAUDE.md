@@ -64,15 +64,27 @@ There is no test runner configured yet.
   `includeDuplicates`/`startMonth`/`endMonth` from `StatsOptions`; the artist-identity options
   (`uniteRelatedProjects`/`showProducers`/`showDuos`) don't apply to genres and the genre UI components
   don't pass them through.
-- **`app/src/lib/genreParents.ts`** — `GENRES` (the ~10 major-genre buckets) and the hand-maintained
-  map from every Spotify micro-genre tag actually seen in this dataset (e.g. "g-funk", "shoegaze") to
-  the bucket(s) it belongs to. A track with tags spanning more than one bucket (e.g. "rap metal") counts
-  toward every bucket it touches - same "counts toward everything" rule as multi-artist credits. A tag
-  with no mapped entry falls back to "Other" rather than crashing; `UNTAGGED_GENRE` is the separate
-  bucket for a track with zero Spotify genre tags at all (~17% of tracks, mostly locally-matched files
-  that never got full metadata - a real data gap, not a bug). Not derivable algorithmically - built by
-  walking every tag present in the real data; if a future CSV introduces a brand-new tag, it'll quietly
-  fall into "Other" until someone adds a real mapping here.
+- **`app/src/lib/genreParents.ts`** — `GENRES` (Hip-Hop, Rock, Metal, Jazz, R&B/Soul, Folk, Electronic,
+  Pop, Reggae, Shoegaze, Ambient, Other) and the hand-maintained map from every Spotify micro-genre tag
+  actually seen in this dataset (e.g. "g-funk") to the bucket(s) it belongs to. A track with tags
+  spanning more than one bucket (e.g. "rap metal") counts toward every bucket it touches - same "counts
+  toward everything" rule as multi-artist credits. A tag with no mapped entry falls back to "Other"
+  rather than crashing; `UNTAGGED_GENRE` is the separate bucket for a track with zero Spotify genre tags
+  at all (~17% of tracks, mostly locally-matched files that never got full metadata - a real data gap,
+  not a bug). Not derivable algorithmically - built by walking every tag present in the real data; if a
+  future CSV introduces a brand-new tag, it'll quietly fall into "Other" until someone adds a real
+  mapping here.
+  **Spotify's genre tags for this dataset are unreliable for several specific tags** - "jazz rap",
+  "plunderphonics", and "experimental" are applied by Spotify as loose vibe-descriptors for ~any
+  sample-heavy/abstract hip-hop here (Freddie Gibbs, The Alchemist, Westside Gunn, even a straight
+  drill cypher), not because the track has real jazz/electronic content; checked directly (849/116/225
+  tagged tracks, 97%/87% also tagged hip-hop/rap for experimental/plunderphonics), so all three map to
+  Hip-Hop ONLY now, not their literal-sounding bucket. Before "fixing" another tag this way, check its
+  real hip-hop co-occurrence rate the same way - a tag with a genuinely mixed rate (nu jazz 50%,
+  alternative r&b 44%) should stay dual-bucketed, not get force-corrected on a hunch. "shoegaze" and
+  "ambient" (the literal tags only, not drone/dream pop/ambient folk/ambient jazz) get their own
+  dedicated buckets rather than folding into Rock/Electronic, since they're common and distinct enough
+  in this data to be worth seeing on their own.
 - **`app/src/lib/colors.ts`** — assigns each artist a fixed categorical color slot by stable rank order
   (see the dataviz skill's "color follows the entity, never its rank" rule) — a toggled-off artist must
   never cause the remaining artists to repaint.

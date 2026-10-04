@@ -21,13 +21,34 @@
  *   christian hip hop) map to BOTH parent buckets they bridge.
  * - The lo-fi / indie-folk / slowcore / anti-folk cluster is bucketed as
  *   Folk (closer to acoustic/singer-songwriter lineage) rather than Rock;
- *   post-rock/math rock/shoegaze/grunge-family tags go to Rock instead
- *   since they're built on rock instrumentation and lineage.
+ *   post-rock/math rock/grunge-family tags go to Rock instead since
+ *   they're built on rock instrumentation and lineage.
+ * - "shoegaze" and "ambient" (the literal tags only) get their OWN buckets
+ *   rather than folding into Rock/Electronic - requested directly, since
+ *   they're common enough and distinct enough in this dataset to be worth
+ *   seeing on their own. Deliberately narrow: closely related tags like
+ *   "drone", "dream pop", "ambient folk", "ambient jazz" were left exactly
+ *   where they were (Electronic/Folk/Pop/Jazz, as applicable) rather than
+ *   folded in here too - a separate decision if that's wanted later.
  * - disco/funk/motown go to R&B/Soul rather than Pop.
  * - World-music tags with no clean fit in this taxonomy (bachata, kompa,
  *   kizomba, zouk, raï, parang, música adventista, exotica, schlager,
  *   schlagerparty, neue deutsche welle) are left in "Other" rather than
  *   force-fit into a Western-genre bucket that would misrepresent them.
+ * - "jazz rap", "plunderphonics", and "experimental" map to Hip-Hop ONLY,
+ *   not Jazz/Electronic, despite what their names suggest. Spotify applies
+ *   all three as loose vibe-descriptors for ~any sample-heavy or abstract
+ *   hip-hop in this dataset (Freddie Gibbs, The Alchemist, Westside Gunn,
+ *   even a straightforward Big Sean drill cypher), not because the track
+ *   has real jazz/electronic content - checked directly: 849/116/225 tracks
+ *   tagged with each, and 97%/87% of "experimental"/"plunderphonics" tracks
+ *   (and the overwhelming majority of "jazz rap" ones, by inspection) are
+ *   ALSO tagged hip-hop/rap. Letting them contribute to Jazz/Electronic was
+ *   drowning those buckets in material that isn't meaningfully jazz or
+ *   electronic. Contrast with "nu jazz" (50% hip-hop co-tagged) and
+ *   "alternative r&b" (44%) - genuinely mixed enough that those stay
+ *   dual-bucketed; don't "fix" a tag this way without checking its real
+ *   co-occurrence rate first, the same way these three were checked.
  */
 export const GENRES = [
   "Hip-Hop",
@@ -39,6 +60,8 @@ export const GENRES = [
   "Electronic",
   "Pop",
   "Reggae",
+  "Shoegaze",
+  "Ambient",
   "Other",
 ] as const;
 
@@ -67,12 +90,25 @@ const MAP: Record<string, Genre[]> = {
   horrorcore: ["Hip-Hop"],
   "italian trap": ["Hip-Hop"],
   "j-rap": ["Hip-Hop"],
-  "jazz rap": ["Hip-Hop", "Jazz"],
+  // "jazz rap" is Spotify's go-to descriptor for ~any sample-heavy/abstract
+  // hip-hop in this dataset (Freddie Gibbs, The Alchemist, Westside Gunn,
+  // even a Big Sean drill cypher) - checked: 849 tracks tagged, the single
+  // biggest tag in the whole dataset, and it does NOT reliably mean "has
+  // real jazz influence" here. Hip-Hop only, not Jazz, so it stops
+  // inflating the Jazz bucket with tracks that aren't actually jazz.
+  "jazz rap": ["Hip-Hop"],
   "jersey club": ["Hip-Hop", "Electronic"],
   "melodic rap": ["Hip-Hop"],
   "new york drill": ["Hip-Hop"],
   "old school hip hop": ["Hip-Hop"],
-  plunderphonics: ["Hip-Hop", "Electronic"],
+  // Same over-tagging problem as "jazz rap" - checked: 87% of tracks tagged
+  // "plunderphonics" are also tagged hip-hop/rap. Hip-Hop only, not
+  // Electronic.
+  plunderphonics: ["Hip-Hop"],
+  // Same problem again - checked: 97% of "experimental"-tagged tracks are
+  // also tagged hip-hop/rap (it was previously Electronic-only, which is
+  // backwards for this dataset). Hip-Hop only.
+  experimental: ["Hip-Hop"],
   rap: ["Hip-Hop"],
   "rap québécois": ["Hip-Hop"],
   "sexy drill": ["Hip-Hop"],
@@ -116,7 +152,7 @@ const MAP: Record<string, Genre[]> = {
   punk: ["Rock"],
   "pop punk": ["Rock"],
   screamo: ["Rock"],
-  shoegaze: ["Rock"],
+  shoegaze: ["Shoegaze"],
   "space rock": ["Rock"],
   "stoner rock": ["Rock", "Metal"],
   "surf rock": ["Rock"],
@@ -194,7 +230,7 @@ const MAP: Record<string, Genre[]> = {
 
   // --- Electronic ---
   "afro house": ["Electronic"],
-  ambient: ["Electronic"],
+  ambient: ["Ambient"],
   "bass house": ["Electronic"],
   "baltimore club": ["Electronic"],
   breakcore: ["Electronic"],
@@ -209,7 +245,6 @@ const MAP: Record<string, Genre[]> = {
   electroacoustic: ["Electronic"],
   electroclash: ["Electronic"],
   electronic: ["Electronic"],
-  experimental: ["Electronic"],
   footwork: ["Electronic"],
   "g-house": ["Electronic"],
   glitch: ["Electronic"],
