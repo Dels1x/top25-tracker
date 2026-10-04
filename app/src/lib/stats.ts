@@ -537,6 +537,7 @@ export function cumulativeGenreSeriesByPerson(
 export interface SharedSong {
   trackKey: string;
   title: string;
+  album: string;
   creditedArtists: string[];
   /**
    * The resolved scoring artists (alias/misspelling/group-expanded) for this
@@ -574,6 +575,7 @@ export function sharedSongs(dataset: Dataset, options?: StatsOptions): SharedSon
         entry = {
           trackKey: key,
           title: track.title,
+          album: track.album,
           creditedArtists: track.creditedArtists,
           scoringArtists: track.scoringArtists,
           appearances: [],
@@ -610,7 +612,15 @@ export function sharedSongArtistTotals(dataset: Dataset, options?: StatsOptions)
   const songs = sharedSongs(dataset, options);
   const totals = new Map<string, number>();
   for (const song of songs) {
-    for (const artist of song.scoringArtists) {
+    let scoringArtists = song.scoringArtists;
+    // Same per-artist genre filter allTracks applies - a shared song that's
+    // a Kendrick Lamar/Kali Uchis collab, say, still drops Kendrick alone
+    // when Hip-Hop is unchecked, rather than hiding the whole song.
+    if (options?.genreFilter) {
+      const filter = options.genreFilter;
+      scoringArtists = scoringArtists.filter((a) => genresForArtists([a]).some((g) => filter.has(g)));
+    }
+    for (const artist of scoringArtists) {
       totals.set(artist, (totals.get(artist) ?? 0) + 1);
     }
   }

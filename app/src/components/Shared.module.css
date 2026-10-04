@@ -39,6 +39,49 @@
   margin-bottom: 12px;
 }
 
+.artistSongHeaderRow {
+  display: grid;
+  grid-template-columns: 76px 1fr 1fr 1fr;
+  gap: 10px;
+  padding: 0 8px 4px;
+}
+
+.artistSongHeaderButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  padding: 0;
+  justify-self: start;
+}
+
+.artistSongHeaderButton:hover {
+  color: var(--text-secondary);
+}
+
+.artistSongHeaderButton[data-active="true"] {
+  color: var(--text-primary);
+}
+
+.sortArrow {
+  font-size: 11px;
+}
+
+.artistSongHeaderStatic {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-muted);
+}
+
 .artistSongList {
   list-style: none;
   margin: 0;
@@ -50,7 +93,7 @@
 
 .artistSongRow {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 76px 1fr 1fr 1fr;
   align-items: baseline;
   gap: 10px;
   padding: 5px 8px;
@@ -62,9 +105,21 @@
   background: var(--card-bg);
 }
 
+.artistSongDate {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .artistSongTitle {
   color: var(--text-primary);
   font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artistSongAlbum {
+  color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -78,11 +133,15 @@
 }
 
 @media (max-width: 560px) {
+  .artistSongHeaderRow,
   .artistSongRow {
-    grid-template-columns: 1fr;
+    grid-template-columns: 56px 1fr;
   }
 
-  .artistSongArtists {
+  .artistSongAlbum,
+  .artistSongArtists,
+  .artistSongHeaderStatic,
+  .hideOnMobile {
     display: none;
   }
 }

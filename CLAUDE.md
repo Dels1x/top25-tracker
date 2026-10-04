@@ -59,14 +59,20 @@ There is no test runner configured yet.
   of `dataset.lists` and finds songs that have appeared (at any rank, in any month) in literally every
   person's top 25, matched via the same `trackKey` used for duplicate detection (so re-release title
   variants still count as the same song across people, not just within one person's history). Each
-  `SharedSong` carries the track's `scoringArtists` alongside `creditedArtists` - not shown directly in
-  the Shared song list UI (which still displays `creditedArtists`, the literal credit, like every other
-  song list in the app) but used by `sharedSongArtistTotals`/`sharedSongsForArtist` to power the artist
-  leaderboard at the top of the Shared tab: which artists show up on the most of the shared songs,
-  counted by `scoringArtists` (so a shared Armand Hammer song credits billy woods and E L U C I D
-  individually too, same as the regular per-person Leaderboard) and once per artist per song, not
-  multiplied by how many people's lists it appeared in (a shared song is one song, already guaranteed
-  to be in everyone's list by definition).
+  `SharedSong` carries the track's `album` and `scoringArtists` alongside `creditedArtists`/`title` -
+  not shown directly in the Shared song list UI (which still displays `creditedArtists`, the literal
+  credit, like every other song list in the app) but used by `sharedSongArtistTotals`/
+  `sharedSongsForArtist` to power the artist leaderboard at the top of the Shared tab: which artists
+  show up on the most of the shared songs, counted by `scoringArtists` (so a shared Armand Hammer
+  song credits billy woods and E L U C I D individually too, same as the regular per-person
+  Leaderboard) and once per artist per song, not multiplied by how many people's lists it appeared in
+  (a shared song is one song, already guaranteed to be in everyone's list by definition).
+  `sharedSongArtistTotals` also takes `StatsOptions.genreFilter` and applies it the same per-artist way
+  `allTracks` does (drop a scoringArtist from a shared song if none of THEIR OWN genres are selected,
+  not the whole song) - so it inherits the same "an artist with any selected subgenre still shows even
+  if its plain parent genre is unchecked" behavior the regular Leaderboard already has; this is
+  expected, not a bug, and was verified to match Leaderboard's own behavior under the same filter
+  before relying on it.
   `cumulativeArtistSeriesByPerson`/`personArtistSummaries` power the Compare view's "artists" mode
   (see below) - like `sharedSongs`, these aren't scoped to one person; they take an explicit `people`
   list and a selected artist *set* (e.g. a group's members) and sum counts across that whole set per
@@ -140,12 +146,17 @@ There is no test runner configured yet.
   scoring-option checkboxes for it; now opens with an artist leaderboard — `sharedSongArtistTotals`/
   `sharedSongsForArtist` in `stats.ts` — ranking who shows up on the most shared songs, reusing
   `Leaderboard.module.css`'s bar-list row/rank/chevron styling the same way `GenreLeaderboard` does,
-  including the same `PAGE_SIZE = 20` / "Show more" button pattern Leaderboard uses rather than
-  rendering every artist at once, but with its own 2-column `artistSongList`/`artistSongRow` in
-  `Shared.module.css` for the click-to-expand song list rather than reusing `Leaderboard`'s 5-column
-  `.songRow` grid, which is sized for date/rank/title/album/artists columns this simpler drill-down
-  doesn't have; the existing song-list section stays unchanged below it, now under its own "The
-  songs" subheading), `Compare`
+  including the same `PAGE_SIZE = 20` / "Show more" button pattern, the same `GenreFilter` panel
+  (its own `useGenreFilter("shared")` persistence key, separate from Leaderboard's per-person ones),
+  and the same click-a-row-to-expand sortable song list (Date/Song/Album column headers, toggle
+  sort direction on repeat click) - all mirroring Leaderboard's UX as closely as the shared-songs
+  shape allows. Two differences forced by that shape: there's no Rank column (a shared song has no
+  single rank - it was ranked differently by each person who had it), and "Date" sorts by each
+  song's EARLIEST appearance across anyone's list (`earliestAppearance` in `Shared.tsx`) rather than
+  a single rank/month a per-person track has. Shared's drill-down also needed its own 4-column
+  `artistSongHeaderRow`/`artistSongRow` grid in `Shared.module.css` instead of reusing
+  `Leaderboard`'s 5-column `.songRow` (which has a rank column Shared doesn't need). The existing
+  song-list section stays unchanged below it, now under its own "The songs" subheading), `Compare`
   (pick one or more artists OR genres — toggled via an
   "Artists"/"Genres" mode switch at the top, mirroring the Leaderboard/GenreLeaderboard split as two
   modes of one view instead of two separate tabs — e.g. a group's members, or a genre like "Hip-Hop" —

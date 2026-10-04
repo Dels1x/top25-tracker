@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Dataset } from "../data/types";
-import { sharedSongArtistTotals, sharedSongsForArtist, sharedSongs } from "../lib/stats";
+import { sharedSongArtistTotals, sharedSongsForArtist, sharedSongs, type SharedSong } from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
+import { useGenreFilter } from "../lib/useGenreFilter";
+import { GenreFilter } from "./GenreFilter";
 import leaderboardStyles from "./Leaderboard.module.css";
 import styles from "./Shared.module.css";
 
@@ -12,16 +14,42 @@ interface SharedProps {
 
 const PAGE_SIZE = 20;
 
+type SongSortKey = "date" | "title" | "album";
+type SortDirection = "asc" | "desc";
+
+const SONG_SORT_COLUMNS: Array<{ key: SongSortKey; label: string }> = [
+  { key: "date", label: "Date" },
+  { key: "title", label: "Song" },
+  { key: "album", label: "Album" },
+];
+
 function formatMonth(month: string): string {
   const [year, m] = month.split("-");
   const date = new Date(Number(year), Number(m) - 1, 1);
   return date.toLocaleDateString(undefined, { month: "short", year: "numeric" });
 }
 
+/** Earliest appearance across all people/months for a shared song - the "date" sort key, since a shared song has no single rank/month like a per-person track does. */
+function earliestAppearance(song: SharedSong): string {
+  return song.appearances.reduce(
+    (min, a) => (a.month < min ? a.month : min),
+    song.appearances[0]?.month ?? ""
+  );
+}
+
 export function Shared({ dataset }: SharedProps) {
   const [query, setQuery] = useState("");
   const [expandedArtist, setExpandedArtist] = useState<string | null>(null);
   const [artistLimit, setArtistLimit] = useState(PAGE_SIZE);
+  const [sortKey, setSortKey] = useState<SongSortKey>("date");
+  const [sortDir, setSortDir] = useState<SortDirection>("desc");
+  const {
+    selected: selectedGenres,
+    toggleTopLevel,
+    toggleSubgenre,
+    selectAll: selectAllGenres,
+    selectNone: selectNoneGenres,
+  } = useGenreFilter("shared");
 
   const songs = useMemo(() => sharedSongs(dataset), [dataset]);
 
@@ -30,13 +58,22 @@ export function Shared({ dataset }: SharedProps) {
   // see sharedSongArtistTotals in stats.ts. Counts by scoringArtists like
   // every other leaderboard in the app, so a shared Armand Hammer song
   // credits billy woods and E L U C I D individually too.
-  const artistTotals = useMemo(() => sharedSongArtistTotals(dataset), [dataset]);
+  const artistTotals = useMemo(
+    () => sharedSongArtistTotals(dataset, { genreFilter: selectedGenres }),
+    [dataset, selectedGenres]
+  );
   const artistColorMap = useMemo(
     () => buildArtistColorMap(artistTotals.map((t) => t.artist)),
     [artistTotals]
   );
   const maxArtistTotal = artistTotals[0]?.total ?? 1;
   const visibleArtistTotals = artistTotals.slice(0, artistLimit);
+
+  // Changing the genre filter changes which artists qualify at all - start
+  // back at the top rather than keep a "show more" depth from a different
+  // filtered view (same as Leaderboard does for its own filters).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => setArtistLimit(PAGE_SIZE), [selectedGenres]);
 
   const isExpandedStillPresent = useMemo(
     () => expandedArtist !== null && artistTotals.some((t) => t.artist === expandedArtist),
@@ -46,11 +83,37 @@ export function Shared({ dataset }: SharedProps) {
 
   const expandedArtistSongs = useMemo(() => {
     if (!activeExpandedArtist) return [];
-    return sharedSongsForArtist(dataset, activeExpandedArtist);
-  }, [dataset, activeExpandedArtist]);
+    const result = sharedSongsForArtist(dataset, activeExpandedArtist);
+    return [...result].sort((a, b) => {
+      let cmp: number;
+      switch (sortKey) {
+        case "date":
+          cmp = earliestAppearance(a).localeCompare(earliestAppearance(b));
+          break;
+        case "title":
+          cmp = a.title.localeCompare(b.title);
+          break;
+        case "album":
+          cmp = a.album.localeCompare(b.album);
+          break;
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+  }, [dataset, activeExpandedArtist, sortKey, sortDir]);
 
   function toggleArtist(artist: string) {
     setExpandedArtist((prev) => (prev === artist ? null : artist));
+  }
+
+  function handleSort(key: SongSortKey) {
+    if (key === sortKey) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      // Date reads most naturally starting from newest; title/album read
+      // most naturally starting A-first - same convention Leaderboard uses.
+      setSortDir(key === "date" ? "desc" : "asc");
+    }
   }
 
   const filtered = useMemo(() => {
@@ -78,6 +141,14 @@ export function Shared({ dataset }: SharedProps) {
         {artistTotals.length} artists &middot; counts include feature credits and group/member
         attribution &middot; click an artist to see their shared songs
       </p>
+
+      <GenreFilter
+        selected={selectedGenres}
+        onToggleTopLevel={toggleTopLevel}
+        onToggleSubgenre={toggleSubgenre}
+        onSelectAll={selectAllGenres}
+        onSelectNone={selectNoneGenres}
+      />
 
       <ol className={leaderboardStyles.list}>
         {visibleArtistTotals.map((row, index) => {
@@ -120,11 +191,43 @@ export function Shared({ dataset }: SharedProps) {
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.22, ease: "easeOut" }}
                   >
+                    <div className={styles.artistSongHeaderRow}>
+                      {SONG_SORT_COLUMNS.map((col) => (
+                        <button
+                          key={col.key}
+                          type="button"
+                          className={
+                            col.key === "album"
+                              ? `${styles.artistSongHeaderButton} ${styles.hideOnMobile}`
+                              : styles.artistSongHeaderButton
+                          }
+                          onClick={() => handleSort(col.key)}
+                          data-active={sortKey === col.key}
+                        >
+                          {col.label}
+                          {sortKey === col.key && (
+                            <span className={styles.sortArrow} aria-hidden="true">
+                              {sortDir === "asc" ? "↑" : "↓"}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                      <span className={styles.artistSongHeaderStatic}>Artist(s)</span>
+                    </div>
                     <ul className={styles.artistSongList}>
                       {expandedArtistSongs.map((song) => (
                         <li key={song.trackKey} className={styles.artistSongRow}>
+                          <span className={styles.artistSongDate}>
+                            {formatMonth(earliestAppearance(song))}
+                          </span>
                           <span className={styles.artistSongTitle} title={song.title}>
                             {song.title}
+                          </span>
+                          <span
+                            className={`${styles.artistSongAlbum} ${styles.hideOnMobile}`}
+                            title={song.album}
+                          >
+                            {song.album}
                           </span>
                           <span
                             className={styles.artistSongArtists}
