@@ -92,7 +92,8 @@ export const GENRES = [
     "Slacker Rock",
   "Chamber Folk",
     "Singer-Songwriter",
-    "Stoner Rock"
+    "Stoner Rock",
+    "Pop Punk"
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -153,7 +154,8 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Slacker Rock": ["Rock"],
   "Chamber Folk": ["Folk"],
   "Singer-Songwriter": ["Folk"],
-  "Stoner Rock": ["Rock"]
+  "Stoner Rock": ["Rock"],
+  "Pop Punk": ["Rock"]
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -540,7 +542,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Radiohead": ["Alternative Rock", "Art Rock"],
   Failure: ["Alternative Rock", "Grunge"],
   "The Rolling Stones": ["Rock"],
-  "Paramore": ["Rock"],
+  "Paramore": ["Alternative Rock", "Pop Punk"],
   "The Doors": ["Rock"],
   "U2": ["Rock"],
   "Elton John": ["Rock", "Pop"],
