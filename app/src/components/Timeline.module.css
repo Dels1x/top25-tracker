@@ -24,6 +24,7 @@
 
 .bulkActions {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
   flex-shrink: 0;
 }

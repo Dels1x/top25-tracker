@@ -180,39 +180,47 @@ There is no test runner configured yet.
   filter can only ever narrow or reorder who's VISIBLE, never introduce someone who isn't in the
   stable universe to begin with. `Compare` was already fine (keys its map on `dataset.people`
   directly, which is small and static) and didn't need this fix.
-- **`app/src/components/`** — `Leaderboard` (songs-per-artist bar list, with a `GenreFilter` panel and
-  a `RankFilter` Top 1/3/5/10/25 control — both below, see their own entries — and, above the heading,
-  the `StatsRow` tiles: Months tracked / Unique artists / Unique songs / Top artist).
-  `StatsRow` is rendered ONLY by `Leaderboard`, not by any other view. It used to
-  live in `App.tsx` and render unconditionally for every view except Shared/Compare, computing its
-  numbers from `scoringOptions` alone - always an all-time figure, identical no matter what range was
-  selected on whichever tab happened to be active, and shown even on views (Timeline, the genre tabs,
-  Replay) where a per-person all-time artist overview didn't really belong. Now it lives inside
-  `Leaderboard.tsx` and takes one combined `options: StatsOptions` prop -
-  `{ ...scoringOptions, ...rangeOptions, genreFilter: selectedGenres }`, the exact same object
-  (memoized once as `combinedOptions`) the leaderboard list itself is built from - so "Top artist" is
-  always precisely the leaderboard's own #1 row, and "Months tracked"/"Unique artists"/"Unique songs"
-  always reflect the currently selected range and genre filter rather than a stale all-time figure
-  computed independently of what's visibly displayed below it. `StatsRow` internally calls
-  `sortedMonths`/`allTracks`/`artistTotals` with that one `options` object - `sortedMonths` for the
-  month count instead of the unscoped `listsForPerson` it used before, specifically so "Months
-  tracked" respects `startMonth`/`endMonth` too. `Timeline` (cumulative line chart with per-artist
-  toggle legend), `GenreLeaderboard`/
-  `GenreTimeline` (the same two shapes but ranking major genres instead of artists — reuse
-  `Leaderboard.module.css`/`Timeline.module.css` directly rather than duplicating styles, since the
-  layouts are identical), `Replay` (month-by-month animated reveal), `Shared` (songs that have
-  appeared in every person's top 25 at some point — see `sharedSongs` in `stats.ts`; unlike every
-  other view this one is NOT scoped to the active person, and (like every view besides Leaderboard)
-  has no `StatsRow` either — but it DOES still receive `scoringOptions` and show the
+- **`app/src/components/`** — `Leaderboard` (songs-per-artist OR songs-per-genre bar list, toggled via
+  an Artists/Genres `ModeSwitch` at the top — same visual language Compare's own mode switch
+  established — with a `GenreFilter` panel and a `RankFilter` Top 1/3/5/10/25 control in artists mode
+  only — both below, see their own entries — and, above the heading, the `StatsRow` tiles: Months
+  tracked / Unique artists / Unique songs / Top artist, also artists-mode-only).
+  **`Leaderboard` and `Timeline` used to each have a separate genre-scoped twin**
+  (`GenreLeaderboard`/`GenreTimeline`, two more standalone tabs) that were nearly identical in shape
+  to their artist counterpart - same list/chart layout, same CSS modules, differing only in which
+  `stats.ts` functions backed them (`artistTotals`/`tracksForArtist`/`cumulativeArtistSeries` vs
+  `genreTotals`/`tracksForGenre`/`cumulativeGenreSeries`) and in which artist-only controls applied.
+  Both pairs were merged into one component each, mirroring how `Compare` already merges its own
+  artists/genres split into one view instead of two tabs - `GenreLeaderboard.tsx`/`GenreTimeline.tsx`
+  are deleted, and the view list shrank from 7 tabs to 5 (`Leaderboard`/`Timeline`/`Replay`/`Shared`/
+  `Compare`). In `Leaderboard`'s genre mode: `RankFilter`, "weight by placement", the `GenreFilter`
+  panel (filtering genre ROWS by genre makes no sense), pagination (only ~19 genre/subgenre buckets
+  total, see `artistGenres.ts`, vs potentially hundreds of artists), and `StatsRow` (no genre
+  equivalent for "Top artist") all hide - exactly matching what the old standalone
+  `GenreLeaderboard` showed, nothing more or less. In `Timeline`'s genre mode, every genre is shown
+  by default rather than a top-N subset (same as the old `GenreTimeline` default), with its own
+  separate persisted "shown" set (`genreTimelineShown:${person}`, untouched from before) so toggling
+  visible lines in one mode never bleeds into the other. **The 3 artist-identity toggles
+  (unite/producers/duos) are NOT hidden in genre mode** in either component - this follows `Compare`'s
+  own precedent (see below) of leaving them visible as harmless no-ops rather than something the
+  component needs to hide per-mode; `App.tsx`'s old `GENRE_VIEWS` list (which hid them for the two
+  standalone genre tabs) is gone entirely along with those tabs. Both components build TWO
+  `stableOrder` color bases now (one for artists, one for genres - see the `colors.ts` entry above)
+  and pick whichever matches the active mode, so switching modes never reshuffles colors any more
+  than switching filters within one mode does. `Timeline` (cumulative line chart with per-artist/
+  per-genre toggle legend depending on mode), `Replay` (month-by-month animated reveal), `Shared`
+  (songs that have appeared in every person's top 25 at some point — see `sharedSongs` in `stats.ts`;
+  unlike every other view this one is NOT scoped to the active person, and (like every view besides
+  Leaderboard) has no `StatsRow` either — but it DOES still receive `scoringOptions` and show the
   `includeDuplicates`/`uniteRelatedProjects`/`showProducers`/`showDuos` checkboxes (`Shared` is not in
   `NO_TOGGLES_VIEWS`, only `Replay` is, since Replay always shows literal `creditedArtists` and never
   looks at `scoringArtists` at all) — the three identity checkboxes change who gets credit on a shared
   song exactly like they change the regular per-person Leaderboard (see the `sharedSongs` note above);
   `includeDuplicates` is accepted but inert here since a shared song already appears once regardless.
-  Now opens with an artist leaderboard — `sharedSongArtistTotals`/
+  Opens with an artist leaderboard — `sharedSongArtistTotals`/
   `sharedSongsForArtist` in `stats.ts` — ranking who shows up on the most shared songs, reusing
-  `Leaderboard.module.css`'s bar-list row/rank/chevron styling the same way `GenreLeaderboard` does,
-  including the same `PAGE_SIZE = 20` / "Show more" button pattern, the same `GenreFilter` panel
+  `Leaderboard.module.css`'s bar-list row/rank/chevron styling, including the same `PAGE_SIZE = 20` /
+  "Show more" button pattern, the same `GenreFilter` panel
   (its own `useGenreFilter("shared")` persistence key, separate from Leaderboard's per-person ones),
   and the same click-a-row-to-expand sortable song list (Date/Song/Album column headers, toggle
   sort direction on repeat click) - all mirroring Leaderboard's UX as closely as the shared-songs
@@ -223,25 +231,31 @@ There is no test runner configured yet.
   `artistSongHeaderRow`/`artistSongRow` grid in `Shared.module.css` instead of reusing
   `Leaderboard`'s 5-column `.songRow` (which has a rank column Shared doesn't need). The existing
   song-list section stays unchanged below it, now under its own "The songs" subheading), `Compare`
-  (pick one or more artists OR genres — toggled via an
-  "Artists"/"Genres" mode switch at the top, mirroring the Leaderboard/GenreLeaderboard split as two
-  modes of one view instead of two separate tabs — e.g. a group's members, or a genre like "Hip-Hop" —
+  (pick one or more artists OR genres — toggled via the same `ModeSwitch` component Leaderboard/
+  Timeline now also use — e.g. a group's members, or a genre like "Hip-Hop" —
   and see each person's cumulative count for that selection on one chart, one line per PERSON rather
   than per artist/genre, to answer "who got into this earlier / more"; also spans every person at
   once like `Shared` does, so no `StatsRow` either; in "artists" mode the artist-identity toggles
-  (unite/producers/duos) still apply since you're picking artist names, so `App.tsx` does NOT put
-  `Compare` in `NO_TOGGLES_VIEWS`/`GENRE_VIEWS` the way it does `GenreLeaderboard`/`GenreTimeline` —
-  those toggles simply have no effect once the component switches into "genres" mode internally, same
-  as `includeDuplicates` being the only option genre-scoped stats functions ever look at; the
+  (unite/producers/duos) still apply since you're picking artist names, so `App.tsx` doesn't hide
+  them for Compare either - those toggles simply have no effect once the component switches into
+  "genres" mode internally, same as `includeDuplicates` being the only option genre-scoped stats
+  functions ever look at, and the same precedent Leaderboard/Timeline's own genre mode now follows;
+  the
   picker is a search box + checkbox list sorted by combined all-people total [of whichever mode is
   active], with each mode's selection persisted separately (`compareArtists` / `compareGenres`
   localStorage keys) via `usePersistedSetState` and shown as removable chips; reuses the same
   `useMonthRange`/`RangePicker` date-range control as Leaderboard and Timeline, and the same
   per-person color assignment `Timeline` uses for *artists* but keyed on *people* instead, via
   `buildArtistColorMap(dataset.people)` — a general-purpose "assign a stable color per name" function
-  despite its artist-specific name), plus `Layout` / `StatsRow` / `StatTile` shell pieces. `App.tsx`
-  just wires person/view selection state and imports `data.json` directly (no runtime CSV parsing, no
-  backend/API).
+  despite its artist-specific name), plus `Layout` / `StatsRow` / `StatTile` / `ModeSwitch` shell
+  pieces. `App.tsx` just wires person/view selection state and imports `data.json` directly (no
+  runtime CSV parsing, no backend/API).
+- **`app/src/components/ModeSwitch.tsx`** — the pill-shaped "Artists / Genres" (or similar) mode
+  switch, originally built standalone inside `Compare.tsx` and extracted into its own small generic
+  component (`<T extends string>`, a `value`/`options`/`onChange` triplet plus an `aria-label`) once
+  `Leaderboard` and `Timeline` needed the exact same control - a true `role="tablist"` radio-like
+  toggle, not checkboxes. All three callers (`Compare`, `Leaderboard`, `Timeline`) now share one
+  implementation/one CSS module instead of three copies that could silently drift apart.
 - **`app/src/components/GenreFilter.tsx`** + **`app/src/lib/useGenreFilter.ts`** — the Leaderboard's
   genre-filter checkboxes: one row per top-level genre from `GENRE_HIERARCHY`
   (`artistGenres.ts`), each with a disclosure arrow (only if it has subgenres) expanding a list of
@@ -310,7 +324,9 @@ There is no test runner configured yet.
   visible just because a differently-genred collaborator is also credited. A track left with zero
   scoringArtists after this per-artist filter is dropped entirely rather than kept with an empty list.
 - **`app/src/components/RangePicker.tsx`** + **`app/src/lib/useMonthRange.ts`** — the date-range
-  control shared by Leaderboard, Timeline, GenreLeaderboard, GenreTimeline, and Compare: a live
+  control shared by Leaderboard, Timeline, and Compare (the same one `RangePicker` call serves both
+  artists and genres mode in Leaderboard/Timeline now - the mode switch doesn't change which range
+  picker is shown, just what it's scoping): a live
   "{start} → {end}" label, the relative presets from `RANGE_PRESETS` (All time / Last 6/12/24 months),
   a row of calendar-year buttons, and the drag slider underneath. The year buttons are generated from
   `useMonthRange`'s `availableYears` - distinct `YYYY` prefixes pulled from that call's own
@@ -360,7 +376,7 @@ There is no test runner configured yet.
   in its output now carries a `points` field (`rankPoints(track.rank)` when the option is on, else a
   flat `1`), and every summation in `stats.ts` that used to add a flat `1` per track/match now adds
   `track.points` instead - `artistTotals`, `artistMonthCounts`, `genreTotals`, `genreMonthCounts` (all
-  consumed by Leaderboard/Timeline/GenreLeaderboard/GenreTimeline) - so turning the checkbox on
+  consumed by Leaderboard/Timeline, in both their artists and genres modes) - so turning the checkbox on
   reshuffles rankings (an artist who charts #1-3 often can overtake one with a higher flat count but
   lower average placement) while every other toggle/filter (range, genre filter, rank filter, dedup)
   still composes with it normally, since it's just another multiplier on the same per-track loop.

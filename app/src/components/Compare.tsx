@@ -23,6 +23,7 @@ import { buildArtistColorMap } from "../lib/colors";
 import { usePersistedSetState, usePersistedState } from "../lib/usePersistedState";
 import { useMonthRange } from "../lib/useMonthRange";
 import { RangePicker } from "./RangePicker";
+import { ModeSwitch } from "./ModeSwitch";
 import styles from "./Compare.module.css";
 
 interface CompareProps {
@@ -180,28 +181,15 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
             started listening earlier, and how much
           </p>
         </div>
-        <div className={styles.modeSwitch} role="tablist" aria-label="Compare by">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "artists"}
-            className={styles.modeButton}
-            data-active={mode === "artists"}
-            onClick={() => switchMode("artists")}
-          >
-            Artists
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={mode === "genres"}
-            className={styles.modeButton}
-            data-active={mode === "genres"}
-            onClick={() => switchMode("genres")}
-          >
-            Genres
-          </button>
-        </div>
+        <ModeSwitch
+          value={mode}
+          options={[
+            { value: "artists", label: "Artists" },
+            { value: "genres", label: "Genres" },
+          ]}
+          onChange={switchMode}
+          aria-label="Compare by"
+        />
       </div>
 
       <div className={styles.picker}>

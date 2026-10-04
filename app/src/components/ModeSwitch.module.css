@@ -1,0 +1,41 @@
+.modeSwitch {
+  display: flex;
+  gap: 4px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 4px;
+  flex-shrink: 0;
+}
+
+.modeButton {
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 6px 14px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.modeButton:hover {
+  color: var(--text-primary);
+}
+
+.modeButton[data-active="true"] {
+  background: var(--series-1);
+  color: white;
+}
+
+@media (max-width: 560px) {
+  .modeSwitch {
+    width: 100%;
+  }
+
+  .modeButton {
+    flex: 1;
+  }
+}

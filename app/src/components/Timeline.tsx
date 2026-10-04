@@ -9,11 +9,19 @@ import {
   YAxis,
 } from "recharts";
 import type { Dataset } from "../data/types";
-import { artistTotals, cumulativeArtistSeries, sortedMonths, type StatsOptions } from "../lib/stats";
+import {
+  artistTotals,
+  cumulativeArtistSeries,
+  cumulativeGenreSeries,
+  genreTotals,
+  sortedMonths,
+  type StatsOptions,
+} from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
-import { usePersistedSetState } from "../lib/usePersistedState";
+import { usePersistedSetState, usePersistedState } from "../lib/usePersistedState";
 import { useMonthRange } from "../lib/useMonthRange";
 import { RangePicker } from "./RangePicker";
+import { ModeSwitch } from "./ModeSwitch";
 import styles from "./Timeline.module.css";
 
 interface TimelineProps {
@@ -21,6 +29,8 @@ interface TimelineProps {
   person: string;
   scoringOptions: StatsOptions;
 }
+
+type Mode = "artists" | "genres";
 
 const DEFAULT_SHOWN = 6;
 
@@ -30,7 +40,21 @@ function formatMonth(month: string): string {
   return date.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
 }
 
+/**
+ * Cumulative line chart over time, OR (via the Artists/Genres mode switch)
+ * the same chart tracking major genres instead - these used to be two
+ * separate tabs/components (Timeline + GenreTimeline), merged the same way
+ * Leaderboard/GenreLeaderboard were, for the same reason: nearly identical
+ * shape, differing only in which stats.ts functions back the chart. Unlike
+ * Leaderboard's artist mode (which defaults to a top-N subset via its own
+ * legend toggles), genre mode shows every genre by default - there are only
+ * ~19 possible genres/subgenres (see artistGenres.ts), so no trimming is
+ * needed the way there is for a potentially-hundreds-strong artist pool.
+ */
 export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
+  const [mode, setMode] = usePersistedState<Mode>("top25tracker:timelineMode", "artists");
+  const isGenreMode = mode === "genres";
+
   const availableMonths = useMemo(() => sortedMonths(dataset, person), [dataset, person]);
 
   const {
@@ -44,61 +68,116 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
     applyYear,
   } = useMonthRange(availableMonths, `timeline:${person}`);
 
-  const totals = useMemo(
+  // Only includeDuplicates/startMonth/endMonth are meaningful for genres -
+  // the artist-identity options (unite/producers/duos) don't apply, same as
+  // the old standalone GenreTimeline.
+  const genreOptions: StatsOptions = useMemo(
+    () => ({ includeDuplicates: scoringOptions.includeDuplicates, ...rangeOptions }),
+    [scoringOptions.includeDuplicates, rangeOptions]
+  );
+
+  const artistTotalsList = useMemo(
     () => artistTotals(dataset, person, { ...scoringOptions, ...rangeOptions }),
     [dataset, person, scoringOptions, rangeOptions]
   );
-  const allArtists = useMemo(() => totals.map((t) => t.artist), [totals]);
-  // Color follows the ARTIST, not their current rank within the selected
+  const genreTotalsList = useMemo(
+    () => genreTotals(dataset, person, genreOptions),
+    [dataset, person, genreOptions]
+  );
+  const allArtists = useMemo(() => artistTotalsList.map((t) => t.artist), [artistTotalsList]);
+  const allGenres = useMemo(() => genreTotalsList.map((t) => t.genre), [genreTotalsList]);
+  const allNames = isGenreMode ? allGenres : allArtists;
+
+  // Color follows the ARTIST/GENRE, not its current rank within the selected
   // range - built from the all-time ordering (identity toggles only, no
-  // range) so narrowing/widening the range never reshuffles which color an
-  // artist's line gets, the same fix applied to Leaderboard.
-  const stableOrder = useMemo(
+  // range) so narrowing/widening the range never reshuffles which color a
+  // line gets, the same fix applied to Leaderboard.
+  const stableArtistOrder = useMemo(
     () => artistTotals(dataset, person, scoringOptions).map((t) => t.artist),
     [dataset, person, scoringOptions]
   );
-  const colorMap = useMemo(() => buildArtistColorMap(stableOrder), [stableOrder]);
+  const stableGenreOrder = useMemo(
+    () =>
+      genreTotals(dataset, person, { includeDuplicates: scoringOptions.includeDuplicates }).map(
+        (t) => t.genre
+      ),
+    [dataset, person, scoringOptions.includeDuplicates]
+  );
+  const colorMap = useMemo(
+    () => buildArtistColorMap(isGenreMode ? stableGenreOrder : stableArtistOrder),
+    [isGenreMode, stableGenreOrder, stableArtistOrder]
+  );
 
-  // Keyed per person - each person has a different artist pool, so "shown"
-  // selections shouldn't bleed across people. Defaults to the top N artists
-  // the first time this person is viewed; after that, whatever was saved.
-  const [shown, setShown] = usePersistedSetState(
+  // Keyed per person AND per mode - each person has a different artist
+  // pool, and artists/genres are entirely different name spaces, so
+  // "shown" selections shouldn't bleed across either axis. Defaults to the
+  // top N artists the first time this person is viewed in artist mode;
+  // genre mode defaults to everything shown (same as the old
+  // GenreTimeline), since there are only ~19 possible genres total.
+  const [shownArtists, setShownArtists] = usePersistedSetState(
     `top25tracker:timelineShown:${person}`,
     () => allArtists.slice(0, DEFAULT_SHOWN)
   );
+  const [shownGenres, setShownGenres] = usePersistedSetState(
+    `top25tracker:genreTimelineShown:${person}`,
+    () => allGenres
+  );
+  const shown = isGenreMode ? shownGenres : shownArtists;
+  const setShown = isGenreMode ? setShownGenres : setShownArtists;
 
-  const series = useMemo(
+  const artistSeries = useMemo(
     () => cumulativeArtistSeries(dataset, person, allArtists, { ...scoringOptions, ...rangeOptions }),
     [dataset, person, allArtists, scoringOptions, rangeOptions]
   );
+  const genreSeries = useMemo(
+    () => cumulativeGenreSeries(dataset, person, allGenres, genreOptions),
+    [dataset, person, allGenres, genreOptions]
+  );
+  const series = isGenreMode ? genreSeries : artistSeries;
 
-  function toggle(artist: string) {
+  function toggle(name: string) {
     setShown((prev) => {
       const next = new Set(prev);
-      if (next.has(artist)) next.delete(artist);
-      else next.add(artist);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
       return next;
     });
   }
 
   function selectAll() {
-    setShown(new Set(allArtists));
+    setShown(new Set(allNames));
   }
 
   function selectNone() {
     setShown(new Set());
   }
 
-  const visibleArtists = allArtists.filter((a) => shown.has(a));
+  function switchMode(next: Mode) {
+    setMode(next);
+  }
+
+  const visibleNames = allNames.filter((n) => shown.has(n));
+  const noun = isGenreMode ? "genre" : "artist";
 
   return (
     <div className={styles.wrap}>
       <div className={styles.headRow}>
         <div>
-          <h2 className={styles.heading}>Cumulative songs over time</h2>
-          <p className={styles.sub}>Toggle artists to compare their growth month over month</p>
+          <h2 className={styles.heading}>
+            Cumulative songs {isGenreMode ? "by genre " : ""}over time
+          </h2>
+          <p className={styles.sub}>Toggle {noun}s to compare their growth month over month</p>
         </div>
         <div className={styles.bulkActions}>
+          <ModeSwitch
+            value={mode}
+            options={[
+              { value: "artists", label: "Artists" },
+              { value: "genres", label: "Genres" },
+            ]}
+            onChange={switchMode}
+            aria-label="Track by"
+          />
           <button type="button" className={styles.bulkButton} onClick={selectAll}>
             Select all
           </button>
@@ -142,12 +221,12 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
               width={28}
             />
             <Tooltip content={<ChartTooltip colorMap={colorMap} />} />
-            {visibleArtists.map((artist) => (
+            {visibleNames.map((name) => (
               <Line
-                key={artist}
+                key={name}
                 type="monotone"
-                dataKey={artist}
-                stroke={colorMap.get(artist) ?? "var(--text-muted)"}
+                dataKey={name}
+                stroke={colorMap.get(name) ?? "var(--text-muted)"}
                 strokeWidth={2}
                 dot={false}
                 activeDot={{ r: 4, strokeWidth: 2, stroke: "var(--surface-1)" }}
@@ -159,22 +238,22 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
       </div>
 
       <div className={styles.legend}>
-        {allArtists.map((artist) => {
-          const active = shown.has(artist);
-          const color = colorMap.get(artist) ?? "var(--text-muted)";
+        {allNames.map((name) => {
+          const active = shown.has(name);
+          const color = colorMap.get(name) ?? "var(--text-muted)";
           return (
             <button
-              key={artist}
+              key={name}
               type="button"
               className={styles.legendItem}
               data-active={active}
-              onClick={() => toggle(artist)}
+              onClick={() => toggle(name)}
             >
               <span
                 className={styles.swatch}
                 style={{ background: active ? color : "var(--axis)" }}
               />
-              {artist}
+              {name}
             </button>
           );
         })}

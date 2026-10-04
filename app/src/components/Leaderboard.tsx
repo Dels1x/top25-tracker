@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Dataset } from "../data/types";
-import { artistTotals, sortedMonths, tracksForArtist, type StatsOptions } from "../lib/stats";
+import {
+  artistTotals,
+  genreTotals,
+  sortedMonths,
+  tracksForArtist,
+  tracksForGenre,
+  type StatsOptions,
+} from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
+import { usePersistedState } from "../lib/usePersistedState";
 import { useMonthRange } from "../lib/useMonthRange";
 import { useGenreFilter } from "../lib/useGenreFilter";
 import { useRankFilter } from "../lib/useRankFilter";
@@ -11,6 +19,7 @@ import { RangePicker } from "./RangePicker";
 import { GenreFilter } from "./GenreFilter";
 import { RankFilter } from "./RankFilter";
 import { ToggleCheckbox } from "./ToggleCheckbox";
+import { ModeSwitch } from "./ModeSwitch";
 import { StatsRow } from "./StatsRow";
 import styles from "./Leaderboard.module.css";
 
@@ -19,6 +28,8 @@ interface LeaderboardProps {
   person: string;
   scoringOptions: StatsOptions;
 }
+
+type Mode = "artists" | "genres";
 
 const PAGE_SIZE = 20;
 
@@ -38,11 +49,33 @@ function formatMonth(month: string): string {
   return date.toLocaleDateString(undefined, { month: "short", year: "numeric" });
 }
 
+/**
+ * Songs-per-artist bar list, OR (via the Artists/Genres mode switch, same
+ * visual language as Compare's own mode switch) songs-per-genre - these used
+ * to be two separate tabs/components (Leaderboard + GenreLeaderboard) that
+ * were nearly identical in shape, differing only in which stats.ts functions
+ * they called and which artist-only controls (RankFilter, "weight by
+ * placement", the genre filter itself, StatsRow) applied. Merged into one
+ * component rather than kept as two, mirroring how Compare already merges
+ * its own artists/genres split into one view instead of two tabs.
+ *
+ * In "genres" mode: RankFilter, "weight by placement", the GenreFilter panel
+ * (filtering genre rows BY genre makes no sense), and StatsRow (its "Top
+ * artist" tile has no genre equivalent) all hide - this exactly matches what
+ * the old standalone GenreLeaderboard showed, nothing more. The 3
+ * artist-identity checkboxes (unite/producers/duos) from `scoringOptions`
+ * are NOT hidden in genre mode though, matching Compare's own precedent -
+ * they're harmless no-ops there (genreTotals/tracksForGenre simply don't
+ * look at them) rather than something the component itself needs to hide.
+ */
 export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProps) {
+  const [mode, setMode] = usePersistedState<Mode>("top25tracker:leaderboardMode", "artists");
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SongSortKey>("date");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
+
+  const isGenreMode = mode === "genres";
 
   const availableMonths = useMemo(() => sortedMonths(dataset, person), [dataset, person]);
   const {
@@ -64,12 +97,21 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
   const [maxRank, setMaxRank] = useRankFilter(person);
   const [weightByRank, setWeightByRank] = useWeightByRank(person);
 
+  // Only includeDuplicates/startMonth/endMonth are meaningful for genres -
+  // the artist-identity options (unite/producers/duos) don't apply, same as
+  // the old standalone GenreLeaderboard.
+  const genreOptions: StatsOptions = useMemo(
+    () => ({ includeDuplicates: scoringOptions.includeDuplicates, ...rangeOptions }),
+    [scoringOptions.includeDuplicates, rangeOptions]
+  );
+
   // Combined options shared between the leaderboard list itself and the
-  // StatsRow tiles above it, so "Top artist"/"Unique artists"/etc. always
-  // match the currently selected range + genre + rank filter, never a stale
-  // all-time figure independent of what's visibly displayed below. maxRank
-  // of 25 (the default/full top 25) is passed through as undefined, same
-  // "no filter" convention genreFilter would use if left unset.
+  // StatsRow tiles above it (artists mode only - StatsRow has no genre
+  // equivalent), so "Top artist"/"Unique artists"/etc. always match the
+  // currently selected range + genre + rank filter, never a stale all-time
+  // figure independent of what's visibly displayed below. maxRank of 25
+  // (the default/full top 25) is passed through as undefined, same "no
+  // filter" convention genreFilter would use if left unset.
   const combinedOptions: StatsOptions = useMemo(
     () => ({
       ...scoringOptions,
@@ -81,59 +123,81 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
     [scoringOptions, rangeOptions, selectedGenres, maxRank, weightByRank]
   );
 
-  const totals = useMemo(
+  const artistRows = useMemo(
     () => artistTotals(dataset, person, combinedOptions),
     [dataset, person, combinedOptions]
   );
-  // Color must follow the ARTIST, never their current rank in this filtered
-  // view - so the color map is built from a STABLE ordering (all-time totals
-  // for this person, under the identity toggles only - never range/genre/
-  // rank/weight, which all reshuffle order without changing who the artist
-  // is) rather than from `totals` itself. Without this, swapping the range
-  // or turning on "weight by placement" would reshuffle bar colors right
-  // along with the rows, which defeats the point of color-coding by artist.
-  const stableOrder = useMemo(
-    () => artistTotals(dataset, person, scoringOptions),
+  const genreRows = useMemo(
+    () => genreTotals(dataset, person, genreOptions),
+    [dataset, person, genreOptions]
+  );
+  const totals: Array<{ name: string; total: number; count: number }> = isGenreMode
+    ? genreRows.map((r) => ({ name: r.genre, total: r.total, count: r.total }))
+    : artistRows.map((r) => ({ name: r.artist, total: r.total, count: r.count }));
+
+  // Color must follow the ARTIST/GENRE, never its current rank in this
+  // filtered view - so the color map is built from a STABLE ordering
+  // (all-time totals for this person, under the identity toggles only -
+  // never range/genre/rank/weight, which all reshuffle order without
+  // changing who the artist is) rather than from `totals` itself. Without
+  // this, swapping the range or turning on "weight by placement" would
+  // reshuffle bar colors right along with the rows, which defeats the point
+  // of color-coding by entity.
+  const stableArtistOrder = useMemo(
+    () => artistTotals(dataset, person, scoringOptions).map((t) => t.artist),
     [dataset, person, scoringOptions]
   );
-  const colorMap = useMemo(
-    () => buildArtistColorMap(stableOrder.map((t) => t.artist)),
-    [stableOrder]
+  const stableGenreOrder = useMemo(
+    () =>
+      genreTotals(dataset, person, { includeDuplicates: scoringOptions.includeDuplicates }).map(
+        (t) => t.genre
+      ),
+    [dataset, person, scoringOptions.includeDuplicates]
   );
-  const max = totals[0]?.total ?? 1;
-  const visible = totals.slice(0, limit);
+  const colorMap = useMemo(
+    () => buildArtistColorMap(isGenreMode ? stableGenreOrder : stableArtistOrder),
+    [isGenreMode, stableGenreOrder, stableArtistOrder]
+  );
 
-  // Changing the range, scoring options, genre filter, or rank filter
-  // changes which artists qualify at all - start back at the top rather
+  const max = totals[0]?.total ?? 1;
+  // No pagination in genre mode - only ~19 genre/subgenre buckets total (see
+  // artistGenres.ts), unlike the potentially hundreds of artists.
+  const visible = isGenreMode ? totals : totals.slice(0, limit);
+
+  // Changing the range, scoring options, genre filter, rank filter, or mode
+  // changes which rows qualify/exist at all - start back at the top rather
   // than keep a "show more" depth from a different filtered view.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(
     () => setLimit(PAGE_SIZE),
-    [person, scoringOptions, rangeOptions, selectedGenres, maxRank, weightByRank]
+    [mode, person, scoringOptions, rangeOptions, selectedGenres, maxRank, weightByRank]
   );
 
-  // If the range narrows and the expanded artist drops out of it entirely,
-  // close the panel rather than show an empty "songs" list for them.
+  // If the range/mode changes and the expanded row drops out entirely, close
+  // the panel rather than show an empty "songs" list for it.
   const isExpandedStillPresent = useMemo(
-    () => expanded !== null && totals.some((t) => t.artist === expanded),
+    () => expanded !== null && totals.some((t) => t.name === expanded),
     [expanded, totals]
   );
   const activeExpanded = isExpandedStillPresent ? expanded : null;
 
   const expandedTracks = useMemo(() => {
     if (!activeExpanded) return [];
-    // Deliberately includes maxRank (so a song excluded from the artist's
-    // total by the rank filter doesn't show up in their drill-down either)
-    // but not genreFilter - the drill-down has always shown an artist's
-    // full song list regardless of the genre checkboxes, since genreFilter
-    // is a per-ARTIST cutoff (did THIS artist qualify), not a reason to
-    // hide one of their own songs from them once they're shown at all.
-    const tracks = tracksForArtist(dataset, activeExpanded, person, {
-      ...scoringOptions,
-      ...rangeOptions,
-      maxRank: maxRank === 25 ? undefined : maxRank,
-    });
-    const sorted = [...tracks].sort((a, b) => {
+    const tracks = isGenreMode
+      ? tracksForGenre(dataset, activeExpanded, person, genreOptions)
+      : // Deliberately includes maxRank (so a song excluded from the
+        // artist's total by the rank filter doesn't show up in their
+        // drill-down either) but not genreFilter - the drill-down has
+        // always shown an artist's full song list regardless of the genre
+        // checkboxes, since genreFilter is a per-ARTIST cutoff (did THIS
+        // artist qualify), not a reason to hide one of their own songs from
+        // them once they're shown at all.
+        tracksForArtist(dataset, activeExpanded, person, {
+          ...scoringOptions,
+          ...rangeOptions,
+          maxRank: maxRank === 25 ? undefined : maxRank,
+        });
+    return [...tracks].sort((a, b) => {
       let cmp: number;
       switch (sortKey) {
         case "date":
@@ -151,11 +215,21 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
-    return sorted;
-  }, [dataset, activeExpanded, person, scoringOptions, rangeOptions, maxRank, sortKey, sortDir]);
+  }, [
+    dataset,
+    activeExpanded,
+    person,
+    isGenreMode,
+    genreOptions,
+    scoringOptions,
+    rangeOptions,
+    maxRank,
+    sortKey,
+    sortDir,
+  ]);
 
-  function toggle(artist: string) {
-    setExpanded((prev) => (prev === artist ? null : artist));
+  function toggle(name: string) {
+    setExpanded((prev) => (prev === name ? null : name));
   }
 
   function handleSort(key: SongSortKey) {
@@ -169,20 +243,47 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
     }
   }
 
+  function switchMode(next: Mode) {
+    setMode(next);
+    setExpanded(null);
+  }
+
+  const noun = isGenreMode ? "genre" : "artist";
+
   return (
     <div className={styles.wrap}>
-      <StatsRow dataset={dataset} person={person} options={combinedOptions} />
+      {!isGenreMode && <StatsRow dataset={dataset} person={person} options={combinedOptions} />}
 
       <div className={styles.headRow}>
-        <h2 className={styles.heading}>Songs per artist</h2>
-        <p className={styles.sub}>
-          {totals.length} artists &middot; counts include feature credits and group/member
-          attribution{scoringOptions.includeDuplicates === false &&
-            " · repeat songs counted once"}
-          {maxRank !== 25 && ` · only counting #1-${maxRank} each month`}
-          {weightByRank && " · weighted by placement"} &middot; click an artist to see their
-          songs
-        </p>
+        <div>
+          <h2 className={styles.heading}>Songs per {noun}</h2>
+          <p className={styles.sub}>
+            {isGenreMode ? (
+              <>
+                {scoringOptions.includeDuplicates === false && " · repeat songs counted once"}
+                &middot; click a genre to see its songs
+              </>
+            ) : (
+              <>
+                {totals.length} artists &middot; counts include feature credits and group/member
+                attribution{scoringOptions.includeDuplicates === false &&
+                  " · repeat songs counted once"}
+                {maxRank !== 25 && ` · only counting #1-${maxRank} each month`}
+                {weightByRank && " · weighted by placement"} &middot; click an artist to see their
+                songs
+              </>
+            )}
+          </p>
+        </div>
+        <ModeSwitch
+          value={mode}
+          options={[
+            { value: "artists", label: "Artists" },
+            { value: "genres", label: "Genres" },
+          ]}
+          onChange={switchMode}
+          aria-label="Rank by"
+        />
       </div>
 
       <RangePicker
@@ -196,38 +297,42 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
         onYear={applyYear}
       />
 
-      <div className={styles.filterRow}>
-        <RankFilter value={maxRank} onChange={setMaxRank} />
-        <ToggleCheckbox
-          checked={weightByRank}
-          onChange={setWeightByRank}
-          label="Weight by placement (#1 worth more than #25)"
-        />
-      </div>
+      {!isGenreMode && (
+        <>
+          <div className={styles.filterRow}>
+            <RankFilter value={maxRank} onChange={setMaxRank} />
+            <ToggleCheckbox
+              checked={weightByRank}
+              onChange={setWeightByRank}
+              label="Weight by placement (#1 worth more than #25)"
+            />
+          </div>
 
-      <GenreFilter
-        selected={selectedGenres}
-        onToggle={toggleGenre}
-        onSelectAll={selectAllGenres}
-        onSelectNone={selectNoneGenres}
-      />
+          <GenreFilter
+            selected={selectedGenres}
+            onToggle={toggleGenre}
+            onSelectAll={selectAllGenres}
+            onSelectNone={selectNoneGenres}
+          />
+        </>
+      )}
 
       <ol className={styles.list}>
         {visible.map((row, index) => {
           const pct = (row.total / max) * 100;
-          const color = colorMap.get(row.artist) ?? "var(--text-muted)";
-          const isOpen = activeExpanded === row.artist;
+          const color = colorMap.get(row.name) ?? "var(--text-muted)";
+          const isOpen = activeExpanded === row.name;
           return (
-            <li key={row.artist} className={styles.item}>
+            <li key={row.name} className={styles.item}>
               <button
                 type="button"
                 className={styles.row}
-                onClick={() => toggle(row.artist)}
+                onClick={() => toggle(row.name)}
                 aria-expanded={isOpen}
               >
                 <span className={styles.rank}>{index + 1}</span>
-                <span className={styles.name} title={row.artist}>
-                  {row.artist}
+                <span className={styles.name} title={row.name}>
+                  {row.name}
                 </span>
                 <div className={styles.barTrack}>
                   <motion.div
@@ -239,7 +344,9 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
                   />
                 </div>
                 <span className={styles.value}>
-                  {weightByRank ? `${Math.round(row.total)}pts (${row.count})` : row.total}
+                  {!isGenreMode && weightByRank
+                    ? `${Math.round(row.total)}pts (${row.count})`
+                    : row.total}
                 </span>
                 <span className={styles.chevron} data-open={isOpen} aria-hidden="true">
                   ▾
@@ -303,7 +410,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
         })}
       </ol>
 
-      {limit < totals.length && (
+      {!isGenreMode && limit < totals.length && (
         <button type="button" className={styles.more} onClick={() => setLimit((n) => n + PAGE_SIZE)}>
           Show more ({totals.length - limit} remaining)
         </button>

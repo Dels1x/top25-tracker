@@ -6,6 +6,10 @@
 }
 
 .headRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 18px;
 }
 
@@ -229,6 +233,10 @@
 }
 
 @media (max-width: 560px) {
+  .headRow {
+    flex-direction: column;
+  }
+
   .row {
     grid-template-columns: 20px 90px 1fr max-content 14px;
   }

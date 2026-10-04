@@ -3,8 +3,6 @@ import type { Dataset } from "./data/types";
 import { Layout } from "./components/Layout";
 import { Leaderboard } from "./components/Leaderboard";
 import { Timeline } from "./components/Timeline";
-import { GenreLeaderboard } from "./components/GenreLeaderboard";
-import { GenreTimeline } from "./components/GenreTimeline";
 import { Replay } from "./components/Replay";
 import { Shared } from "./components/Shared";
 import { Compare } from "./components/Compare";
@@ -14,24 +12,16 @@ import type { StatsOptions } from "./lib/stats";
 
 const dataset = rawData as Dataset;
 
-type View =
-  | "leaderboard"
-  | "timeline"
-  | "genres"
-  | "genreTimeline"
-  | "replay"
-  | "shared"
-  | "compare";
-const VALID_VIEWS: View[] = [
-  "leaderboard",
-  "timeline",
-  "genres",
-  "genreTimeline",
-  "replay",
-  "shared",
-  "compare",
-];
-const GENRE_VIEWS: View[] = ["genres", "genreTimeline"];
+// "genres"/"genreTimeline" used to be their own views (GenreLeaderboard/
+// GenreTimeline) - merged into Leaderboard/Timeline's own Artists/Genres
+// mode switch instead (same idea as Compare's switch), since the two were
+// nearly identical in shape. GENRE_VIEWS (which used to hide the
+// artist-identity toggles for those two view ids) is gone along with them -
+// Leaderboard/Timeline now always show the 3 identity toggles even in genre
+// mode, matching Compare's own precedent of leaving them visible as
+// harmless no-ops there rather than hiding them per-mode.
+type View = "leaderboard" | "timeline" | "replay" | "shared" | "compare";
+const VALID_VIEWS: View[] = ["leaderboard", "timeline", "replay", "shared", "compare"];
 // Replay always shows literal creditedArtists, never scoringArtists, so the
 // identity toggles (and the dedup toggle) have nothing to affect there.
 // Shared DOES use scoringArtists (via sharedSongs) so it keeps the toggles.
@@ -81,22 +71,20 @@ function App() {
             onChange={setIncludeDuplicates}
             label="Count repeat songs every time they appear"
           />
-          {/* Artist-identity options only affect artist-scoped views, not genres. */}
-          {!GENRE_VIEWS.includes(activeView) && (
-            <>
-              <ToggleCheckbox
-                checked={uniteRelatedProjects}
-                onChange={setUniteRelatedProjects}
-                label="Unite similar artists/groups"
-              />
-              <ToggleCheckbox
-                checked={showProducers}
-                onChange={setShowProducers}
-                label="Show producers"
-              />
-              <ToggleCheckbox checked={showDuos} onChange={setShowDuos} label="Show duos" />
-            </>
-          )}
+          {/* Artist-identity options are inert once Leaderboard/Timeline/
+              Compare switch into genre mode internally - harmless no-ops
+              there rather than something App.tsx needs to hide per-view. */}
+          <ToggleCheckbox
+            checked={uniteRelatedProjects}
+            onChange={setUniteRelatedProjects}
+            label="Unite similar artists/groups"
+          />
+          <ToggleCheckbox
+            checked={showProducers}
+            onChange={setShowProducers}
+            label="Show producers"
+          />
+          <ToggleCheckbox checked={showDuos} onChange={setShowDuos} label="Show duos" />
         </div>
       )}
 
@@ -105,12 +93,6 @@ function App() {
       )}
       {activeView === "timeline" && (
         <Timeline dataset={dataset} person={activePerson} scoringOptions={scoringOptions} />
-      )}
-      {activeView === "genres" && (
-        <GenreLeaderboard dataset={dataset} person={activePerson} scoringOptions={scoringOptions} />
-      )}
-      {activeView === "genreTimeline" && (
-        <GenreTimeline dataset={dataset} person={activePerson} scoringOptions={scoringOptions} />
       )}
       {activeView === "replay" && <Replay dataset={dataset} person={activePerson} />}
       {activeView === "shared" && <Shared dataset={dataset} scoringOptions={scoringOptions} />}
