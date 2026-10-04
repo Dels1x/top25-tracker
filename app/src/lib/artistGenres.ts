@@ -266,6 +266,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Dyemond Lewis": ["East Coast Hip-Hop"],
   "T'nah Apex": ["East Coast Hip-Hop"],
   "A-F-R-O": ["Boom Bap"],
+  "Aaron May": ["Jazz Rap"],
   "Boards of Canada": ["Ambient"],
   "Joey Valance & Brae": ["Experimental Hip-Hop", "Boom Bap"],
   "Force Of Nature": ["Jazz Rap"],
