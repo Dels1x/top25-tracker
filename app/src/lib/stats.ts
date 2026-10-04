@@ -459,6 +459,80 @@ export function cumulativeArtistSeriesByPerson(
   return series;
 }
 
+/** Same shape as PersonArtistSummary, but for a selected set of genres. */
+export interface PersonGenreSummary {
+  person: string;
+  total: number;
+  firstMonth: string | null;
+}
+
+/**
+ * Per-person total and earliest month for a selected set of genres (e.g.
+ * "Hip-Hop" + "Jazz Rap") - the genre equivalent of personArtistSummaries,
+ * for Compare's "genres" mode. A track counts once per person per genre it
+ * matches (same "counts toward every genre it touches" rule genreTotals
+ * uses), not once per matching scoringArtist - genres aren't a per-artist
+ * point system the way artist credits are.
+ */
+export function personGenreSummaries(
+  dataset: Dataset,
+  people: string[],
+  genres: string[],
+  options?: StatsOptions
+): PersonGenreSummary[] {
+  const genreSet = new Set(genres);
+  return people.map((person) => {
+    let total = 0;
+    let firstMonth: string | null = null;
+    for (const track of allTracks(dataset, person, options)) {
+      const matches = genreBucketsForTrack(track).filter((g) => genreSet.has(g)).length;
+      if (matches === 0) continue;
+      total += matches;
+      if (firstMonth === null || track.month < firstMonth) firstMonth = track.month;
+    }
+    return { person, total, firstMonth };
+  });
+}
+
+/**
+ * Genre equivalent of cumulativeArtistSeriesByPerson - one cumulative line
+ * per PERSON, summing counts across every genre in `genres` for that person,
+ * for Compare's "genres" mode (e.g. "who got into Hip-Hop earliest/most").
+ */
+export function cumulativeGenreSeriesByPerson(
+  dataset: Dataset,
+  people: string[],
+  genres: string[],
+  options?: StatsOptions
+): CumulativeSeriesPoint[] {
+  const genreSet = new Set(genres);
+  const months = Array.from(new Set(people.flatMap((p) => sortedMonths(dataset, p, options)))).sort();
+
+  const perMonth = new Map<string, number>();
+  for (const person of people) {
+    for (const track of allTracks(dataset, person, options)) {
+      const matches = genreBucketsForTrack(track).filter((g) => genreSet.has(g)).length;
+      if (matches === 0) continue;
+      const key = `${person}\u0000${track.month}`;
+      perMonth.set(key, (perMonth.get(key) ?? 0) + matches);
+    }
+  }
+
+  const running = new Map<string, number>(people.map((p) => [p, 0]));
+  const series: CumulativeSeriesPoint[] = [];
+  for (const month of months) {
+    const point: CumulativeSeriesPoint = { month };
+    for (const person of people) {
+      const delta = perMonth.get(`${person}\u0000${month}`) ?? 0;
+      const newTotal = (running.get(person) ?? 0) + delta;
+      running.set(person, newTotal);
+      point[person] = newTotal;
+    }
+    series.push(point);
+  }
+  return series;
+}
+
 /** One song that every person has had in their top 25 at some point, and when. */
 export interface SharedSong {
   trackKey: string;

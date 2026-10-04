@@ -59,11 +59,17 @@ There is no test runner configured yet.
   of `dataset.lists` and finds songs that have appeared (at any rank, in any month) in literally every
   person's top 25, matched via the same `trackKey` used for duplicate detection (so re-release title
   variants still count as the same song across people, not just within one person's history).
-  `cumulativeArtistSeriesByPerson`/`personArtistSummaries` power the Compare view (see below) - like
-  `sharedSongs`, these aren't scoped to one person; they take an explicit `people` list and a selected
-  artist *set* (e.g. a group's members) and sum counts across that whole set per person, per month -
-  one cumulative line per PERSON, not per artist, since the point of Compare is "who got into this
-  artist earlier / more", not re-showing Timeline's per-artist breakdown one person at a time.
+  `cumulativeArtistSeriesByPerson`/`personArtistSummaries` power the Compare view's "artists" mode
+  (see below) - like `sharedSongs`, these aren't scoped to one person; they take an explicit `people`
+  list and a selected artist *set* (e.g. a group's members) and sum counts across that whole set per
+  person, per month - one cumulative line per PERSON, not per artist, since the point of Compare is
+  "who got into this artist earlier / more", not re-showing Timeline's per-artist breakdown one person
+  at a time. `cumulativeGenreSeriesByPerson`/`personGenreSummaries` are the exact same shape for
+  Compare's "genres" mode, built on `genreBucketsForTrack` instead of a scoringArtists match - a track
+  counts once per selected genre bucket it falls in (same "counts toward everything it touches" rule
+  `genreTotals` already uses), so selecting both a subgenre and its auto-rolled-up parent (e.g.
+  "Hip-Hop" + "Jazz Rap") double-counts a track that's in both buckets, same as summing two overlapping
+  `genreTotals` rows by hand would - this is expected, not a bug to dedupe.
   `genreTotals`/`genreMonthCounts`/`tracksForGenre`/`cumulativeGenreSeries` mirror the artist-scoped
   functions but bucket by genre instead (see `artistGenres.ts`) - they only honor
   `includeDuplicates`/`startMonth`/`endMonth` from `StatsOptions`; the artist-identity options
@@ -123,19 +129,25 @@ There is no test runner configured yet.
   layouts are identical), `Replay` (month-by-month animated reveal), `Shared` (songs that have
   appeared in every person's top 25 at some point — see `sharedSongs` in `stats.ts`; unlike every
   other view this one is NOT scoped to the active person, so `App.tsx` skips rendering `StatsRow`/the
-  scoring-option checkboxes for it), `Compare` (pick one or more artists — e.g. a group's members —
+  scoring-option checkboxes for it), `Compare` (pick one or more artists OR genres — toggled via an
+  "Artists"/"Genres" mode switch at the top, mirroring the Leaderboard/GenreLeaderboard split as two
+  modes of one view instead of two separate tabs — e.g. a group's members, or a genre like "Hip-Hop" —
   and see each person's cumulative count for that selection on one chart, one line per PERSON rather
-  than per artist, to answer "who got into this artist earlier / more"; also spans every person at
-  once like `Shared` does, so no `StatsRow` either, but — unlike `Shared` — the artist-identity
-  toggles (unite/producers/duos) still apply since you're picking artist names, so `App.tsx` does NOT
-  put it in `NO_TOGGLES_VIEWS`/`GENRE_VIEWS`; the artist picker is a search box + checkbox list sorted
-  by combined all-people total, with selections persisted via `usePersistedSetState` and shown as
-  removable chips; reuses the same `useMonthRange`/`RangePicker` date-range control as Leaderboard and
-  Timeline, and the same per-person color assignment `Timeline` uses for *artists* but keyed on
-  *people* instead, via `buildArtistColorMap(dataset.people)` — a general-purpose "assign a stable
-  color per name" function despite its artist-specific name), plus `Layout` / `StatsRow` / `StatTile`
-  shell pieces. `App.tsx` just wires person/view selection state and imports `data.json` directly (no
-  runtime CSV parsing, no backend/API).
+  than per artist/genre, to answer "who got into this earlier / more"; also spans every person at
+  once like `Shared` does, so no `StatsRow` either; in "artists" mode the artist-identity toggles
+  (unite/producers/duos) still apply since you're picking artist names, so `App.tsx` does NOT put
+  `Compare` in `NO_TOGGLES_VIEWS`/`GENRE_VIEWS` the way it does `GenreLeaderboard`/`GenreTimeline` —
+  those toggles simply have no effect once the component switches into "genres" mode internally, same
+  as `includeDuplicates` being the only option genre-scoped stats functions ever look at; the
+  picker is a search box + checkbox list sorted by combined all-people total [of whichever mode is
+  active], with each mode's selection persisted separately (`compareArtists` / `compareGenres`
+  localStorage keys) via `usePersistedSetState` and shown as removable chips; reuses the same
+  `useMonthRange`/`RangePicker` date-range control as Leaderboard and Timeline, and the same
+  per-person color assignment `Timeline` uses for *artists* but keyed on *people* instead, via
+  `buildArtistColorMap(dataset.people)` — a general-purpose "assign a stable color per name" function
+  despite its artist-specific name), plus `Layout` / `StatsRow` / `StatTile` shell pieces. `App.tsx`
+  just wires person/view selection state and imports `data.json` directly (no runtime CSV parsing, no
+  backend/API).
 - **`app/src/components/GenreFilter.tsx`** + **`app/src/lib/useGenreFilter.ts`** — the Leaderboard's
   genre-filter checkboxes: one row per top-level genre from `GENRE_HIERARCHY`
   (`artistGenres.ts`), each with a disclosure arrow (only if it has subgenres) expanding a list of
