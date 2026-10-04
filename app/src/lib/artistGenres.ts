@@ -425,6 +425,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   Logic: ["Hip-Hop", "Jazz Rap", "Pop Rap"],
   "Domo Genesis": ["West Coast Hip-Hop"],
   "Denzel Curry": ["Southern Hip-Hop"],
+  "Curly Castro": ["East Coast Hip-Hop", "Abstract Hip-Hop", "Experimental Hip-Hop"],
   "Mac Miller": ["Hip-Hop", "Jazz Rap", "Pop Rap"],
   "Jay Rock": ["West Coast Hip-Hop"],
   "Ab-Soul": ["West Coast Hip-Hop"],
