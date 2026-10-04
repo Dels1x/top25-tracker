@@ -66,6 +66,8 @@ export const SPOTIFY_MISSPELLINGS: Record<string, string> = {
  */
 export const ARTIST_ALIASES: Record<string, string> = {
   Milo: "R.A.P. Ferreira",
+  "King Geedorah": "MF DOOM",
+  "Viktor Vaughn": "MF DOOM",
   "Tariq Trotter": "Black Thought", // his government name, used interchangeably by Spotify
   "No Malice": "Malice", // Clipse's Malice also records under "No Malice" (post-rededication alias)
   "By Storm": "Injury Reserve", // rename/relaunch of the same group, not a distinct project
