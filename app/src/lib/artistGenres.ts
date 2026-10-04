@@ -97,6 +97,8 @@ export const GENRES = [
   "Plunderphonics",
     "Sampledelia",
     "Hyperpop",
+    "Synthpop",
+    "Darkwave"
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -161,7 +163,9 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Pop Punk": ["Rock"],
   "Plunderphonics": ["Electronic"],
   "Sampledelia": ["Electronic", "Hip-Hop"],
-  "Hyperpop": ["Pop", "Electronic"]
+  "Hyperpop": ["Pop", "Electronic"],
+  "Synthpop": ["Pop", "Electronic"],
+  "Darkwave": ["Rock"]
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -601,8 +605,8 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "100 gecs": ["Electronic", "Pop", "Hyperpop"],
   "underscores": ["Electronic", "Pop"],
   "Kero Kero Bonito": ["Pop", "Electronic"],
-  "Magdalena Bay": ["Pop", "Electronic"],
-  "Depeche Mode": ["Electronic", "Pop", "Rock"],
+  "Magdalena Bay": ["Synthpop"],
+  "Depeche Mode": ["Synthpop", "Darkwave"],
 
   // ===== Pop / misc =====
   "Billie Essco": ["Pop"],
