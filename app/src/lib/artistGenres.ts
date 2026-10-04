@@ -592,7 +592,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   Slint: ["Post-Rock", "Math Rock"],
   "Godspeed You Black Emperor!": ["Post-Rock", "Ambient"],
   "Natural Snow Buildings": ["Ambient", "Folk"],
-  "Sweet Trip": ["Shoegaze", "Electronic"],
+  "Sweet Trip": ["Dream Pop", "Electronic"],
   "Della Zyr": ["Shoegaze", "Dream Pop"],
   Fishmans: ["Neo-Psychedelia", "Dream Pop", "Post-Rock"],
   "Newfound Interest in Connecticut": ["Emo", "Post-Rock"],
