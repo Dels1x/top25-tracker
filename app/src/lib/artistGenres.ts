@@ -93,7 +93,10 @@ export const GENRES = [
   "Chamber Folk",
     "Singer-Songwriter",
     "Stoner Rock",
-    "Pop Punk"
+    "Pop Punk",
+  "Plunderphonics",
+    "Sampledelia",
+    "Hyperpop",
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -155,7 +158,10 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Chamber Folk": ["Folk"],
   "Singer-Songwriter": ["Folk"],
   "Stoner Rock": ["Rock"],
-  "Pop Punk": ["Rock"]
+  "Pop Punk": ["Rock"],
+  "Plunderphonics": ["Electronic"],
+  "Sampledelia": ["Electronic", "Hip-Hop"],
+  "Hyperpop": ["Pop", "Electronic"]
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -591,8 +597,8 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   Portishead: ["Trip Hop"],
   "Flying Lotus": ["Electronic", "Hip-Hop"],
   KAYTRANADA: ["Electronic", "R&B/Soul"],
-  "The Avalanches": ["Electronic", "Pop"],
-  "100 gecs": ["Electronic", "Pop"],
+  "The Avalanches": ["Sampledelia", "Plunderphonics"],
+  "100 gecs": ["Electronic", "Pop", "Hyperpop"],
   "underscores": ["Electronic", "Pop"],
   "Kero Kero Bonito": ["Pop", "Electronic"],
   "Magdalena Bay": ["Pop", "Electronic"],
