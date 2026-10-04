@@ -43,13 +43,21 @@ export const GENRES = [
   "West Coast Hip-Hop",
   "Southern Hip-Hop",
   "Abstract Hip-Hop",
+  "Experimental Hip-Hop",
+  "Conscious Hip-Hop",
+  "Chipmunk Soul",
   "Rock",
+  "Art Rock",
   "Metal",
   "Jazz",
   "R&B/Soul",
   "Folk",
   "Electronic",
   "Pop",
+  "Noise Pop",
+  "Dream Pop",
+  "Glitch Pop",
+  "Indietronica",
   "Reggae",
   "Shoegaze",
   "Slowcore",
@@ -91,6 +99,9 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Metro Boomin": ["Hip-Hop", "Southern Hip-Hop"],
   "DJ Shadow": ["Hip-Hop", "Trip Hop", "Electronic"],
   Blockhead: ["Hip-Hop", "Abstract Hip-Hop"],
+  "Danger Mouse": ["Hip-Hop"],
+  "J Dilla": ["Hip-Hop", "Abstract Hip-Hop"],
+  Futurewave: ["Hip-Hop"], // producer
 
   // ===== East Coast Hip-Hop =====
   "billy woods": ["Hip-Hop", "Abstract Hip-Hop", "East Coast Hip-Hop"],
@@ -122,6 +133,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Black Star": ["Hip-Hop", "East Coast Hip-Hop"],
   "A Tribe Called Quest": ["Hip-Hop", "East Coast Hip-Hop", "Jazz"],
   "Q-Tip": ["Hip-Hop", "East Coast Hip-Hop", "Jazz"],
+  Shing02: ["Hip-Hop", "Jazz"],
   "Phife Dawg": ["Hip-Hop", "East Coast Hip-Hop"],
   Raekwon: ["Hip-Hop", "East Coast Hip-Hop"],
   "Ghostface Killah": ["Hip-Hop", "East Coast Hip-Hop"],
@@ -195,6 +207,9 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   Ransom: ["Hip-Hop", "East Coast Hip-Hop"],
   "Big Ghost Ltd": ["Hip-Hop", "East Coast Hip-Hop"],
   "Willie The Kid": ["Hip-Hop", "East Coast Hip-Hop"],
+  Clipse: ["Hip-Hop", "East Coast Hip-Hop"],
+  "Pusha T": ["Hip-Hop", "East Coast Hip-Hop"],
+  Malice: ["Hip-Hop", "East Coast Hip-Hop"],
   "Planet Asia": ["Hip-Hop", "West Coast Hip-Hop"],
   "Durag Dynasty": ["Hip-Hop", "West Coast Hip-Hop"],
   Tristate: ["Hip-Hop", "West Coast Hip-Hop"],
@@ -205,13 +220,14 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Dr. Dre": ["Hip-Hop", "West Coast Hip-Hop"],
   Xzibit: ["Hip-Hop", "West Coast Hip-Hop"],
   "Snoop Dogg": ["Hip-Hop", "West Coast Hip-Hop"],
-  "Kanye West": ["Hip-Hop"],
+  "Kanye West": ["Hip-Hop", "Chipmunk Soul"],
   "Kid Cudi": ["Hip-Hop"],
   "A$AP Rocky": ["Hip-Hop"],
   "ScHoolboy Q": ["Hip-Hop", "West Coast Hip-Hop"],
   "Vince Staples": ["Hip-Hop", "West Coast Hip-Hop"],
   "Earl Sweatshirt": ["Hip-Hop", "Abstract Hip-Hop"],
   "Tyler, The Creator": ["Hip-Hop"],
+  Logic: ["Hip-Hop"],
   "Domo Genesis": ["Hip-Hop", "West Coast Hip-Hop"],
   "Denzel Curry": ["Hip-Hop"],
   "Mac Miller": ["Hip-Hop"],
@@ -230,6 +246,9 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   Problem: ["Hip-Hop", "West Coast Hip-Hop"],
 
   // ===== Southern Hip-Hop =====
+  Outkast: ["Hip-Hop", "Southern Hip-Hop"],
+  "Big Boi": ["Hip-Hop", "Southern Hip-Hop"],
+  "André 3000": ["Hip-Hop", "Southern Hip-Hop", "Abstract Hip-Hop"],
   "J. Cole": ["Hip-Hop"],
   "Lupe Fiasco": ["Hip-Hop", "Abstract Hip-Hop"],
   "Big K.R.I.T.": ["Hip-Hop", "Southern Hip-Hop"],
@@ -275,6 +294,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
 
   // ===== Abstract / experimental hip-hop (no strong region) =====
   "clipping.": ["Hip-Hop", "Abstract Hip-Hop"],
+  "Daveed Diggs": ["Hip-Hop", "Abstract Hip-Hop"],
   "Death Grips": ["Hip-Hop", "Abstract Hip-Hop", "Electronic"],
   BUSDRIVER: ["Hip-Hop", "Abstract Hip-Hop"],
   "Moka Only": ["Hip-Hop", "Abstract Hip-Hop"],
@@ -309,6 +329,30 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Cordae": ["Hip-Hop"],
   "Drake": ["Hip-Hop"],
   "Common": ["Hip-Hop", "East Coast Hip-Hop"],
+  "2 Chainz": ["Hip-Hop", "Southern Hip-Hop"],
+  "Pharrell Williams": ["Hip-Hop", "R&B/Soul"],
+  "Busta Rhymes": ["Hip-Hop", "East Coast Hip-Hop"],
+  "A$AP Ferg": ["Hip-Hop", "East Coast Hip-Hop"],
+  "Lil B": ["Hip-Hop", "West Coast Hip-Hop", "Abstract Hip-Hop"],
+  "Slum Village": ["Hip-Hop", "Abstract Hip-Hop"],
+  "The Pharcyde": ["Hip-Hop", "West Coast Hip-Hop", "Abstract Hip-Hop"],
+  "B-Real": ["Hip-Hop", "West Coast Hip-Hop"],
+  Eve: ["Hip-Hop", "East Coast Hip-Hop"],
+  "Central Cee": ["Hip-Hop"],
+  "Capital Steez": ["Hip-Hop", "East Coast Hip-Hop"],
+  Oxxxymiron: ["Hip-Hop", "Conscious Hip-Hop"],
+  Rav: ["Hip-Hop", "Abstract Hip-Hop"], // "lo-fi hip-hop" per user, same bucket as Kill Bill: The Rapper
+  Scuare: ["Hip-Hop", "Abstract Hip-Hop"], // same as Rav per user
+  "Charles Hamilton": ["Hip-Hop", "Chipmunk Soul"],
+  "Jonathan Snipes": ["Hip-Hop", "Abstract Hip-Hop"],
+  "William Hutson": ["Hip-Hop", "Abstract Hip-Hop"],
+  "Jane Remover": [
+    "Experimental Hip-Hop",
+    "Noise Pop",
+    "Indietronica",
+    "Dream Pop",
+    "Glitch Pop",
+  ],
 
   // ===== Jazz =====
   "Robert Glasper": ["Jazz", "R&B/Soul"],
@@ -337,6 +381,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Chrisette Michele": ["R&B/Soul"],
   "Ms. Lauryn Hill": ["R&B/Soul", "Hip-Hop"],
   "Goapele": ["R&B/Soul"],
+  MINMI: ["R&B/Soul"],
   "Free Nationals": ["R&B/Soul", "Hip-Hop"],
   "6LACK": ["R&B/Soul"],
   "Esthero": ["R&B/Soul", "Trip Hop"],
@@ -344,7 +389,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Anna Wise": ["R&B/Soul"],
 
   // ===== Rock =====
-  "Queens of the Stone Age": ["Rock", "Metal"],
+  "Queens of the Stone Age": ["Rock", "Art Rock"],
   "Radiohead": ["Rock"],
   "Paramore": ["Rock"],
   "The Doors": ["Rock"],
@@ -355,6 +400,10 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Rex Orange County": ["Pop", "R&B/Soul"],
   "Bon Iver": ["Folk", "Rock"],
   "Jack White": ["Rock"],
+  "Benjamin Booker": ["Rock", "Art Rock"],
+  "kessoku band": ["Rock"], // j-rock, per user
+  "Ichiko Aoba": ["Folk"],
+  "Taeko Onuki": ["Pop"],
 
   // ===== Metal =====
   "Black Sabbath": ["Metal", "Rock"],
