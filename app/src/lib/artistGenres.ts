@@ -256,7 +256,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "38 Spesh": ["East Coast Hip-Hop", "Gangsta Rap"],
   "Tha God Fahim": ["East Coast Hip-Hop"],
   "Stove God Cooks": ["East Coast Hip-Hop", "Gangsta Rap", "Coke Rap"],
-  "Tee Grizzley": ["Hip-Hop", "Trap"],
+  "Tee Grizzley": ["Hip-Hop", "Trap", "Gangsta Rap"],
   "King Von": ["Hip-Hop", "Trap", "Gangsta Rap"],
   "Lil Durk": ["Hip-Hop", "Trap", "Gangsta Rap"],
   "Teller Bank$": ["Experimental Hip-Hop", "Abstract Hip-Hop", "Jazz Rap"],
