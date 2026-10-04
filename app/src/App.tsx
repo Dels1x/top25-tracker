@@ -1,7 +1,6 @@
 import rawData from "./data/data.json";
 import type { Dataset } from "./data/types";
 import { Layout } from "./components/Layout";
-import { StatsRow } from "./components/StatsRow";
 import { Leaderboard } from "./components/Leaderboard";
 import { Timeline } from "./components/Timeline";
 import { GenreLeaderboard } from "./components/GenreLeaderboard";
@@ -33,9 +32,6 @@ const VALID_VIEWS: View[] = [
   "compare",
 ];
 const GENRE_VIEWS: View[] = ["genres", "genreTimeline"];
-// Shared and Compare both span every person at once rather than scoping to
-// the active person tab, so neither shows the person-scoped stats row.
-const NO_STATS_ROW_VIEWS: View[] = ["shared", "compare"];
 // Replay always shows literal creditedArtists, never scoringArtists, so the
 // identity toggles (and the dedup toggle) have nothing to affect there.
 // Shared DOES use scoringArtists (via sharedSongs) so it keeps the toggles.
@@ -78,10 +74,6 @@ function App() {
       view={activeView}
       onViewChange={setView}
     >
-      {!NO_STATS_ROW_VIEWS.includes(activeView) && (
-        <StatsRow dataset={dataset} person={activePerson} scoringOptions={scoringOptions} />
-      )}
-
       {!NO_TOGGLES_VIEWS.includes(activeView) && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 16 }}>
           <ToggleCheckbox

@@ -7,6 +7,7 @@ import { useMonthRange } from "../lib/useMonthRange";
 import { useGenreFilter } from "../lib/useGenreFilter";
 import { RangePicker } from "./RangePicker";
 import { GenreFilter } from "./GenreFilter";
+import { StatsRow } from "./StatsRow";
 import styles from "./Leaderboard.module.css";
 
 interface LeaderboardProps {
@@ -50,14 +51,18 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
     selectNone: selectNoneGenres,
   } = useGenreFilter(person);
 
+  // Combined options shared between the leaderboard list itself and the
+  // StatsRow tiles above it, so "Top artist"/"Unique artists"/etc. always
+  // match the currently selected range + genre filter, never a stale
+  // all-time figure independent of what's visibly displayed below.
+  const combinedOptions: StatsOptions = useMemo(
+    () => ({ ...scoringOptions, ...rangeOptions, genreFilter: selectedGenres }),
+    [scoringOptions, rangeOptions, selectedGenres]
+  );
+
   const totals = useMemo(
-    () =>
-      artistTotals(dataset, person, {
-        ...scoringOptions,
-        ...rangeOptions,
-        genreFilter: selectedGenres,
-      }),
-    [dataset, person, scoringOptions, rangeOptions, selectedGenres]
+    () => artistTotals(dataset, person, combinedOptions),
+    [dataset, person, combinedOptions]
   );
   const colorMap = useMemo(
     () => buildArtistColorMap(totals.map((t) => t.artist)),
@@ -127,6 +132,8 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
 
   return (
     <div className={styles.wrap}>
+      <StatsRow dataset={dataset} person={person} options={combinedOptions} />
+
       <div className={styles.headRow}>
         <h2 className={styles.heading}>Songs per artist</h2>
         <p className={styles.sub}>

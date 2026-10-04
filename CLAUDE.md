@@ -150,13 +150,28 @@ There is no test runner configured yet.
   (see the dataviz skill's "color follows the entity, never its rank" rule) — a toggled-off artist must
   never cause the remaining artists to repaint.
 - **`app/src/components/`** — `Leaderboard` (songs-per-artist bar list, with a `GenreFilter` panel —
-  see below), `Timeline` (cumulative line chart with per-artist toggle legend), `GenreLeaderboard`/
+  see below — and, above the heading, the `StatsRow` tiles: Months tracked / Unique artists / Unique
+  songs / Top artist). `StatsRow` is rendered ONLY by `Leaderboard`, not by any other view. It used to
+  live in `App.tsx` and render unconditionally for every view except Shared/Compare, computing its
+  numbers from `scoringOptions` alone - always an all-time figure, identical no matter what range was
+  selected on whichever tab happened to be active, and shown even on views (Timeline, the genre tabs,
+  Replay) where a per-person all-time artist overview didn't really belong. Now it lives inside
+  `Leaderboard.tsx` and takes one combined `options: StatsOptions` prop -
+  `{ ...scoringOptions, ...rangeOptions, genreFilter: selectedGenres }`, the exact same object
+  (memoized once as `combinedOptions`) the leaderboard list itself is built from - so "Top artist" is
+  always precisely the leaderboard's own #1 row, and "Months tracked"/"Unique artists"/"Unique songs"
+  always reflect the currently selected range and genre filter rather than a stale all-time figure
+  computed independently of what's visibly displayed below it. `StatsRow` internally calls
+  `sortedMonths`/`allTracks`/`artistTotals` with that one `options` object - `sortedMonths` for the
+  month count instead of the unscoped `listsForPerson` it used before, specifically so "Months
+  tracked" respects `startMonth`/`endMonth` too. `Timeline` (cumulative line chart with per-artist
+  toggle legend), `GenreLeaderboard`/
   `GenreTimeline` (the same two shapes but ranking major genres instead of artists — reuse
   `Leaderboard.module.css`/`Timeline.module.css` directly rather than duplicating styles, since the
   layouts are identical), `Replay` (month-by-month animated reveal), `Shared` (songs that have
   appeared in every person's top 25 at some point — see `sharedSongs` in `stats.ts`; unlike every
-  other view this one is NOT scoped to the active person, so `App.tsx` skips rendering `StatsRow` for
-  it (`NO_STATS_ROW_VIEWS`) — but it DOES still receive `scoringOptions` and show the
+  other view this one is NOT scoped to the active person, and (like every view besides Leaderboard)
+  has no `StatsRow` either — but it DOES still receive `scoringOptions` and show the
   `includeDuplicates`/`uniteRelatedProjects`/`showProducers`/`showDuos` checkboxes (`Shared` is not in
   `NO_TOGGLES_VIEWS`, only `Replay` is, since Replay always shows literal `creditedArtists` and never
   looks at `scoringArtists` at all) — the three identity checkboxes change who gets credit on a shared
