@@ -95,6 +95,7 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Southern Hip-Hop": ["Hip-Hop"],
   "Abstract Hip-Hop": ["Hip-Hop"],
   "Experimental Hip-Hop": ["Hip-Hop"],
+  "Trap": ["Hip-Hop"],
   "Jazz Rap": ["Hip-Hop"],
   "Cloud Rap": ["Hip-Hop"],
   "Boom Bap": ["Hip-Hop"],
