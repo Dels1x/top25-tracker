@@ -34,6 +34,11 @@ export const KNOWN_PRODUCERS: ReadonlySet<string> = new Set([
   "Zaytoven",
   "Southside",
   "Tay Keith",
+  "Nicholas Craven",
+  "Messiah Musik",
+  "Sterling Toles",
+  "Danger Mouse",
+  "Controller 6"
   // Add more here only when the name is unambiguously producer-only across
   // every track it appears on in this dataset - check before adding, the
   // same way J Dilla/El-P were checked and excluded.
