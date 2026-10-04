@@ -60,6 +60,8 @@ export const GENRES = [
   "Emo",
   "Neo-Psychedelia",
   "Metal",
+  "Alternative Metal",
+  "Heavy Metal",
   "Jazz",
   "R&B/Soul",
   "Folk",
@@ -121,6 +123,8 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Dream Pop": ["Pop"],
   "Glitch Pop": ["Pop"],
   Indietronica: ["Electronic", "Pop"],
+  "Alternative Metal": ["Metal"],
+  "Heavy Metal": ["Metal"]
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -513,9 +517,9 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Taeko Onuki": ["Pop"],
 
   // ===== Metal =====
-  "Black Sabbath": ["Metal", "Rock"],
-  Deftones: ["Metal", "Shoegaze"],
-  "Loathe": ["Metal", "Shoegaze"],
+  "Black Sabbath": ["Metal", "Rock", "Heavy Metal"],
+  Deftones: ["Metal", "Shoegaze", "Alternative Metal"],
+  "Loathe": ["Metal", "Shoegaze", "Alternative Metal"],
   "Team Sleep": ["Metal", "Shoegaze"],
   "Swans": ["Post-Rock"],
   "Robin Callaway": ["Shoegaze", "Post-Rock"],
