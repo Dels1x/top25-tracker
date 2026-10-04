@@ -99,7 +99,7 @@ export const GENRES = [
     "Hyperpop",
     "Synthpop",
     "Darkwave",
-    "Indie Pop"
+    "Indie Pop",
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -585,7 +585,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Phil Elverum": ["Folk", "Rock", "Indie Folk", "Psychedelic Folk", "Slacker Rock", "Singer-Songwriter"],
   Slowdive: ["Shoegaze"],
   "my bloody valentine": ["Shoegaze"],
-  "Beach House": ["Shoegaze", "Pop"],
+  "Beach House": ["Dream Pop", "Indie Pop", "Neo-Psychedelia"],
   Panchiko: ["Shoegaze", "Indie Rock"],
   "Red House Painters": ["Slowcore", "Post-Rock"],
   "Have A Nice Life": ["Shoegaze", "Post-Rock", "Post-Punk", "Gothic Rock"],
