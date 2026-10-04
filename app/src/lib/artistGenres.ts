@@ -104,7 +104,8 @@ export const GENRES = [
     "Midwest Emo",
     "Alternative Hip-Hop",
     "Lo-Fi Hip-Hop",
-    "Drumless"
+    "Drumless",
+    "Alternative Trap"
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -189,7 +190,8 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Midwest Emo": ["Emo"],
   "Alternative Hip-Hop": ["Hip-Hop"],
   "Lo-Fi Hip-Hop": ["Alternative Hip-Hop"],
-  "Drumless": ["Hip-Hop"]
+  "Drumless": ["Hip-Hop"],
+  "Alternative Trap": ["Alternative Hip-Hop", "Trap"]
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -424,7 +426,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Tyler, The Creator": ["Hip-Hop", "West Coast Hip-Hop", "Pop Rap"],
   Logic: ["Hip-Hop", "Jazz Rap", "Pop Rap"],
   "Domo Genesis": ["West Coast Hip-Hop"],
-  "Denzel Curry": ["Southern Hip-Hop"],
+  "Denzel Curry": ["Southern Hip-Hop", "Alternative Trap"],
   "Curly Castro": ["East Coast Hip-Hop", "Abstract Hip-Hop", "Experimental Hip-Hop"],
   "Mac Miller": ["Hip-Hop", "Jazz Rap", "Pop Rap"],
   "Jay Rock": ["West Coast Hip-Hop"],
@@ -502,7 +504,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "McKinley Dixon": ["Abstract Hip-Hop", "Jazz Rap"],
   "Sampha": ["R&B/Soul", "Electronic"],
   "Quadeca": ["Indietronica"],
-  "IDK": ["Hip-Hop", "Trap"],
+  "IDK": ["Hip-Hop", "Trap", "Alternative Trap"],
   "MAVI": ["Abstract Hip-Hop", "Jazz Rap"],
   "Saba": ["Jazz Rap"],
   "Smino": ["Hip-Hop", "R&B/Soul", "Pop Rap"],
@@ -513,7 +515,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Dreamville": ["Hip-Hop"],
 
   // ===== Rap/metal/rock crossover acts (own entry, not major-genre inferred) =====
-  "JID": ["Southern Hip-Hop"],
+  "JID": ["Southern Hip-Hop", "Alternative Trap"],
   "Joyner Lucas": ["Hip-Hop"],
   "Eminem": ["East Coast Hip-Hop", "Pop Rap"],
   "Bad Meets Evil": ["East Coast Hip-Hop"],
