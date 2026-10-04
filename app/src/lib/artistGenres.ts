@@ -147,7 +147,7 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Alternative Rock": ["Rock"],
   Grunge: ["Alternative Rock"],
   Emo: ["Rock"],
-  "Neo-Psychedelia": ["Rock"],
+  "Neo-Psychedelia": ["Alternative Rock"],
   Shoegaze: ["Alternative Rock", "Indie Rock"],
   "Post-Rock": ["Rock"],
   "Math Rock": ["Rock"],
