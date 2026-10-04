@@ -32,7 +32,7 @@ function App() {
   const [view, setView] = usePersistedState<View>("top25tracker:view", "leaderboard");
   const [includeDuplicates, setIncludeDuplicates] = usePersistedState(
     "top25tracker:includeDuplicates",
-    true
+    false
   );
   const [uniteRelatedProjects, setUniteRelatedProjects] = usePersistedState(
     "top25tracker:uniteRelatedProjects",
