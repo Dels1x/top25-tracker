@@ -85,6 +85,7 @@ export const GENRES = [
   "Ambient",
   "Disco",
   "Soft Rock",
+  "Experimental Rock",
   "Other",
 ] as const;
 
@@ -130,6 +131,7 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   Slowcore: ["Rock"],
   "Post-Punk": ["Rock"],
   "Gothic Rock": ["Rock"],
+  "Experimental Rock": ["Rock"],
   "Trip Hop": ["Electronic"],
   Ambient: ["Electronic"],
   "Noise Pop": ["Pop"],
@@ -546,7 +548,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   Deftones: ["Metal", "Shoegaze", "Alternative Metal"],
   "Loathe": ["Metal", "Shoegaze", "Alternative Metal"],
   "Team Sleep": ["Metal", "Shoegaze"],
-  "Swans": ["Post-Rock"],
+  "Swans": ["Post-Rock", "Gothic Rock", "Post-Punk", "Experimental Rock"],
   "Robin Callaway": ["Shoegaze", "Post-Rock"],
   "Foals": ["Indie Rock"],
   "bôa": ["Alternative Rock", "Indie Rock"],
