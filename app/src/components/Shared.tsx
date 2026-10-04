@@ -73,9 +73,17 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
     () => sharedSongArtistTotals(dataset, { ...scoringOptions, genreFilter: selectedGenres }),
     [dataset, scoringOptions, selectedGenres]
   );
+  // Color follows the ARTIST, not their current rank under the active genre
+  // filter - built from the unfiltered ordering (identity toggles only, no
+  // genreFilter) so toggling a genre checkbox never reshuffles which color
+  // an artist gets, same fix as Leaderboard/Timeline/the genre views.
+  const stableArtistOrder = useMemo(
+    () => sharedSongArtistTotals(dataset, scoringOptions).map((t) => t.artist),
+    [dataset, scoringOptions]
+  );
   const artistColorMap = useMemo(
-    () => buildArtistColorMap(artistTotals.map((t) => t.artist)),
-    [artistTotals]
+    () => buildArtistColorMap(stableArtistOrder),
+    [stableArtistOrder]
   );
   const maxArtistTotal = artistTotals[0]?.total ?? 1;
   const visibleArtistTotals = artistTotals.slice(0, artistLimit);

@@ -62,7 +62,19 @@ export function GenreTimeline({ dataset, person, scoringOptions }: GenreTimeline
     [dataset, person, genreOptions]
   );
   const allGenres = useMemo(() => totals.map((t) => t.genre), [totals]);
-  const colorMap = useMemo(() => buildArtistColorMap(allGenres), [allGenres]);
+  // Color follows the GENRE, not its current rank within the selected range
+  // - built from the all-time ordering so narrowing the range never
+  // reshuffles which color a genre's line gets, same fix as Leaderboard/
+  // Timeline/GenreLeaderboard. `allGenres` itself stays range-scoped (it
+  // drives the legend/default-shown set, which SHOULD reflect the range).
+  const stableOrder = useMemo(
+    () =>
+      genreTotals(dataset, person, { includeDuplicates: scoringOptions.includeDuplicates }).map(
+        (t) => t.genre
+      ),
+    [dataset, person, scoringOptions.includeDuplicates]
+  );
+  const colorMap = useMemo(() => buildArtistColorMap(stableOrder), [stableOrder]);
 
   const [shown, setShown] = usePersistedSetState(
     `top25tracker:genreTimelineShown:${person}`,

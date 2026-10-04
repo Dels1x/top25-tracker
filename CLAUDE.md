@@ -148,7 +148,24 @@ There is no test runner configured yet.
   tabs now, but kept in the data in case it's useful later).
 - **`app/src/lib/colors.ts`** — assigns each artist a fixed categorical color slot by stable rank order
   (see the dataviz skill's "color follows the entity, never its rank" rule) — a toggled-off artist must
-  never cause the remaining artists to repaint.
+  never cause the remaining artists to repaint. `buildArtistColorMap(orderedArtists)` itself just
+  zips a name list against color slots in order - it has no opinion on what that list's ordering
+  actually IS, so every caller is responsible for passing a STABLE ordering, not whatever's currently
+  visible/filtered. This was a real bug until it was fixed: `Leaderboard`/`Timeline`/
+  `GenreLeaderboard`/`GenreTimeline`/`Shared` used to build their color map straight from their own
+  range/genre/rank/weight-filtered `totals` - so changing the date range, toggling a genre checkbox,
+  or turning on "weight by placement" (see `useWeightByRank` below) could reorder that list and
+  silently reassign colors out from under artists that never moved, breaking the "can tell an artist
+  apart by color" property the whole point of color-coding by entity is for. Fixed by giving each of
+  those 5 components a separate `stableOrder` memo - the same kind of all-time totals call
+  (`artistTotals`/`genreTotals`/`sharedSongArtistTotals`) but with ONLY the identity-affecting options
+  (`scoringOptions`, i.e. unite/producers/duos/includeDuplicates - never `rangeOptions`/`genreFilter`/
+  `maxRank`/`weightByRank`) - and feeding `buildArtistColorMap` that instead of the view's own
+  (possibly narrower, possibly differently-ordered) `totals`. An all-time, identity-toggles-only list
+  is always a superset of any filtered view's artists/genres, so `colorMap.get()` never misses - a
+  filter can only ever narrow or reorder who's VISIBLE, never introduce someone who isn't in the
+  stable universe to begin with. `Compare` was already fine (keys its map on `dataset.people`
+  directly, which is small and static) and didn't need this fix.
 - **`app/src/components/`** — `Leaderboard` (songs-per-artist bar list, with a `GenreFilter` panel and
   a `RankFilter` Top 1/3/5/10/25 control — both below, see their own entries — and, above the heading,
   the `StatsRow` tiles: Months tracked / Unique artists / Unique songs / Top artist).

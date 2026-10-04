@@ -64,7 +64,18 @@ export function GenreLeaderboard({ dataset, person, scoringOptions }: GenreLeade
     () => genreTotals(dataset, person, genreOptions),
     [dataset, person, genreOptions]
   );
-  const colorMap = useMemo(() => buildArtistColorMap(totals.map((t) => t.genre)), [totals]);
+  // Color follows the GENRE, not its current rank within the selected range
+  // - built from the all-time ordering (includeDuplicates only, no range) so
+  // narrowing the range never reshuffles which color a genre gets, same fix
+  // as Leaderboard/Timeline.
+  const stableOrder = useMemo(
+    () =>
+      genreTotals(dataset, person, { includeDuplicates: scoringOptions.includeDuplicates }).map(
+        (t) => t.genre
+      ),
+    [dataset, person, scoringOptions.includeDuplicates]
+  );
+  const colorMap = useMemo(() => buildArtistColorMap(stableOrder), [stableOrder]);
   const max = totals[0]?.total ?? 1;
 
   const isExpandedStillPresent = useMemo(

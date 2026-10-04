@@ -49,7 +49,15 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
     [dataset, person, scoringOptions, rangeOptions]
   );
   const allArtists = useMemo(() => totals.map((t) => t.artist), [totals]);
-  const colorMap = useMemo(() => buildArtistColorMap(allArtists), [allArtists]);
+  // Color follows the ARTIST, not their current rank within the selected
+  // range - built from the all-time ordering (identity toggles only, no
+  // range) so narrowing/widening the range never reshuffles which color an
+  // artist's line gets, the same fix applied to Leaderboard.
+  const stableOrder = useMemo(
+    () => artistTotals(dataset, person, scoringOptions).map((t) => t.artist),
+    [dataset, person, scoringOptions]
+  );
+  const colorMap = useMemo(() => buildArtistColorMap(stableOrder), [stableOrder]);
 
   // Keyed per person - each person has a different artist pool, so "shown"
   // selections shouldn't bleed across people. Defaults to the top N artists

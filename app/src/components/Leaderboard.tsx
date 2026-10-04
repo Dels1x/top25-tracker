@@ -86,9 +86,20 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
     () => artistTotals(dataset, person, combinedOptions),
     [dataset, person, combinedOptions]
   );
+  // Color must follow the ARTIST, never their current rank in this filtered
+  // view - so the color map is built from a STABLE ordering (all-time totals
+  // for this person, under the identity toggles only - never range/genre/
+  // rank/weight, which all reshuffle order without changing who the artist
+  // is) rather than from `totals` itself. Without this, swapping the range
+  // or turning on "weight by placement" would reshuffle bar colors right
+  // along with the rows, which defeats the point of color-coding by artist.
+  const stableOrder = useMemo(
+    () => artistTotals(dataset, person, scoringOptions),
+    [dataset, person, scoringOptions]
+  );
   const colorMap = useMemo(
-    () => buildArtistColorMap(totals.map((t) => t.artist)),
-    [totals]
+    () => buildArtistColorMap(stableOrder.map((t) => t.artist)),
+    [stableOrder]
   );
   const max = totals[0]?.total ?? 1;
   const visible = totals.slice(0, limit);
