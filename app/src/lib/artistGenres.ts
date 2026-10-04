@@ -547,7 +547,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "U2": ["Rock"],
   "Elton John": ["Rock", "Pop"],
   "Frank Ocean": ["R&B/Soul"],
-  "Phoebe Bridgers": ["Rock", "Folk"],
+  "Phoebe Bridgers": ["Indie Folk", "Singer-Songwriter", "Indie Rock"],
   "Rex Orange County": ["Pop", "R&B/Soul"],
   "Bon Iver": ["Folk", "Rock"],
   "Jack White": ["Rock"],
