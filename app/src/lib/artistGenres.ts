@@ -101,6 +101,7 @@ export const GENRES = [
     "Synthpop",
     "Darkwave",
     "Indie Pop",
+    "Midwest Emo"
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -182,6 +183,7 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Synthpop": ["Pop", "Electronic"],
   "Darkwave": ["Rock"],
   "Indie Pop": ["Pop"],
+  "Midwest Emo": ["Emo"]
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -622,8 +624,8 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Sweet Trip": ["Dream Pop", "Electronic"],
   "Della Zyr": ["Shoegaze", "Dream Pop"],
   Fishmans: ["Neo-Psychedelia", "Dream Pop", "Post-Rock"],
-  "Newfound Interest in Connecticut": ["Emo", "Post-Rock"],
-  "On The Might Of Princes": ["Emo", "Post-Rock"],
+  "Newfound Interest in Connecticut": ["Midwest Emo", "Post-Rock"],
+  "On The Might Of Princes": ["Midwest Emo", "Post-Rock"],
 
   // ===== Trip Hop / downtempo / electronic =====
   "Massive Attack": ["Trip Hop"],
