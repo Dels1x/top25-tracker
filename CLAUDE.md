@@ -111,15 +111,31 @@ There is no test runner configured yet.
 - **`app/src/lib/colors.ts`** — assigns each artist a fixed categorical color slot by stable rank order
   (see the dataviz skill's "color follows the entity, never its rank" rule) — a toggled-off artist must
   never cause the remaining artists to repaint.
-- **`app/src/components/`** — `Leaderboard` (songs-per-artist bar list), `Timeline` (cumulative line
-  chart with per-artist toggle legend), `GenreLeaderboard`/`GenreTimeline` (the same two shapes but
-  ranking major genres instead of artists — reuse `Leaderboard.module.css`/`Timeline.module.css`
-  directly rather than duplicating styles, since the layouts are identical), `Replay` (month-by-month
-  animated reveal), `Shared` (songs that have appeared in every person's top 25 at some point — see
-  `sharedSongs` in `stats.ts`; unlike every other view this one is NOT scoped to the active person, so
-  `App.tsx` skips rendering `StatsRow`/the scoring-option checkboxes for it), plus `Layout` / `StatsRow`
-  / `StatTile` shell pieces. `App.tsx` just wires person/view selection state and imports `data.json`
-  directly (no runtime CSV parsing, no backend/API).
+- **`app/src/components/`** — `Leaderboard` (songs-per-artist bar list, with a `GenreFilter` panel —
+  see below), `Timeline` (cumulative line chart with per-artist toggle legend), `GenreLeaderboard`/
+  `GenreTimeline` (the same two shapes but ranking major genres instead of artists — reuse
+  `Leaderboard.module.css`/`Timeline.module.css` directly rather than duplicating styles, since the
+  layouts are identical), `Replay` (month-by-month animated reveal), `Shared` (songs that have
+  appeared in every person's top 25 at some point — see `sharedSongs` in `stats.ts`; unlike every
+  other view this one is NOT scoped to the active person, so `App.tsx` skips rendering `StatsRow`/the
+  scoring-option checkboxes for it), plus `Layout` / `StatsRow` / `StatTile` shell pieces. `App.tsx`
+  just wires person/view selection state and imports `data.json` directly (no runtime CSV parsing, no
+  backend/API).
+- **`app/src/components/GenreFilter.tsx`** + **`app/src/lib/useGenreFilter.ts`** — the Leaderboard's
+  genre-filter checkboxes: one row per top-level genre from `GENRE_HIERARCHY`
+  (`artistGenres.ts`), each with a disclosure arrow (only if it has subgenres) expanding a list of
+  child checkboxes. Checking/unchecking a top-level genre cascades to ALL its subgenres; a subgenre
+  can still be toggled independently once its parent is checked. Multiple genres selected = union (OR)
+  - showing Hip-Hop + Rock shows anyone in either, not just crossover artists. Defaults to everything
+  selected (matches the unfiltered leaderboard) - persisted per person via `usePersistedSetState`.
+  `StatsOptions.genreFilter` (a `Set<string>`, consumed in `allTracks`) is `undefined` for "no filter"
+  and an explicit empty `Set` for "nothing selected, show nobody" - these are deliberately different,
+  don't conflate them. `GENRE_HIERARCHY` also carries a synthetic `UNTAGGED_GENRE` ("Unknown/Untagged")
+  entry with no subgenres, so untagged artists get their own checkbox too, rather than always being
+  shown/hidden unconditionally - when computing "select all", include `UNTAGGED_GENRE` alongside every
+  real `GENRES` entry, or an "all checked" selection will silently exclude unclassified artists (this
+  was a real bug caught during review - verify count parity with the truly-unfiltered case after any
+  change here).
 - Styling is CSS Modules per-component, with design tokens (colors, surfaces) as CSS custom properties
   in `src/index.css`, following the project's dataviz skill palette for both light and dark mode.
 - **`app/src/lib/usePersistedState.ts`** — `usePersistedState`/`usePersistedSetState` wrap `useState`

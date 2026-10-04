@@ -4,7 +4,9 @@ import type { Dataset } from "../data/types";
 import { artistTotals, sortedMonths, tracksForArtist, type StatsOptions } from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
 import { useMonthRange } from "../lib/useMonthRange";
+import { useGenreFilter } from "../lib/useGenreFilter";
 import { RangePicker } from "./RangePicker";
+import { GenreFilter } from "./GenreFilter";
 import styles from "./Leaderboard.module.css";
 
 interface LeaderboardProps {
@@ -40,10 +42,22 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
   const availableMonths = useMemo(() => sortedMonths(dataset, person), [dataset, person]);
   const { startIndex, endIndex, lastIndex, rangeOptions, handleSliderChange, applyPreset } =
     useMonthRange(availableMonths, `leaderboard:${person}`);
+  const {
+    selected: selectedGenres,
+    toggleTopLevel,
+    toggleSubgenre,
+    selectAll: selectAllGenres,
+    selectNone: selectNoneGenres,
+  } = useGenreFilter(person);
 
   const totals = useMemo(
-    () => artistTotals(dataset, person, { ...scoringOptions, ...rangeOptions }),
-    [dataset, person, scoringOptions, rangeOptions]
+    () =>
+      artistTotals(dataset, person, {
+        ...scoringOptions,
+        ...rangeOptions,
+        genreFilter: selectedGenres,
+      }),
+    [dataset, person, scoringOptions, rangeOptions, selectedGenres]
   );
   const colorMap = useMemo(
     () => buildArtistColorMap(totals.map((t) => t.artist)),
@@ -52,11 +66,14 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
   const max = totals[0]?.total ?? 1;
   const visible = totals.slice(0, limit);
 
-  // Changing the range or scoring options changes which artists qualify at
-  // all - start back at the top rather than keep a "show more" depth from a
-  // different filtered view.
+  // Changing the range, scoring options, or genre filter changes which
+  // artists qualify at all - start back at the top rather than keep a "show
+  // more" depth from a different filtered view.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => setLimit(PAGE_SIZE), [person, scoringOptions, rangeOptions]);
+  useEffect(
+    () => setLimit(PAGE_SIZE),
+    [person, scoringOptions, rangeOptions, selectedGenres]
+  );
 
   // If the range narrows and the expanded artist drops out of it entirely,
   // close the panel rather than show an empty "songs" list for them.
@@ -126,6 +143,14 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
         lastIndex={lastIndex}
         onSliderChange={handleSliderChange}
         onPreset={applyPreset}
+      />
+
+      <GenreFilter
+        selected={selectedGenres}
+        onToggleTopLevel={toggleTopLevel}
+        onToggleSubgenre={toggleSubgenre}
+        onSelectAll={selectAllGenres}
+        onSelectNone={selectNoneGenres}
       />
 
       <ol className={styles.list}>

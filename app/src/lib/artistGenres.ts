@@ -118,6 +118,36 @@ const PARENT_GENRE: Record<string, Genre[]> = {
 /** Shown for a track with no artist we can classify at all. */
 export const UNTAGGED_GENRE = "Unknown/Untagged";
 
+/**
+ * Every top-level genre (one with no parent of its own - i.e. not a key in
+ * PARENT_GENRE), in GENRES order, with the list of its direct subgenres (if
+ * any), derived from PARENT_GENRE. Powers the Leaderboard's genre filter UI:
+ * one checkbox per top-level genre, with its subgenres as an expandable
+ * list of child checkboxes underneath. A genre with no subgenres (Jazz,
+ * Metal, R&B/Soul, Reggae, Other, ...) just has an empty array - no
+ * disclosure arrow needed for those in the UI.
+ */
+export const GENRE_HIERARCHY: Array<{ genre: string; subgenres: Genre[] }> = (() => {
+  const childrenByParent = new Map<Genre, Genre[]>();
+  for (const [sub, parents] of Object.entries(PARENT_GENRE) as Array<[Genre, Genre[]]>) {
+    for (const p of parents) {
+      const list = childrenByParent.get(p) ?? [];
+      list.push(sub);
+      childrenByParent.set(p, list);
+    }
+  }
+  const isSubgenre = new Set(Object.keys(PARENT_GENRE));
+  const topLevel = GENRES.filter((g) => !isSubgenre.has(g)).map((g) => ({
+    genre: g,
+    subgenres: childrenByParent.get(g) ?? [],
+  }));
+  // Unknown/Untagged isn't a real Genre (it's a separate fallback bucket for
+  // tracks with no classifiable artist), but it's included here too so the
+  // Leaderboard's genre filter can show/hide untagged artists the same way
+  // as any other top-level genre, with no subgenres of its own.
+  return [...topLevel, { genre: UNTAGGED_GENRE, subgenres: [] }];
+})();
+
 export const ARTIST_GENRES: Record<string, Genre[]> = {
   // ===== Hip-Hop (general / production-forward, no strong regional lean) =====
   "The Alchemist": ["Hip-Hop"],

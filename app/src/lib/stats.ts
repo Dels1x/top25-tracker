@@ -107,6 +107,15 @@ export interface StatsOptions {
    * literally on the record, regardless of this setting.
    */
   showDuos?: boolean;
+  /**
+   * When set, restricts to tracks where at least one scoringArtist is
+   * classified (via genresForArtists) under one of these genres - powers
+   * the Leaderboard's genre filter checkboxes. undefined/omitted means no
+   * filter (show everyone), matching the "all checked" default in the UI -
+   * an empty Set means "nothing selected", which correctly shows nobody
+   * rather than silently falling back to unfiltered.
+   */
+  genreFilter?: Set<string>;
 }
 
 function inRange(month: string, options?: StatsOptions): boolean {
@@ -161,6 +170,11 @@ export function allTracks(
     if (person && list.person !== person) continue;
     if (!inRange(list.month, options)) continue;
     for (const track of list.tracks) {
+      if (options?.genreFilter) {
+        const trackGenres = genresForArtists(track.scoringArtists);
+        const matches = trackGenres.some((g) => options.genreFilter!.has(g));
+        if (!matches) continue;
+      }
       let scoringArtists = track.scoringArtists;
       if (options?.uniteRelatedProjects) {
         scoringArtists = Array.from(new Set(scoringArtists.map(uniteRelatedProject)));

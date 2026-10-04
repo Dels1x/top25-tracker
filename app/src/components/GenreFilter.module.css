@@ -1,0 +1,141 @@
+.wrap {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.headRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bulkActions {
+  display: flex;
+  gap: 6px;
+}
+
+.bulkButton {
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  padding: 4px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.bulkButton:hover {
+  color: var(--text-primary);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 2px 12px;
+  align-items: start;
+}
+
+.item {
+  min-width: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.disclosure {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  width: 18px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.disclosureSpacer {
+  width: 18px;
+  flex-shrink: 0;
+}
+
+.disclosureArrow {
+  font-size: 10px;
+  transition: transform 0.18s ease;
+  transform: rotate(-90deg);
+  display: inline-block;
+}
+
+.disclosureArrow[data-open="true"] {
+  transform: rotate(0deg);
+}
+
+.checkboxLabel,
+.subCheckboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+  padding: 2px 0;
+  min-width: 0;
+}
+
+.subCheckboxLabel {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.checkboxLabel span,
+.subCheckboxLabel span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checkbox {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--series-1);
+  cursor: pointer;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.subgenreWrap {
+  overflow: hidden;
+}
+
+.subgenreList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 2px 0 4px 20px;
+}
+
+@media (max-width: 560px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
