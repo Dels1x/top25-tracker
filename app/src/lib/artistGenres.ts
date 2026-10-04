@@ -87,6 +87,9 @@ export const GENRES = [
   "Soft Rock",
   "Experimental Rock",
   "Other",
+    "Indie Folk",
+    "Psychedelic Folk",
+    "Slacker Rock"
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -141,7 +144,10 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Alternative Metal": ["Metal"],
   "Heavy Metal": ["Metal"],
   "Nu Jazz": ["Jazz"],
-  "Disco": ["R&B/Soul"]
+  "Disco": ["R&B/Soul"],
+  "Indie Folk": ["Folk"],
+  "Psychedelic Folk": ["Folk"],
+  "Slacker Rock": ["Rock"]
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -556,7 +562,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   // ===== Shoegaze / Slowcore / Post-Rock / Ambient family =====
   "The Microphones": ["Folk", "Rock"],
   "Mount Eerie": ["Folk", "Rock"],
-  "Phil Elverum": ["Folk", "Rock"],
+  "Phil Elverum": ["Folk", "Rock", "Indie Folk", "Psychedelic Folk", "Slacker Rock"],
   Slowdive: ["Shoegaze"],
   "my bloody valentine": ["Shoegaze"],
   "Beach House": ["Shoegaze", "Pop"],
