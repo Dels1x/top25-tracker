@@ -347,7 +347,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Jay Rock": ["West Coast Hip-Hop"],
   "Ab-Soul": ["West Coast Hip-Hop"],
   "Isaiah Rashad": ["Southern Hip-Hop", "Jazz Rap"],
-  "Baby Keem": ["West Coast Hip-Hop"],
+  "Baby Keem": ["West Coast Hip-Hop", "Pop Rap"],
   "Jay Worthy": ["West Coast Hip-Hop", "Gangsta Rap"],
   MED: ["West Coast Hip-Hop", "Abstract Hip-Hop"],
   Blu: ["West Coast Hip-Hop", "Abstract Hip-Hop", "Jazz Rap"],
