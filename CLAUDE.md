@@ -75,9 +75,19 @@ There is no test runner configured yet.
   can genuinely have more than one genre (Phil Elverum -> Folk AND Rock across his two projects;
   Deftones -> Metal AND Shoegaze) - not a mistake to "clean up". `GENRES` includes both major genres
   and subgenres (regional/style hip-hop - East Coast, West Coast, Southern, Abstract, Experimental,
-  Conscious, Gangsta Rap, Coke Rap, Chipmunk Soul; rock/other - Art Rock, Alternative Rock, Grunge,
-  Emo, Neo-Psychedelia; pop/electronic - Noise Pop, Dream Pop, Glitch Pop, Indietronica; Shoegaze,
-  Slowcore, Post-Rock, Trip Hop, Ambient).
+  Jazz Rap, Conscious, Gangsta Rap, Coke Rap, Chipmunk Soul; rock/other - Art Rock, Alternative Rock,
+  Grunge, Emo, Neo-Psychedelia; pop/electronic - Noise Pop, Dream Pop, Glitch Pop, Indietronica;
+  Shoegaze, Slowcore, Post-Rock, Trip Hop, Ambient).
+  **The "Jazz" major genre is reserved for actual jazz musicians only** (Robert Glasper, Miles Davis,
+  Thundercat, etc.) - a hip-hop artist whose sound samples/evokes jazz (Madlib, Nujabes, A Tribe
+  Called Quest, Logic, Blu & Exile, McKinley Dixon, Saba, ...) gets the "Jazz Rap" SUBGENRE instead,
+  which rolls up to "Hip-Hop" only, never to "Jazz" - don't blur this line, it was deliberately drawn
+  this way so the Jazz bucket stays reliable (same reasoning as dropping Spotify's noisy "jazz rap"
+  tag earlier). Similarly, "Abstract Hip-Hop" and "Experimental Hip-Hop" are related but distinct -
+  an artist can have one, the other, or both (Danny Brown has both; JPEGMAFIA and redveil are
+  Experimental only, not Abstract; Saba/Isaiah Rashad/Vince Staples are Jazz Rap, not Abstract) - check
+  with the user before assuming which one(s) apply to a given artist, the line between them is a
+  judgment call they've been actively refining.
   **`PARENT_GENRE` auto-expands every subgenre to its parent major genre(s) inside `genresForArtists`**
   (e.g. "Abstract Hip-Hop" -> also "Hip-Hop"; "Dream Pop" -> also "Pop"; "Shoegaze"/"Post-Rock"/"Art
   Rock"/etc. -> also "Rock") - this means an `ARTIST_GENRES` entry should list ONLY the most specific
