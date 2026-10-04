@@ -87,6 +87,7 @@ export const GROUP_MEMBERS: Record<string, string[]> = {
   "Armand Hammer": ["billy woods", "E L U C I D"],
   "Run The Jewels": ["Killer Mike", "El-P"],
   "Bad Meets Evil": ["Eminem", "Royce Da 5'9\""],
+  "Stove God Cook$, Roc Marciano": ["Stove God Cooks", "Roc Marciano"],
   // The Roots have had a large, shifting lineup over the years - only their
   // MC/frontman is expanded here, not every past member, same pattern as
   // the other duo-style entries above.
