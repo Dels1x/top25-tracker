@@ -54,6 +54,7 @@ export const GENRES = [
   "Chipmunk Soul",
   "Rock",
   "Art Rock",
+  "Indie Rock",
   "Alternative Rock",
   "Grunge",
   "Emo",
@@ -110,6 +111,7 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Neo-Psychedelia": ["Rock"],
   Shoegaze: ["Rock"],
   "Post-Rock": ["Rock"],
+  "Indie Rock": ["Rock"],
   Slowcore: ["Folk"],
   "Trip Hop": ["Electronic"],
   Ambient: ["Electronic"],
@@ -230,6 +232,9 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   Prodigy: ["East Coast Hip-Hop", "Boom Bap"],
   Havoc: ["East Coast Hip-Hop", "Boom Bap"],
   "Big Noyd": ["East Coast Hip-Hop", "Boom Bap"],
+  "Big L": ["East Coast Hip-Hop", "Boom Bap"],
+  "Shabazz Palaces": ["Abstract Hip-Hop", "Experimental Hip-Hop"],
+  "Sean Price": ["Boom Bap", "East Coast Hip-Hop"],
   "Gang Starr": ["East Coast Hip-Hop", "Boom Bap"],
   Guru: ["East Coast Hip-Hop", "Boom Bap"],
   "Black Thought": ["East Coast Hip-Hop", "Conscious Hip-Hop", "Jazz Rap"],
@@ -254,6 +259,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Lil Durk": ["Hip-Hop", "Trap"],
   "Kirk Knight": ["East Coast Hip-Hop"],
   "Nightmargin": ["Ambient"],
+  "what is your name?": ["Shoegaze", "Post-Rock", "Indie Rock"],
   "CJ Fly": ["East Coast Hip-Hop"],
   "Chuck Strangers": ["East Coast Hip-Hop"],
   "Dyemond Lewis": ["East Coast Hip-Hop"],
@@ -435,6 +441,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Messiah Musik": ["Hip-Hop"], // producer
   "Controller 7": ["Hip-Hop"], // producer
   "William Hutson": ["Abstract Hip-Hop"],
+  "Nickelus F": ["Boom Bap", "Abstract Hip-Hop"],
   "Jane Remover": [
     "Experimental Hip-Hop",
     "Noise Pop",
@@ -499,7 +506,12 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   // ===== Metal =====
   "Black Sabbath": ["Metal", "Rock"],
   Deftones: ["Metal", "Shoegaze"],
+  "Loathe": ["Metal", "Shoegaze"],
   "Team Sleep": ["Metal", "Shoegaze"],
+  "Swans": ["Post-Rock"],
+  "Robin Callaway": ["Shoegaze", "Post-Rock"],
+  "Foals": ["Indie Rock"],
+  "bôa": ["Alternative Rock", "Indie Rock"],
 
   // ===== Shoegaze / Slowcore / Post-Rock / Ambient family =====
   "The Microphones": ["Folk", "Rock"],
@@ -508,7 +520,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   Slowdive: ["Shoegaze"],
   "my bloody valentine": ["Shoegaze"],
   "Beach House": ["Shoegaze", "Pop"],
-  Panchiko: ["Shoegaze", "Slowcore"],
+  Panchiko: ["Shoegaze", "Indie Rock"],
   "Red House Painters": ["Slowcore"],
   "Have A Nice Life": ["Shoegaze", "Post-Rock"],
   Slint: ["Post-Rock"],
