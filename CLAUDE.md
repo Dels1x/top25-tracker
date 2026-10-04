@@ -238,8 +238,28 @@ There is no test runner configured yet.
   tree (`GenreNode = { genre, subgenres: GenreNode[] }`) built from `PARENT_GENRE`, as deep as that
   map implies, and `GenreFilter.tsx` renders it via a single recursive `GenreNodeRow` component rather
   than a hardcoded two-level loop - a 3rd (or deeper) level just works with no component changes.
-  "Punk" is the first real 3-level example: Rock > Punk > {Pop Punk, Post-Punk} (Pop Punk/Post-Punk
-  used to parent directly to Rock; reparented under the new "Punk" node). Checking/unchecking ANY
+  "Punk" was the first real 3-level example: Rock > Punk > {Pop Punk, Post-Punk} (Pop Punk/Post-Punk
+  used to parent directly to Rock; reparented under the new "Punk" node). Two more followed after a
+  deliberate pass looking for other genuinely clean cases (not every candidate qualifies - see the
+  rejected ones noted below): Hip-Hop > Gangsta Rap > Coke Rap (Coke Rap - Rick Ross, Clipse,
+  Westside Gunn, Pusha T... - is a well-established NARRATIVE SUBTYPE specifically of Gangsta Rap,
+  not a sibling genre of it) and Rock > Alternative Rock > Grunge (Grunge is historically classified
+  as Alternative Rock's early-90s Seattle-scene subtype, not a sibling sitting directly under Rock).
+  Both reparentings required cleaning up `ARTIST_GENRES` entries that previously listed the subgenre
+  AND its now-indirect ancestor by hand (e.g. Clipse was `["East Coast Hip-Hop", "Coke Rap",
+  "Gangsta Rap"]`, now just `["East Coast Hip-Hop", "Coke Rap"]` - the "Gangsta Rap" was redundant
+  once "Coke Rap" implies it transitively) - verified every affected artist's FULL resolved genre set
+  (via `genresForArtists`) is unchanged before/after for every multi-tag artist, and that an artist
+  tagged with ONLY the deepest subgenre (Rick Ross was `["Southern Hip-Hop", "Coke Rap"]` with no
+  explicit "Gangsta Rap") now correctly also resolves to "Gangsta Rap" through the new ancestor link -
+  a small accuracy improvement that existed only because the reparenting was done, not a side effect
+  to work around. Other candidates considered and explicitly REJECTED as too soft/speculative to
+  justify restructuring: nesting Cloud Rap under Trap (genuinely its own lane, not clearly a subtype);
+  nesting Dream Pop/Noise Pop/Shoegaze relative to each other (commonly discussed together but not in
+  a clean parent/child way - they're cross-genre siblings, not nestable); nesting Darkwave under
+  Gothic Rock (debatable - Darkwave reads closer to Post-Punk/synth-adjacent than Gothic Rock
+  specifically); nesting Sampledelia under Plunderphonics (a real stylistic link but much softer than
+  Coke Rap/Grunge, left as flat siblings for now). Checking/unchecking ANY
   node (`useGenreFilter`'s single `toggleNode`, replacing the old separate `toggleTopLevel`/
   `toggleSubgenre` pair now that there's no longer a meaningful distinction between "top-level" and
   "nested" toggle behavior) cascades to its ENTIRE descendant subtree, however deep - checking "Rock"
