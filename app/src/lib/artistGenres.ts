@@ -63,6 +63,7 @@ export const GENRES = [
   "Alternative Metal",
   "Heavy Metal",
   "Jazz",
+  "Nu Jazz",
   "R&B/Soul",
   "Folk",
   "Electronic",
@@ -123,7 +124,8 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Glitch Pop": ["Pop"],
   Indietronica: ["Electronic", "Pop"],
   "Alternative Metal": ["Metal"],
-  "Heavy Metal": ["Metal"]
+  "Heavy Metal": ["Metal"],
+  "Nu Jazz": ["Jazz"]
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -266,11 +268,14 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Kirk Knight": ["East Coast Hip-Hop"],
   "Nightmargin": ["Ambient"],
   "what is your name?": ["Shoegaze", "Post-Rock", "Indie Rock"],
+  "Kamaal Williams": ["Nu Jazz"],
   "CJ Fly": ["East Coast Hip-Hop"],
   "Chuck Strangers": ["East Coast Hip-Hop"],
   "Dyemond Lewis": ["East Coast Hip-Hop"],
   "T'nah Apex": ["East Coast Hip-Hop"],
   "A-F-R-O": ["Boom Bap"],
+  "Ashley Johnson": ["Folk"],
+  "John michel": ["Jazz Rap", "Conscious Hip-Hop", "Chipmunk Soul"],
   "Aaron May": ["Jazz Rap"],
   "Boards of Canada": ["Ambient"],
   "Joey Valence & Brae": ["Experimental Hip-Hop", "Boom Bap"],
