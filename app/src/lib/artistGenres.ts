@@ -279,7 +279,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Quelle Chris": ["Abstract Hip-Hop"],
   Jadakiss: ["East Coast Hip-Hop"],
   "Fat Joe": ["East Coast Hip-Hop"],
-  "Young Dolph": ["Southern Hip-Hop", "Trap"],
+  "Young Dolph": ["Southern Hip-Hop", "Trap", "Gangsta Rap"],
   "Key Glock": ["Southern Hip-Hop", "Trap"],
   Lukah: ["Abstract Hip-Hop", "Southern Hip-Hop"],
   "Little Brother": ["East Coast Hip-Hop", "Boom Bap"],
