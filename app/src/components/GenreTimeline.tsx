@@ -41,8 +41,16 @@ function formatMonth(month: string): string {
 export function GenreTimeline({ dataset, person, scoringOptions }: GenreTimelineProps) {
   const availableMonths = useMemo(() => sortedMonths(dataset, person), [dataset, person]);
 
-  const { startIndex, endIndex, lastIndex, rangeOptions, handleSliderChange, applyPreset } =
-    useMonthRange(availableMonths, `genre-timeline:${person}`);
+  const {
+    startIndex,
+    endIndex,
+    lastIndex,
+    rangeOptions,
+    availableYears,
+    handleSliderChange,
+    applyPreset,
+    applyYear,
+  } = useMonthRange(availableMonths, `genre-timeline:${person}`);
 
   const genreOptions: StatsOptions = {
     includeDuplicates: scoringOptions.includeDuplicates,
@@ -107,8 +115,10 @@ export function GenreTimeline({ dataset, person, scoringOptions }: GenreTimeline
         startIndex={startIndex}
         endIndex={endIndex}
         lastIndex={lastIndex}
+        availableYears={availableYears}
         onSliderChange={handleSliderChange}
         onPreset={applyPreset}
+        onYear={applyYear}
       />
 
       <div className={styles.chartArea}>

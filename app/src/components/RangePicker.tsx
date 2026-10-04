@@ -7,8 +7,11 @@ interface RangePickerProps {
   startIndex: number;
   endIndex: number;
   lastIndex: number;
+  /** Distinct calendar years present in this person's data (see useMonthRange) - renders one button per year, e.g. hryash only ever gets 2024/2025/2026, never 2022/2023. */
+  availableYears: string[];
   onSliderChange: (startIndex: number, endIndex: number) => void;
   onPreset: (monthsBack: number | null) => void;
+  onYear: (year: string) => void;
 }
 
 function formatMonth(month: string): string {
@@ -24,8 +27,10 @@ export function RangePicker({
   startIndex,
   endIndex,
   lastIndex,
+  availableYears,
   onSliderChange,
   onPreset,
+  onYear,
 }: RangePickerProps) {
   if (months.length === 0) return null;
 
@@ -49,6 +54,21 @@ export function RangePicker({
           ))}
         </div>
       </div>
+
+      {availableYears.length > 0 && (
+        <div className={styles.years}>
+          {availableYears.map((year) => (
+            <button
+              key={year}
+              type="button"
+              className={styles.yearButton}
+              onClick={() => onYear(year)}
+            >
+              {year}
+            </button>
+          ))}
+        </div>
+      )}
 
       <MonthRangeSlider
         months={months}

@@ -42,8 +42,16 @@ export function GenreLeaderboard({ dataset, person, scoringOptions }: GenreLeade
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
 
   const availableMonths = useMemo(() => sortedMonths(dataset, person), [dataset, person]);
-  const { startIndex, endIndex, lastIndex, rangeOptions, handleSliderChange, applyPreset } =
-    useMonthRange(availableMonths, `genre-leaderboard:${person}`);
+  const {
+    startIndex,
+    endIndex,
+    lastIndex,
+    rangeOptions,
+    availableYears,
+    handleSliderChange,
+    applyPreset,
+    applyYear,
+  } = useMonthRange(availableMonths, `genre-leaderboard:${person}`);
 
   // Only includeDuplicates/startMonth/endMonth are meaningful for genres -
   // the artist-identity options (unite/producers/duos) don't apply.
@@ -116,8 +124,10 @@ export function GenreLeaderboard({ dataset, person, scoringOptions }: GenreLeade
         startIndex={startIndex}
         endIndex={endIndex}
         lastIndex={lastIndex}
+        availableYears={availableYears}
         onSliderChange={handleSliderChange}
         onPreset={applyPreset}
+        onYear={applyYear}
       />
 
       <ol className={styles.list}>

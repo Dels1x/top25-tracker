@@ -43,8 +43,16 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
 
   const availableMonths = useMemo(() => sortedMonths(dataset, person), [dataset, person]);
-  const { startIndex, endIndex, lastIndex, rangeOptions, handleSliderChange, applyPreset } =
-    useMonthRange(availableMonths, `leaderboard:${person}`);
+  const {
+    startIndex,
+    endIndex,
+    lastIndex,
+    rangeOptions,
+    availableYears,
+    handleSliderChange,
+    applyPreset,
+    applyYear,
+  } = useMonthRange(availableMonths, `leaderboard:${person}`);
   const {
     selected: selectedGenres,
     toggleTopLevel,
@@ -167,8 +175,10 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
         startIndex={startIndex}
         endIndex={endIndex}
         lastIndex={lastIndex}
+        availableYears={availableYears}
         onSliderChange={handleSliderChange}
         onPreset={applyPreset}
+        onYear={applyYear}
       />
 
       <RankFilter value={maxRank} onChange={setMaxRank} />

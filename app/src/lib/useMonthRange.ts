@@ -19,6 +19,17 @@ export const RANGE_PRESETS = [
 export function useMonthRange(availableMonths: string[], storageKey: string) {
   const lastIndex = Math.max(availableMonths.length - 1, 0);
 
+  // Distinct calendar years actually present in THIS person's data, in
+  // order - e.g. hryash started in 2024, so their years list is ["2024",
+  // "2025", "2026"] with no 2022/2023 button, even though other people's
+  // lists go back further. Derived from availableMonths (already
+  // person-scoped by the caller), not hardcoded.
+  const availableYears = useMemo(() => {
+    const years = new Set<string>();
+    for (const month of availableMonths) years.add(month.slice(0, 4));
+    return Array.from(years).sort();
+  }, [availableMonths]);
+
   // Persisted as actual month strings (stable even if the number of
   // available months changes between sessions); the slider/preset UI
   // operates on indices into availableMonths, converted both ways below.
@@ -59,12 +70,25 @@ export function useMonthRange(availableMonths: string[], storageKey: string) {
     setEndMonth(availableMonths[lastIndex]);
   }
 
+  // Jump to a specific calendar year - clamped to whatever months this
+  // person actually has IN that year (not always Jan-Dec), so a partial
+  // year (the first/last year in someone's history) still does something
+  // sensible instead of pointing outside their real range.
+  function applyYear(year: string) {
+    const monthsInYear = availableMonths.filter((m) => m.startsWith(year));
+    if (monthsInYear.length === 0) return;
+    setStartMonth(monthsInYear[0]);
+    setEndMonth(monthsInYear[monthsInYear.length - 1]);
+  }
+
   return {
     startIndex,
     endIndex,
     lastIndex,
     rangeOptions,
+    availableYears,
     handleSliderChange,
     applyPreset,
+    applyYear,
   };
 }

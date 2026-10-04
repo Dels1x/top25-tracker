@@ -40,6 +40,29 @@
   color: var(--text-primary);
 }
 
+.years {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.yearButton {
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-secondary);
+  padding: 5px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.yearButton:hover {
+  color: var(--text-primary);
+}
+
 @media (max-width: 560px) {
   .rangeHeadRow {
     flex-direction: column;
@@ -51,6 +74,14 @@
   }
 
   .presetButton {
+    flex: 1;
+  }
+
+  .years {
+    width: 100%;
+  }
+
+  .yearButton {
     flex: 1;
   }
 }

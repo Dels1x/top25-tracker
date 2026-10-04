@@ -68,8 +68,16 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
 
   const availableMonths = useMemo(() => sortedMonths(dataset, undefined), [dataset]);
-  const { startIndex, endIndex, lastIndex, rangeOptions, handleSliderChange, applyPreset } =
-    useMonthRange(availableMonths, "compare");
+  const {
+    startIndex,
+    endIndex,
+    lastIndex,
+    rangeOptions,
+    availableYears,
+    handleSliderChange,
+    applyPreset,
+    applyYear,
+  } = useMonthRange(availableMonths, "compare");
 
   const options: StatsOptions = { ...scoringOptions, ...rangeOptions };
 
@@ -268,8 +276,10 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
         startIndex={startIndex}
         endIndex={endIndex}
         lastIndex={lastIndex}
+        availableYears={availableYears}
         onSliderChange={handleSliderChange}
         onPreset={applyPreset}
+        onYear={applyYear}
       />
 
       {selectedNames.length === 0 ? (

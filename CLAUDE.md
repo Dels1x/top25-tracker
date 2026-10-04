@@ -234,6 +234,22 @@ There is no test runner configured yet.
   combined genre set first (an earlier, buggy version did this) would incorrectly keep Kendrick
   visible just because a differently-genred collaborator is also credited. A track left with zero
   scoringArtists after this per-artist filter is dropped entirely rather than kept with an empty list.
+- **`app/src/components/RangePicker.tsx`** + **`app/src/lib/useMonthRange.ts`** — the date-range
+  control shared by Leaderboard, Timeline, GenreLeaderboard, GenreTimeline, and Compare: a live
+  "{start} → {end}" label, the relative presets from `RANGE_PRESETS` (All time / Last 6/12/24 months),
+  a row of calendar-year buttons, and the drag slider underneath. The year buttons are generated from
+  `useMonthRange`'s `availableYears` - distinct `YYYY` prefixes pulled from that call's own
+  `availableMonths` array, so they're inherently person-scoped wherever the caller's `availableMonths`
+  already is: hryash started in 2024, so hryash only ever gets 2024/2025/2026 buttons, never 2022/2023,
+  without any hardcoded per-person logic - it falls out naturally from `availableMonths` being
+  `sortedMonths(dataset, person)` in every caller except Compare (which spans everyone, so its years
+  are the union across all three people). Clicking a year (`applyYear`) sets the range to the first and
+  last month THIS PERSON actually has within that calendar year, not always Jan-Dec - so a partial year
+  (the very first or very last year in someone's history) still produces a sensible range instead of
+  a slider position outside their real data. Each tab persists its own range independently per person
+  (`storageKey` like `leaderboard:${person}` / `timeline:${person}` - see `useMonthRange`'s own doc
+  comment) - the year buttons don't add a separate persistence key, they just call the same
+  `setStartMonth`/`setEndMonth` the slider and relative presets already use.
 - **`app/src/components/RankFilter.tsx`** + **`app/src/lib/useRankFilter.ts`** — the Leaderboard's
   Top 1/3/5/10/25 buttons: a segmented control (`role="radiogroup"`, styled like Compare's mode switch
   - one pill-shaped container, one filled/active button at a time) that acts as a true radio group,
@@ -244,14 +260,13 @@ There is no test runner configured yet.
   appeared, not "this artist had a #5 song somewhere, so count everything they have." A song ranked
   #12 that month is simply excluded, even for an artist who also has a #3 song - this is a per-track
   cutoff, not a per-artist qualifying filter. The "Top 25" button is the default/unfiltered state - the
-  UI translates it to `maxRank: undefined` rather than the literal number 25, which matters because at
-  least one month genuinely has MORE than 25 tracks (Kazimir UH2O's `2022-10` has 27 - see the
-  data-layout quirks note below) and passing a literal `maxRank: 25` would incorrectly drop that
-  extra, legitimately-counted track; verified this directly (`allTracks` with `maxRank: undefined`
-  produces the exact same track count as calling it with no options at all). Keep this `undefined`
-  convention even if every month in the data happens to have exactly 25 tracks at some point in the
-  future - a real month with more than 25 is a possibility this filter has to handle correctly, not
-  just a historical artifact to special-case around. Persisted per person via `usePersistedState`,
+  UI translates it to `maxRank: undefined` rather than the literal number 25. As of now every month in
+  the data has exactly 25 tracks (the two earlier overflow cases - Kazimir UH2O's `2022-10` and
+  delsix's `2023-04` - have both since been cleaned up, see the data-layout quirks note below), so this
+  distinction is currently a no-op either way - but keep the `undefined` convention regardless, since
+  a future month with more than 25 tracks is a real possibility this filter has to handle correctly
+  (passing a literal `maxRank: 25` would incorrectly drop any such track), not a historical artifact to
+  special-case around. Persisted per person via `usePersistedState`,
   defaulting to 25 (unfiltered), same convention
   as the genre filter. The per-artist drill-down (`tracksForArtist` call in `Leaderboard.tsx`) also
   passes `maxRank` through - a song excluded from an artist's total by the rank filter shouldn't
@@ -411,14 +426,17 @@ extras were deleted, keeping one canonical file per month; hryash and Kazimir UH
 duplicates, only renames. As of now every person has a file for every month, July 2022 through
 September 2025 — three of Kazimir UH2O's months (`2023-10`, `2024-04`, `2026-01`) were initially
 missed on disk and added later under their original free-form names, then renamed to the convention.
-Kazimir UH2O's `2022-10` has 27 tracks instead of 25 — a real quirk in that person's data, not a bug
-to "fix" by dropping rows (confirmed directly against the CSV, not just inferred from a count mismatch
-elsewhere). delsix's `2023-04` briefly had the same situation (26 rows) but for a DIFFERENT reason -
-its #1 slot was a joke entry ("18" credited to "Kazimir UH2O", clearly not a real pick) rather than a
-genuine 26th song - so that one row was removed (the project owner's own call, not an inference) and
-the file is back to a normal 25, with every other track's rank shifting up by one. Don't conflate the
-two cases: Kazimir UH2O's extra 25th-plus track is real data to keep, delsix's was a joke row that
-needed deleting. Don't assume every month will always have a file for every person going
+Two months briefly had more than 25 tracks, both since cleaned up by the project owner (as of now
+every month in the dataset has exactly 25):
+Kazimir UH2O's `2022-10` had 27 - two of those (Cordae's "All Alone" and Boldy James's "Terms And
+Conditions", both released well after October 2022 despite their `Added At` timestamps claiming that
+month) turned out to be stray/misplaced rows rather than genuine October 2022 picks, and were removed.
+delsix's `2023-04` had 26 for an unrelated reason - its #1 slot was a joke entry ("18" credited to
+"Kazimir UH2O", clearly not a real pick), also removed, with every other track's rank shifting up by
+one. Neither removal was this assistant inferring a fix on its own - both were the project owner's own
+explicit call about their own data; don't assume a track with an odd `Added At` date, or a joke-looking
+title, should be removed without that kind of explicit confirmation first. Don't assume every month
+will always have a file for every person going
 forward though — a gap can still be real (someone skipped a month) rather than something merely
 forgotten on disk; if a month is missing, worth asking rather than assuming either way.
 **New monthly files should be added directly as `YYYY-MM.csv`** to keep this consistent going forward —

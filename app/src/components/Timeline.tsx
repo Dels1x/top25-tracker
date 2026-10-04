@@ -33,8 +33,16 @@ function formatMonth(month: string): string {
 export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
   const availableMonths = useMemo(() => sortedMonths(dataset, person), [dataset, person]);
 
-  const { startIndex, endIndex, lastIndex, rangeOptions, handleSliderChange, applyPreset } =
-    useMonthRange(availableMonths, `timeline:${person}`);
+  const {
+    startIndex,
+    endIndex,
+    lastIndex,
+    rangeOptions,
+    availableYears,
+    handleSliderChange,
+    applyPreset,
+    applyYear,
+  } = useMonthRange(availableMonths, `timeline:${person}`);
 
   const totals = useMemo(
     () => artistTotals(dataset, person, { ...scoringOptions, ...rangeOptions }),
@@ -97,8 +105,10 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
         startIndex={startIndex}
         endIndex={endIndex}
         lastIndex={lastIndex}
+        availableYears={availableYears}
         onSliderChange={handleSliderChange}
         onPreset={applyPreset}
+        onYear={applyYear}
       />
 
       <div className={styles.chartArea}>
