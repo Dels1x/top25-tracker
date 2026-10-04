@@ -1,7 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Dataset } from "../data/types";
-import { sharedSongArtistTotals, sharedSongsForArtist, sharedSongs, type SharedSong } from "../lib/stats";
+import {
+  sharedSongArtistTotals,
+  sharedSongsForArtist,
+  sharedSongs,
+  type SharedSong,
+  type StatsOptions,
+} from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
 import { useGenreFilter } from "../lib/useGenreFilter";
 import { GenreFilter } from "./GenreFilter";
@@ -10,6 +16,7 @@ import styles from "./Shared.module.css";
 
 interface SharedProps {
   dataset: Dataset;
+  scoringOptions: StatsOptions;
 }
 
 const PAGE_SIZE = 20;
@@ -37,7 +44,7 @@ function earliestAppearance(song: SharedSong): string {
   );
 }
 
-export function Shared({ dataset }: SharedProps) {
+export function Shared({ dataset, scoringOptions }: SharedProps) {
   const [query, setQuery] = useState("");
   const [expandedArtist, setExpandedArtist] = useState<string | null>(null);
   const [artistLimit, setArtistLimit] = useState(PAGE_SIZE);
@@ -51,7 +58,11 @@ export function Shared({ dataset }: SharedProps) {
     selectNone: selectNoneGenres,
   } = useGenreFilter("shared");
 
-  const songs = useMemo(() => sharedSongs(dataset), [dataset]);
+  // Which songs count as "shared" never changes with the identity toggles
+  // (that's keyed by raw trackKey), but WHO gets credited on them does -
+  // sharedSongs resolves scoringArtists the same way allTracks does, honoring
+  // uniteRelatedProjects/showProducers/showDuos from the shared options row.
+  const songs = useMemo(() => sharedSongs(dataset, scoringOptions), [dataset, scoringOptions]);
 
   // Leaderboard of artists by how many of the shared songs (ones that have
   // appeared in EVERY person's top 25 at some point) they're credited on -
@@ -59,8 +70,8 @@ export function Shared({ dataset }: SharedProps) {
   // every other leaderboard in the app, so a shared Armand Hammer song
   // credits billy woods and E L U C I D individually too.
   const artistTotals = useMemo(
-    () => sharedSongArtistTotals(dataset, { genreFilter: selectedGenres }),
-    [dataset, selectedGenres]
+    () => sharedSongArtistTotals(dataset, { ...scoringOptions, genreFilter: selectedGenres }),
+    [dataset, scoringOptions, selectedGenres]
   );
   const artistColorMap = useMemo(
     () => buildArtistColorMap(artistTotals.map((t) => t.artist)),
@@ -69,11 +80,12 @@ export function Shared({ dataset }: SharedProps) {
   const maxArtistTotal = artistTotals[0]?.total ?? 1;
   const visibleArtistTotals = artistTotals.slice(0, artistLimit);
 
-  // Changing the genre filter changes which artists qualify at all - start
-  // back at the top rather than keep a "show more" depth from a different
-  // filtered view (same as Leaderboard does for its own filters).
+  // Changing the genre filter or any identity toggle changes which artists
+  // qualify at all (or reshuffles their ranking) - start back at the top
+  // rather than keep a "show more" depth from a different filtered view
+  // (same as Leaderboard does for its own filters).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => setArtistLimit(PAGE_SIZE), [selectedGenres]);
+  useEffect(() => setArtistLimit(PAGE_SIZE), [selectedGenres, scoringOptions]);
 
   const isExpandedStillPresent = useMemo(
     () => expandedArtist !== null && artistTotals.some((t) => t.artist === expandedArtist),
@@ -83,7 +95,7 @@ export function Shared({ dataset }: SharedProps) {
 
   const expandedArtistSongs = useMemo(() => {
     if (!activeExpandedArtist) return [];
-    const result = sharedSongsForArtist(dataset, activeExpandedArtist);
+    const result = sharedSongsForArtist(dataset, activeExpandedArtist, scoringOptions);
     return [...result].sort((a, b) => {
       let cmp: number;
       switch (sortKey) {
@@ -99,7 +111,7 @@ export function Shared({ dataset }: SharedProps) {
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [dataset, activeExpandedArtist, sortKey, sortDir]);
+  }, [dataset, activeExpandedArtist, sortKey, sortDir, scoringOptions]);
 
   function toggleArtist(artist: string) {
     setExpandedArtist((prev) => (prev === artist ? null : artist));

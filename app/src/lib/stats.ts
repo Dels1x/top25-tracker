@@ -564,6 +564,16 @@ export interface SharedSong {
  * search to a date range.
  */
 export function sharedSongs(dataset: Dataset, options?: StatsOptions): SharedSong[] {
+  // scoringArtists is resolved the same way allTracks does (unite related
+  // projects / drop known producers / drop group names if those options are
+  // on), so the "Unite similar artists/groups", "Show producers", and "Show
+  // duos" checkboxes affect who gets credit on a shared song exactly like
+  // they affect the regular per-person Leaderboard. This never changes
+  // WHICH songs count as "shared" though - that's still keyed by trackKey
+  // (title + raw credited artists), identical to how includeDuplicates only
+  // affects counting, not identity.
+  const groupNames = options?.showDuos ? null : new Set(dataset.groupNames);
+
   const byKey = new Map<string, SharedSong>();
 
   for (const list of dataset.lists) {
@@ -572,12 +582,22 @@ export function sharedSongs(dataset: Dataset, options?: StatsOptions): SharedSon
       const key = trackKey(track);
       let entry = byKey.get(key);
       if (!entry) {
+        let scoringArtists = track.scoringArtists;
+        if (options?.uniteRelatedProjects) {
+          scoringArtists = Array.from(new Set(scoringArtists.map(uniteRelatedProject)));
+        }
+        if (!options?.showProducers) {
+          scoringArtists = scoringArtists.filter((a) => !isKnownProducer(a));
+        }
+        if (groupNames) {
+          scoringArtists = scoringArtists.filter((a) => !groupNames.has(a));
+        }
         entry = {
           trackKey: key,
           title: track.title,
           album: track.album,
           creditedArtists: track.creditedArtists,
-          scoringArtists: track.scoringArtists,
+          scoringArtists,
           appearances: [],
         };
         byKey.set(key, entry);

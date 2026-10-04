@@ -73,6 +73,19 @@ There is no test runner configured yet.
   if its plain parent genre is unchecked" behavior the regular Leaderboard already has; this is
   expected, not a bug, and was verified to match Leaderboard's own behavior under the same filter
   before relying on it.
+  `sharedSongs` also resolves each `SharedSong`'s `scoringArtists` the same way `allTracks` does -
+  honoring `uniteRelatedProjects`/`showProducers`/`showDuos` from `StatsOptions` - so the Shared tab's
+  "Unite similar artists/groups"/"Show producers"/"Show duos" checkboxes (same `scoringOptions` object
+  `App.tsx` builds for every other view) change who gets credit on a shared song exactly like they
+  change the regular per-person Leaderboard: toggling "Show duos" on adds a group's own name (e.g.
+  "Armand Hammer") back onto a shared song's `scoringArtists` alongside its already-expanded members,
+  and toggling "Show producers" on stops silently dropping a `KNOWN_PRODUCERS` name from the same
+  song. This only affects WHO gets counted, never WHICH songs qualify as "shared" - that membership
+  test is still keyed by the raw `trackKey` (title + literal credited artists) and was verified
+  unchanged (identical song count and `trackKey` set) across every toggle combination before relying
+  on it. `includeDuplicates` has no effect here either way - each shared song already appears exactly
+  once in the output regardless of how many months/people it shows up across, so there's nothing for
+  that toggle to dedupe.
   `cumulativeArtistSeriesByPerson`/`personArtistSummaries` power the Compare view's "artists" mode
   (see below) - like `sharedSongs`, these aren't scoped to one person; they take an explicit `people`
   list and a selected artist *set* (e.g. a group's members) and sum counts across that whole set per
@@ -142,8 +155,14 @@ There is no test runner configured yet.
   `Leaderboard.module.css`/`Timeline.module.css` directly rather than duplicating styles, since the
   layouts are identical), `Replay` (month-by-month animated reveal), `Shared` (songs that have
   appeared in every person's top 25 at some point — see `sharedSongs` in `stats.ts`; unlike every
-  other view this one is NOT scoped to the active person, so `App.tsx` skips rendering `StatsRow`/the
-  scoring-option checkboxes for it; now opens with an artist leaderboard — `sharedSongArtistTotals`/
+  other view this one is NOT scoped to the active person, so `App.tsx` skips rendering `StatsRow` for
+  it (`NO_STATS_ROW_VIEWS`) — but it DOES still receive `scoringOptions` and show the
+  `includeDuplicates`/`uniteRelatedProjects`/`showProducers`/`showDuos` checkboxes (`Shared` is not in
+  `NO_TOGGLES_VIEWS`, only `Replay` is, since Replay always shows literal `creditedArtists` and never
+  looks at `scoringArtists` at all) — the three identity checkboxes change who gets credit on a shared
+  song exactly like they change the regular per-person Leaderboard (see the `sharedSongs` note above);
+  `includeDuplicates` is accepted but inert here since a shared song already appears once regardless.
+  Now opens with an artist leaderboard — `sharedSongArtistTotals`/
   `sharedSongsForArtist` in `stats.ts` — ranking who shows up on the most shared songs, reusing
   `Leaderboard.module.css`'s bar-list row/rank/chevron styling the same way `GenreLeaderboard` does,
   including the same `PAGE_SIZE = 20` / "Show more" button pattern, the same `GenreFilter` panel

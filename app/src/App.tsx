@@ -36,7 +36,10 @@ const GENRE_VIEWS: View[] = ["genres", "genreTimeline"];
 // Shared and Compare both span every person at once rather than scoping to
 // the active person tab, so neither shows the person-scoped stats row.
 const NO_STATS_ROW_VIEWS: View[] = ["shared", "compare"];
-const NO_TOGGLES_VIEWS: View[] = ["replay", "shared"];
+// Replay always shows literal creditedArtists, never scoringArtists, so the
+// identity toggles (and the dedup toggle) have nothing to affect there.
+// Shared DOES use scoringArtists (via sharedSongs) so it keeps the toggles.
+const NO_TOGGLES_VIEWS: View[] = ["replay"];
 
 function App() {
   const [person, setPerson] = usePersistedState("top25tracker:person", dataset.people[0]);
@@ -118,7 +121,7 @@ function App() {
         <GenreTimeline dataset={dataset} person={activePerson} scoringOptions={scoringOptions} />
       )}
       {activeView === "replay" && <Replay dataset={dataset} person={activePerson} />}
-      {activeView === "shared" && <Shared dataset={dataset} />}
+      {activeView === "shared" && <Shared dataset={dataset} scoringOptions={scoringOptions} />}
       {activeView === "compare" && <Compare dataset={dataset} scoringOptions={scoringOptions} />}
     </Layout>
   );
