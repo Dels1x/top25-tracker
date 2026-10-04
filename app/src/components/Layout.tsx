@@ -2,7 +2,14 @@ import type { ReactNode } from "react";
 import { useTheme } from "../lib/useTheme";
 import styles from "./Layout.module.css";
 
-type View = "leaderboard" | "timeline" | "genres" | "genreTimeline" | "replay" | "shared";
+type View =
+  | "leaderboard"
+  | "timeline"
+  | "genres"
+  | "genreTimeline"
+  | "replay"
+  | "shared"
+  | "compare";
 
 interface LayoutProps {
   people: string[];
@@ -20,6 +27,7 @@ const VIEWS: Array<{ id: View; label: string }> = [
   { id: "genreTimeline", label: "Genre Timeline" },
   { id: "replay", label: "Replay" },
   { id: "shared", label: "Shared" },
+  { id: "compare", label: "Compare" },
 ];
 
 export function Layout({

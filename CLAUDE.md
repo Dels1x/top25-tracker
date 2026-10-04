@@ -59,6 +59,11 @@ There is no test runner configured yet.
   of `dataset.lists` and finds songs that have appeared (at any rank, in any month) in literally every
   person's top 25, matched via the same `trackKey` used for duplicate detection (so re-release title
   variants still count as the same song across people, not just within one person's history).
+  `cumulativeArtistSeriesByPerson`/`personArtistSummaries` power the Compare view (see below) - like
+  `sharedSongs`, these aren't scoped to one person; they take an explicit `people` list and a selected
+  artist *set* (e.g. a group's members) and sum counts across that whole set per person, per month -
+  one cumulative line per PERSON, not per artist, since the point of Compare is "who got into this
+  artist earlier / more", not re-showing Timeline's per-artist breakdown one person at a time.
   `genreTotals`/`genreMonthCounts`/`tracksForGenre`/`cumulativeGenreSeries` mirror the artist-scoped
   functions but bucket by genre instead (see `artistGenres.ts`) - they only honor
   `includeDuplicates`/`startMonth`/`endMonth` from `StatsOptions`; the artist-identity options
@@ -118,9 +123,19 @@ There is no test runner configured yet.
   layouts are identical), `Replay` (month-by-month animated reveal), `Shared` (songs that have
   appeared in every person's top 25 at some point — see `sharedSongs` in `stats.ts`; unlike every
   other view this one is NOT scoped to the active person, so `App.tsx` skips rendering `StatsRow`/the
-  scoring-option checkboxes for it), plus `Layout` / `StatsRow` / `StatTile` shell pieces. `App.tsx`
-  just wires person/view selection state and imports `data.json` directly (no runtime CSV parsing, no
-  backend/API).
+  scoring-option checkboxes for it), `Compare` (pick one or more artists — e.g. a group's members —
+  and see each person's cumulative count for that selection on one chart, one line per PERSON rather
+  than per artist, to answer "who got into this artist earlier / more"; also spans every person at
+  once like `Shared` does, so no `StatsRow` either, but — unlike `Shared` — the artist-identity
+  toggles (unite/producers/duos) still apply since you're picking artist names, so `App.tsx` does NOT
+  put it in `NO_TOGGLES_VIEWS`/`GENRE_VIEWS`; the artist picker is a search box + checkbox list sorted
+  by combined all-people total, with selections persisted via `usePersistedSetState` and shown as
+  removable chips; reuses the same `useMonthRange`/`RangePicker` date-range control as Leaderboard and
+  Timeline, and the same per-person color assignment `Timeline` uses for *artists* but keyed on
+  *people* instead, via `buildArtistColorMap(dataset.people)` — a general-purpose "assign a stable
+  color per name" function despite its artist-specific name), plus `Layout` / `StatsRow` / `StatTile`
+  shell pieces. `App.tsx` just wires person/view selection state and imports `data.json` directly (no
+  runtime CSV parsing, no backend/API).
 - **`app/src/components/GenreFilter.tsx`** + **`app/src/lib/useGenreFilter.ts`** — the Leaderboard's
   genre-filter checkboxes: one row per top-level genre from `GENRE_HIERARCHY`
   (`artistGenres.ts`), each with a disclosure arrow (only if it has subgenres) expanding a list of

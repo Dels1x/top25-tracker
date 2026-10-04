@@ -377,6 +377,88 @@ export function cumulativeGenreSeries(
   return series;
 }
 
+/** One person's first (earliest-month) and total count toward a selected artist set, for Compare's summary row. */
+export interface PersonArtistSummary {
+  person: string;
+  total: number;
+  firstMonth: string | null;
+}
+
+/**
+ * Per-person total and earliest month for a selected set of artists (e.g.
+ * one artist, or a group's members) - the "who got there first, who has the
+ * most" summary above Compare's chart. firstMonth is null if that person has
+ * zero matching tracks in range.
+ */
+export function personArtistSummaries(
+  dataset: Dataset,
+  people: string[],
+  artists: string[],
+  options?: StatsOptions
+): PersonArtistSummary[] {
+  const artistSet = new Set(artists);
+  return people.map((person) => {
+    let total = 0;
+    let firstMonth: string | null = null;
+    for (const track of allTracks(dataset, person, options)) {
+      const matches = track.scoringArtists.filter((a) => artistSet.has(a)).length;
+      if (matches === 0) continue;
+      total += matches;
+      if (firstMonth === null || track.month < firstMonth) firstMonth = track.month;
+    }
+    return { person, total, firstMonth };
+  });
+}
+
+/**
+ * Same shape as cumulativeArtistSeries, but one line per PERSON instead of
+ * per artist - each point sums counts across every artist in `artists` for
+ * that person, running cumulatively. This is what the Compare view uses to
+ * answer "who got into billy woods earlier / more": pick one or more artists
+ * (a group's members, say), and see each person's combined running total for
+ * that selection side by side, rather than one line per artist per person.
+ *
+ * `options` (range/dedup/identity toggles) are applied independently per
+ * person, same as every other stats function here - e.g. includeDuplicates
+ * dedups each person's own history, not across people.
+ */
+export function cumulativeArtistSeriesByPerson(
+  dataset: Dataset,
+  people: string[],
+  artists: string[],
+  options?: StatsOptions
+): CumulativeSeriesPoint[] {
+  const artistSet = new Set(artists);
+  // Union of months across all selected people, so a month only one person
+  // has new entries in still appears on the shared x-axis.
+  const months = Array.from(new Set(people.flatMap((p) => sortedMonths(dataset, p, options)))).sort();
+
+  // key: `${person}\u0000${month}` -> count of selected-artist entries that month
+  const perMonth = new Map<string, number>();
+  for (const person of people) {
+    for (const track of allTracks(dataset, person, options)) {
+      const matches = track.scoringArtists.filter((a) => artistSet.has(a)).length;
+      if (matches === 0) continue;
+      const key = `${person}\u0000${track.month}`;
+      perMonth.set(key, (perMonth.get(key) ?? 0) + matches);
+    }
+  }
+
+  const running = new Map<string, number>(people.map((p) => [p, 0]));
+  const series: CumulativeSeriesPoint[] = [];
+  for (const month of months) {
+    const point: CumulativeSeriesPoint = { month };
+    for (const person of people) {
+      const delta = perMonth.get(`${person}\u0000${month}`) ?? 0;
+      const newTotal = (running.get(person) ?? 0) + delta;
+      running.set(person, newTotal);
+      point[person] = newTotal;
+    }
+    series.push(point);
+  }
+  return series;
+}
+
 /** One song that every person has had in their top 25 at some point, and when. */
 export interface SharedSong {
   trackKey: string;

@@ -8,13 +8,21 @@ import { GenreLeaderboard } from "./components/GenreLeaderboard";
 import { GenreTimeline } from "./components/GenreTimeline";
 import { Replay } from "./components/Replay";
 import { Shared } from "./components/Shared";
+import { Compare } from "./components/Compare";
 import { ToggleCheckbox } from "./components/ToggleCheckbox";
 import { usePersistedState } from "./lib/usePersistedState";
 import type { StatsOptions } from "./lib/stats";
 
 const dataset = rawData as Dataset;
 
-type View = "leaderboard" | "timeline" | "genres" | "genreTimeline" | "replay" | "shared";
+type View =
+  | "leaderboard"
+  | "timeline"
+  | "genres"
+  | "genreTimeline"
+  | "replay"
+  | "shared"
+  | "compare";
 const VALID_VIEWS: View[] = [
   "leaderboard",
   "timeline",
@@ -22,9 +30,12 @@ const VALID_VIEWS: View[] = [
   "genreTimeline",
   "replay",
   "shared",
+  "compare",
 ];
 const GENRE_VIEWS: View[] = ["genres", "genreTimeline"];
-const NO_STATS_ROW_VIEWS: View[] = ["shared"];
+// Shared and Compare both span every person at once rather than scoping to
+// the active person tab, so neither shows the person-scoped stats row.
+const NO_STATS_ROW_VIEWS: View[] = ["shared", "compare"];
 const NO_TOGGLES_VIEWS: View[] = ["replay", "shared"];
 
 function App() {
@@ -108,6 +119,7 @@ function App() {
       )}
       {activeView === "replay" && <Replay dataset={dataset} person={activePerson} />}
       {activeView === "shared" && <Shared dataset={dataset} />}
+      {activeView === "compare" && <Compare dataset={dataset} scoringOptions={scoringOptions} />}
     </Layout>
   );
 }
