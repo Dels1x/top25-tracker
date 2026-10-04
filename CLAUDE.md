@@ -58,7 +58,15 @@ There is no test runner configured yet.
   `sharedSongs` is the one function here that isn't scoped to a single person - it looks across ALL
   of `dataset.lists` and finds songs that have appeared (at any rank, in any month) in literally every
   person's top 25, matched via the same `trackKey` used for duplicate detection (so re-release title
-  variants still count as the same song across people, not just within one person's history).
+  variants still count as the same song across people, not just within one person's history). Each
+  `SharedSong` carries the track's `scoringArtists` alongside `creditedArtists` - not shown directly in
+  the Shared song list UI (which still displays `creditedArtists`, the literal credit, like every other
+  song list in the app) but used by `sharedSongArtistTotals`/`sharedSongsForArtist` to power the artist
+  leaderboard at the top of the Shared tab: which artists show up on the most of the shared songs,
+  counted by `scoringArtists` (so a shared Armand Hammer song credits billy woods and E L U C I D
+  individually too, same as the regular per-person Leaderboard) and once per artist per song, not
+  multiplied by how many people's lists it appeared in (a shared song is one song, already guaranteed
+  to be in everyone's list by definition).
   `cumulativeArtistSeriesByPerson`/`personArtistSummaries` power the Compare view's "artists" mode
   (see below) - like `sharedSongs`, these aren't scoped to one person; they take an explicit `people`
   list and a selected artist *set* (e.g. a group's members) and sum counts across that whole set per
@@ -129,7 +137,14 @@ There is no test runner configured yet.
   layouts are identical), `Replay` (month-by-month animated reveal), `Shared` (songs that have
   appeared in every person's top 25 at some point — see `sharedSongs` in `stats.ts`; unlike every
   other view this one is NOT scoped to the active person, so `App.tsx` skips rendering `StatsRow`/the
-  scoring-option checkboxes for it), `Compare` (pick one or more artists OR genres — toggled via an
+  scoring-option checkboxes for it; now opens with an artist leaderboard — `sharedSongArtistTotals`/
+  `sharedSongsForArtist` in `stats.ts` — ranking who shows up on the most shared songs, reusing
+  `Leaderboard.module.css`'s bar-list row/rank/chevron styling the same way `GenreLeaderboard` does,
+  but with its own 2-column `artistSongList`/`artistSongRow` in `Shared.module.css` for the
+  click-to-expand song list rather than reusing `Leaderboard`'s 5-column `.songRow` grid, which is
+  sized for date/rank/title/album/artists columns this simpler drill-down doesn't have; the existing
+  song-list section stays unchanged below it, now under its own "The songs" subheading), `Compare`
+  (pick one or more artists OR genres — toggled via an
   "Artists"/"Genres" mode switch at the top, mirroring the Leaderboard/GenreLeaderboard split as two
   modes of one view instead of two separate tabs — e.g. a group's members, or a genre like "Hip-Hop" —
   and see each person's cumulative count for that selection on one chart, one line per PERSON rather

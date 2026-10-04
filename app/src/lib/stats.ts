@@ -538,6 +538,15 @@ export interface SharedSong {
   trackKey: string;
   title: string;
   creditedArtists: string[];
+  /**
+   * The resolved scoring artists (alias/misspelling/group-expanded) for this
+   * song - same list a Leaderboard entry would credit, used by
+   * sharedSongArtistTotals below rather than re-deriving it from
+   * creditedArtists. Not shown directly in the Shared song list UI, which
+   * still displays creditedArtists (the literal credit) like every other
+   * song list in the app.
+   */
+  scoringArtists: string[];
   /** Every month (across every person) this song appeared, for display/sorting. */
   appearances: Array<{ person: string; month: string; rank: number }>;
 }
@@ -566,6 +575,7 @@ export function sharedSongs(dataset: Dataset, options?: StatsOptions): SharedSon
           trackKey: key,
           title: track.title,
           creditedArtists: track.creditedArtists,
+          scoringArtists: track.scoringArtists,
           appearances: [],
         };
         byKey.set(key, entry);
@@ -581,6 +591,41 @@ export function sharedSongs(dataset: Dataset, options?: StatsOptions): SharedSon
       return everyone.size > 0 && peoplePresent.size === everyone.size;
     })
     .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+/**
+ * Leaderboard of artists by how many "shared" songs (see sharedSongs above)
+ * they're credited on - i.e. of the songs that have appeared in literally
+ * everyone's top 25 at some point, which artists show up on the most of
+ * them. Counts by scoringArtists (group/alias/misspelling-resolved), same as
+ * every other leaderboard in the app, not the raw creditedArtists credit -
+ * so a shared Armand Hammer song counts for billy woods and E L U C I D
+ * individually too, same as it would in the regular per-person Leaderboard.
+ * A song with multiple scoring artists counts once for each of them (same
+ * "counts toward everyone it touches" rule artistTotals uses) - it does NOT
+ * multiply by how many people's lists it appeared in, since a shared song
+ * is one song, already guaranteed to be in all 3 lists by definition.
+ */
+export function sharedSongArtistTotals(dataset: Dataset, options?: StatsOptions): ArtistTotal[] {
+  const songs = sharedSongs(dataset, options);
+  const totals = new Map<string, number>();
+  for (const song of songs) {
+    for (const artist of song.scoringArtists) {
+      totals.set(artist, (totals.get(artist) ?? 0) + 1);
+    }
+  }
+  return Array.from(totals.entries())
+    .map(([artist, total]) => ({ artist, total }))
+    .sort((a, b) => b.total - a.total);
+}
+
+/** The subset of sharedSongs a given artist is credited on (by scoringArtists) - backs a click-to-expand row in the Shared tab's artist leaderboard. */
+export function sharedSongsForArtist(
+  dataset: Dataset,
+  artist: string,
+  options?: StatsOptions
+): SharedSong[] {
+  return sharedSongs(dataset, options).filter((song) => song.scoringArtists.includes(artist));
 }
 
 export function cumulativeArtistSeries(
