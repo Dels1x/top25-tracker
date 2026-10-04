@@ -159,7 +159,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Nicholas Craven": ["Hip-Hop"],
   "Kenny Segal": ["Abstract Hip-Hop"],
   Nujabes: ["Jazz Rap"],
-  "MF DOOM": ["Abstract Hip-Hop", "East Coast Hip-Hop"],
+  "MF DOOM": ["Abstract Hip-Hop", "Experimental Hip-Hop", "East Coast Hip-Hop"],
   Madvillain: ["Abstract Hip-Hop"],
   Quasimoto: ["Abstract Hip-Hop"],
   "DJ Premier": ["East Coast Hip-Hop", "Boom Bap"],
@@ -182,8 +182,8 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   Futurewave: ["Hip-Hop"], // producer
 
   // ===== East Coast Hip-Hop =====
-  "billy woods": ["Abstract Hip-Hop", "East Coast Hip-Hop"],
-  "E L U C I D": ["Abstract Hip-Hop", "East Coast Hip-Hop"],
+  "billy woods": ["Abstract Hip-Hop", "Experimental Hip-Hop", "East Coast Hip-Hop"],
+  "E L U C I D": ["Abstract Hip-Hop", "Experimental Hip-Hop", "East Coast Hip-Hop"],
   "Armand Hammer": ["Abstract Hip-Hop", "East Coast Hip-Hop"],
   "Boldy James": ["East Coast Hip-Hop", "Jazz Rap"],
   "Roc Marciano": ["East Coast Hip-Hop", "Coke Rap"],
@@ -372,9 +372,9 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "B.o.B": ["Southern Hip-Hop"],
 
   // ===== Abstract / experimental hip-hop (no strong region) =====
-  "clipping.": ["Abstract Hip-Hop"],
+  "clipping.": ["Abstract Hip-Hop", "Experimental Hip-Hop"],
   "Daveed Diggs": ["Abstract Hip-Hop"],
-  "Death Grips": ["Abstract Hip-Hop", "Electronic"],
+  "Death Grips": ["Abstract Hip-Hop", "Experimental Hip-Hop", "Electronic"],
   BUSDRIVER: ["Abstract Hip-Hop"],
   "Moka Only": ["Abstract Hip-Hop"],
   "Serengeti": ["Abstract Hip-Hop"],
@@ -402,8 +402,10 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Bad Meets Evil": ["East Coast Hip-Hop"],
   "Royce Da 5'9\"": ["Hip-Hop", "East Coast Hip-Hop"],
   "Danny Brown": ["Abstract Hip-Hop", "Experimental Hip-Hop"],
-  "Cities Aviv": ["Abstract Hip-Hop", "Cloud Rap"],
-  "Injury Reserve": ["Abstract Hip-Hop"],
+  "Cities Aviv": ["Abstract Hip-Hop", "Experimental Hip-Hop", "Cloud Rap"],
+  "Injury Reserve": ["Abstract Hip-Hop", "Experimental Hip-Hop"],
+  heavensouls: ["Abstract Hip-Hop", "Experimental Hip-Hop"],
+  Stickerbush: ["Abstract Hip-Hop", "Experimental Hip-Hop"],
   "Yelawolf": ["Southern Hip-Hop"],
   "Cordae": ["Hip-Hop"],
   "Drake": ["Hip-Hop"],
