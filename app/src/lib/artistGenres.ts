@@ -82,6 +82,7 @@ export const GENRES = [
   "Trip Hop",
   "Ambient",
   "Disco",
+  "Soft Rock",
   "Other",
 ] as const;
 
@@ -123,6 +124,7 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Indie Rock": ["Rock"],
   "Hard Rock": ["Rock"],
   "Pop Rock": ["Rock"],
+  "Soft Rock": ["Rock"],
   Slowcore: ["Rock"],
   "Trip Hop": ["Electronic"],
   Ambient: ["Electronic"],
@@ -509,7 +511,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Esthero": ["R&B/Soul", "Trip Hop"],
   "Ari Lennox": ["R&B/Soul"],
   "Anna Wise": ["R&B/Soul"],
-  "Bee Gees": ["Disco"],
+  "Bee Gees": ["Disco", "Pop", "Soft Rock"],
 
   // ===== Rock =====
   "Queens of the Stone Age": ["Art Rock", "Alternative Rock"],
