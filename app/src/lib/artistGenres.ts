@@ -91,7 +91,8 @@ export const GENRES = [
     "Psychedelic Folk",
     "Slacker Rock",
   "Chamber Folk",
-    "Singer-Songwriter"
+    "Singer-Songwriter",
+    "Stoner Rock"
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -151,7 +152,8 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Psychedelic Folk": ["Folk"],
   "Slacker Rock": ["Rock"],
   "Chamber Folk": ["Folk"],
-  "Singer-Songwriter": ["Folk"]
+  "Singer-Songwriter": ["Folk"],
+  "Stoner Rock": ["Rock"]
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -534,7 +536,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Bee Gees": ["Disco", "Pop", "Soft Rock"],
 
   // ===== Rock =====
-  "Queens of the Stone Age": ["Art Rock", "Alternative Rock"],
+  "Queens of the Stone Age": ["Art Rock", "Alternative Rock", "Stoner Rock", "Hard Rock"],
   "Radiohead": ["Alternative Rock", "Art Rock"],
   Failure: ["Alternative Rock", "Grunge"],
   "The Rolling Stones": ["Rock"],
