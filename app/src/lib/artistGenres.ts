@@ -470,6 +470,8 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Controller 7": ["Hip-Hop"], // producer
   "William Hutson": ["Abstract Hip-Hop"],
   "Nickelus F": ["Boom Bap", "Abstract Hip-Hop"],
+  "jev.": ["East Coast Hip-Hop", "Boom Bap"],
+  "BabyTron": ["Trap"],
   "Jane Remover": [
     "Experimental Hip-Hop",
     "Noise Pop",
@@ -487,8 +489,10 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Ryo Fukui": ["Jazz"],
   "Thundercat": ["Jazz", "R&B/Soul", "Electronic"],
   "Shabaka Hutchings": ["Jazz"],
-  "Uyama Hiroto": ["Jazz Rap"],
+  "Uyama Hiroto": ["Jazz Rap", "Nu Jazz"],
   "Sterling Toles": ["Jazz Rap", "Abstract Hip-Hop"],
+  "Oliver Crosby": ["Nu Jazz"],
+  "Takero Ogata": ["Nu Jazz"],
 
   // ===== R&B / Soul =====
   "Erykah Badu": ["R&B/Soul"],
