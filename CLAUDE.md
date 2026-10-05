@@ -207,7 +207,24 @@ There is no test runner configured yet.
   artists mode. In `Timeline`'s genre mode, every genre is shown
   by default rather than a top-N subset (same as the old `GenreTimeline` default), with its own
   separate persisted "shown" set (`genreTimelineShown:${person}`, untouched from before) so toggling
-  visible lines in one mode never bleeds into the other. **The 3 artist-identity toggles
+  visible lines in one mode never bleeds into the other.
+  **`Timeline` later gained its own `GenreFilter` panel too** (below its `RangePicker`, same placement
+  as `Leaderboard`'s) - it had the mode switch from the start but, unlike `Leaderboard`, had no way to
+  filter by genre at the artist level underneath whatever a line is grouped by. Wired into every mode
+  there too, same reasoning as `Leaderboard`'s own panel (a per-ARTIST filter, indifferent to the row/
+  line grouping) - unchecking "Hip-Hop" drops hip-hop artists from a mixed-genre track's contribution
+  to EVERY line's count, including a non-Hip-Hop genre/era line that track also counts toward. Uses its
+  OWN persisted key (`useGenreFilter(\`timeline:${person}\`)`), not `Leaderboard`'s bare
+  `useGenreFilter(person)` key - despite both being keyed by the same person, they're deliberately
+  separate filters, same "each tab's filter is independent" precedent `Shared`'s own `"shared"` key
+  established; toggling a genre off in Timeline never silently changes what Leaderboard shows for that
+  person, or vice versa. Applied to every options object the chart derives from
+  (`artistTotalsList`/`genreOptions`/`cumulativeArtistSeries`'s own call) - a stale series that still
+  counted a genre-filtered-out artist's contribution would show lines that don't match what the
+  filtered leaderboard/legend imply. The "stable color order" calls deliberately do NOT get
+  `genreFilter` passed through, same precedent as every other `stableOrder` in this file (see the
+  `colors.ts` entry above) - toggling a genre checkbox must never reshuffle which color a line gets.
+  **The 3 artist-identity toggles
   (unite/producers/duos) are NOT hidden in genre mode** in either component - this follows `Compare`'s
   own precedent (see below) of leaving them visible as harmless no-ops rather than something the
   component needs to hide per-mode; `App.tsx`'s old `GENRE_VIEWS` list (which hid them for the two

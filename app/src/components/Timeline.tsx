@@ -23,7 +23,9 @@ import {
 import { buildArtistColorMap } from "../lib/colors";
 import { usePersistedSetState, usePersistedState } from "../lib/usePersistedState";
 import { useMonthRange } from "../lib/useMonthRange";
+import { useGenreFilter } from "../lib/useGenreFilter";
 import { RangePicker } from "./RangePicker";
+import { GenreFilter } from "./GenreFilter";
 import { ModeSwitch } from "./ModeSwitch";
 import styles from "./Timeline.module.css";
 
@@ -58,6 +60,14 @@ function formatMonth(month: string): string {
  * releaseEra.ts) instead - same "show everything by default" behavior as
  * genre mode, since a person's history only ever spans a few dozen release
  * years/decades at most, same small-bucket-count reasoning.
+ *
+ * Also has its own GenreFilter panel (own persisted key, `timeline:${person}`
+ * - independent of Leaderboard's per-person filter and Shared's "shared"
+ * one, same "each tab's filter is its own thing" precedent Shared already
+ * established) below the RangePicker, wired into StatsOptions.genreFilter
+ * in every mode here too - it's a per-ARTIST filter (applied inside
+ * allTracks) that doesn't care what the chart's lines are grouped by, same
+ * reasoning Leaderboard/Shared both apply it in every one of their modes.
  */
 export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
   const [mode, setMode] = usePersistedState<Mode>("top25tracker:timelineMode", "artists");
@@ -77,18 +87,37 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
     applyPreset,
     applyYear,
   } = useMonthRange(availableMonths, `timeline:${person}`);
+  // Own persisted key (not shared with Leaderboard's per-person filter, even
+  // though both are keyed by the same person) - same "each tab's filter is
+  // independent" precedent Shared's own "shared" key establishes, so
+  // toggling a genre off here never silently changes what Leaderboard shows
+  // for this person, or vice versa.
+  const {
+    selected: selectedGenres,
+    toggleNode: toggleGenre,
+    selectAll: selectAllGenres,
+    selectNone: selectNoneGenres,
+  } = useGenreFilter(`timeline:${person}`);
 
-  // Only includeDuplicates/startMonth/endMonth are meaningful for genres -
-  // the artist-identity options (unite/producers/duos) don't apply, same as
-  // the old standalone GenreTimeline.
+  // GenreFilter is a per-ARTIST filter (StatsOptions.genreFilter, applied
+  // inside allTracks) - it doesn't care what the chart's lines are grouped
+  // by, so it applies in every mode here too, same precedent Leaderboard/
+  // Shared already established. includeDuplicates/startMonth/endMonth are
+  // meaningful for genres/eras too; only the artist-identity options
+  // (unite/producers/duos) don't apply there, same as before.
   const genreOptions: StatsOptions = useMemo(
-    () => ({ includeDuplicates: scoringOptions.includeDuplicates, ...rangeOptions }),
-    [scoringOptions.includeDuplicates, rangeOptions]
+    () => ({
+      includeDuplicates: scoringOptions.includeDuplicates,
+      ...rangeOptions,
+      genreFilter: selectedGenres,
+    }),
+    [scoringOptions.includeDuplicates, rangeOptions, selectedGenres]
   );
 
   const artistTotalsList = useMemo(
-    () => artistTotals(dataset, person, { ...scoringOptions, ...rangeOptions }),
-    [dataset, person, scoringOptions, rangeOptions]
+    () =>
+      artistTotals(dataset, person, { ...scoringOptions, ...rangeOptions, genreFilter: selectedGenres }),
+    [dataset, person, scoringOptions, rangeOptions, selectedGenres]
   );
   const genreTotalsList = useMemo(
     () => genreTotals(dataset, person, genreOptions),
@@ -156,8 +185,13 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
   const setShown = isEraMode ? setShownEras : isGenreMode ? setShownGenres : setShownArtists;
 
   const artistSeries = useMemo(
-    () => cumulativeArtistSeries(dataset, person, allArtists, { ...scoringOptions, ...rangeOptions }),
-    [dataset, person, allArtists, scoringOptions, rangeOptions]
+    () =>
+      cumulativeArtistSeries(dataset, person, allArtists, {
+        ...scoringOptions,
+        ...rangeOptions,
+        genreFilter: selectedGenres,
+      }),
+    [dataset, person, allArtists, scoringOptions, rangeOptions, selectedGenres]
   );
   const genreSeries = useMemo(
     () => cumulativeGenreSeries(dataset, person, allGenres, genreOptions),
@@ -232,6 +266,13 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
         onSliderChange={handleSliderChange}
         onPreset={applyPreset}
         onYear={applyYear}
+      />
+
+      <GenreFilter
+        selected={selectedGenres}
+        onToggle={toggleGenre}
+        onSelectAll={selectAllGenres}
+        onSelectNone={selectNoneGenres}
       />
 
       <div className={styles.chartArea}>
