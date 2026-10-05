@@ -275,16 +275,53 @@ There is no test runner configured yet.
   `filtered` itself changes - a new search query or a presence/genre/identity filter change - same
   reasoning as `artistLimit`'s own reset effect just above: an old scroll-depth from a *different*
   filtered set isn't meaningful once the set underneath it has changed.
+  **The artist leaderboard above "The songs" grew the same Artists/Genres/Years/Decades `ModeSwitch`
+  Leaderboard/Timeline/Compare already have** (`mode` state in `Shared.tsx`, persisted under
+  `top25tracker:sharedMode`), so "which GENRE/release-YEAR/release-DECADE shows up on the most shared
+  songs" is answerable the same way "which artist" always was. `stats.ts` gained
+  `sharedSongGenreTotals`/`sharedSongsForGenre` and `sharedSongEraTotals`/`sharedSongsForEra` as direct
+  genre/era counterparts of `sharedSongArtistTotals`/`sharedSongsForArtist` - same `presence`-aware
+  signature (optional trailing `presence` map, falling back to the "shared by everyone" default when
+  omitted), same per-song accounting rules as their Leaderboard equivalents: a song counts toward every
+  genre any of its (genre-filtered) scoring artists belongs to (`genreBucketsForTrack`'s "counts toward
+  everything it touches" rule), while a song only ever has ONE release year/decade
+  (`eraBucketForTrack`), never a multi-bucket union. A shared helper, `genreFilteredScoringArtists`,
+  factors out the "drop an individual scoringArtist from a song if none of THEIR OWN genres are
+  selected" cut `allTracks` applies, since all three `sharedSong*Totals`/`sharedSongsFor*` functions
+  need a song's genre-filtered artist list before counting/bucketing by artist, genre, OR era - a song
+  left with zero artists after that filter drops out of genre/era bucketing entirely too (mirroring
+  `allTracks`'s "a track that no longer credits anyone doesn't count toward anything" rule), not just
+  out of the artist leaderboard. `SharedSong` gained a `releaseDate` field (lifted straight from the
+  underlying `Track`, unambiguous regardless of who picked the song or when - unlike `rank`/`month`,
+  which differ per person) to back the era bucketing. Exactly like Leaderboard's own precedent: the
+  `GenreFilter` panel stays visible and fully wired in every mode (genre/era mode's own rows still
+  apply it at the artist level underneath whatever they're grouped by), while pagination
+  (`artistLimit`/`PAGE_SIZE`/"Show more") and the drill-down's expand/sort panel stay shared across all
+  4 modes - only the artist-only pagination gate (`isArtistMode &&`) and the "Unknown" release-date
+  explainer (era mode only) differ per mode, same divide Leaderboard draws. Switching modes resets
+  `expandedRow`/`artistLimit` for the same reason Leaderboard's `switchMode` does - a different mode's
+  rows are a different universe entirely, not a reordering of the same one.
   `Compare`
-  (pick one or more artists OR genres — toggled via the same `ModeSwitch` component Leaderboard/
-  Timeline now also use — e.g. a group's members, or a genre like "Hip-Hop" —
+  (pick one or more artists, genres, release years, OR release decades — toggled via the same
+  `ModeSwitch` component Leaderboard/Timeline/Shared now also use, all 4 of their modes, not just
+  artists/genres — e.g. a group's members, a genre like "Hip-Hop", or a release year like "2016" —
   and see each person's cumulative count for that selection on one chart, one line per PERSON rather
-  than per artist/genre, to answer "who got into this earlier / more"; also spans every person at
+  than per artist/genre/era, to answer "who got into this earlier / more"; also spans every person at
   once like `Shared` does, so no `StatsRow` either; in "artists" mode the artist-identity toggles
   (unite/producers/duos) still apply since you're picking artist names, so `App.tsx` doesn't hide
   them for Compare either - those toggles simply have no effect once the component switches into
-  "genres" mode internally, same as `includeDuplicates` being the only option genre-scoped stats
-  functions ever look at, and the same precedent Leaderboard/Timeline's own genre mode now follows;
+  "genres"/"years"/"decades" mode internally, same as `includeDuplicates` being the only option
+  genre/era-scoped stats functions ever look at, and the same precedent Leaderboard/Timeline's own
+  non-artist modes follow. Years/decades mode is powered by two new `stats.ts` functions,
+  `personEraSummaries`/`cumulativeEraSeriesByPerson` - direct era counterparts of
+  `personArtistSummaries`/`cumulativeArtistSeriesByPerson` (and `personGenreSummaries`/
+  `cumulativeGenreSeriesByPerson`), parameterized by the same `granularity: "year" | "decade"`
+  `eraTotals`/`tracksForEra` already use, bucketing by `eraBucketForTrack` instead of a
+  scoringArtists/genre match - a track counts toward exactly one era bucket, never a multi-bucket
+  union the way an artist-set or genre-set selection can. Years and decades get their OWN persisted
+  selection sets (`compareYears`/`compareDecades` localStorage keys, picked by `eraGranularity` at
+  render time) rather than sharing one - "1994" and "1990s" are disjoint name spaces, same reasoning
+  Timeline's own `eraTimelineShown:${granularity}:${person}` keying uses;
   the
   picker is a search box + checkbox list sorted by combined all-people total [of whichever mode is
   active], with each mode's selection persisted separately (`compareArtists` / `compareGenres`

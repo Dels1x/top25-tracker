@@ -12,11 +12,15 @@ import type { Dataset } from "../data/types";
 import {
   artistTotals,
   cumulativeArtistSeriesByPerson,
+  cumulativeEraSeriesByPerson,
   cumulativeGenreSeriesByPerson,
+  eraTotals,
   genreTotals,
   personArtistSummaries,
+  personEraSummaries,
   personGenreSummaries,
   sortedMonths,
+  type EraGranularity,
   type StatsOptions,
 } from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
@@ -31,7 +35,7 @@ interface CompareProps {
   scoringOptions: StatsOptions;
 }
 
-type Mode = "artists" | "genres";
+type Mode = "artists" | "genres" | "years" | "decades";
 
 function formatMonth(month: string): string {
   const [year, m] = month.split("-");
@@ -46,22 +50,30 @@ function formatMonthLong(month: string): string {
 }
 
 /**
- * Compare view: pick one or more artists OR genres (toggled via `mode` -
- * never mixed in the same selection, same as Leaderboard/GenreLeaderboard
- * being separate tabs rather than one combined picker) and see each
- * PERSON's cumulative count for that selection side by side - one line per
- * person, not per artist/genre, since the point is "who got into this
- * earlier / listened more", not re-showing Timeline/GenreTimeline's
- * per-artist-or-genre breakdown. Spans all people like Shared does, so
- * there's no single "active person" scoping it - every person's full
+ * Compare view: pick one or more artists, genres, release years, OR release
+ * decades (toggled via `mode` - never mixed in the same selection, same as
+ * Leaderboard/Timeline's own Artists/Genres/Years/Decades mode switch) and
+ * see each PERSON's cumulative count for that selection side by side - one
+ * line per person, not per artist/genre/era, since the point is "who got
+ * into this earlier / listened more", not re-showing Leaderboard/Timeline's
+ * per-artist-or-genre-or-era breakdown. Spans all people like Shared does,
+ * so there's no single "active person" scoping it - every person's full
  * history is always in play, independent of whichever person tab is
  * selected elsewhere in the app.
  *
- * In "genres" mode the artist-identity toggles (unite/producers/duos) are
- * irrelevant (same reasoning as GenreLeaderboard/GenreTimeline) - the caller
- * (App.tsx) still passes `scoringOptions` through unconditionally since only
- * `includeDuplicates` actually matters here either way, and genreTotals/
- * genreBucketsForTrack simply don't look at the identity-only fields.
+ * In "genres"/"years"/"decades" mode the artist-identity toggles
+ * (unite/producers/duos) are irrelevant (same reasoning as Leaderboard's own
+ * non-artist modes) - the caller (App.tsx) still passes `scoringOptions`
+ * through unconditionally since only `includeDuplicates` actually matters
+ * here either way, and genreTotals/eraTotals/genreBucketsForTrack/
+ * eraBucketForTrack simply don't look at the identity-only fields.
+ *
+ * Years/decades share the picker/chart/summary plumbing with artists/genres
+ * (one `combinedTotals`/`selectedNames`/`series`/`summaries` set, routed by
+ * mode) but get their OWN persisted selection sets, keyed by granularity
+ * (`compareYears`/`compareDecades`) since "1994" and "1990s" are disjoint
+ * name spaces - same reasoning Timeline's own `eraTimelineShown` keying
+ * uses.
  */
 export function Compare({ dataset, scoringOptions }: CompareProps) {
   const [mode, setMode] = usePersistedState<Mode>("top25tracker:compareMode", "artists");
@@ -82,6 +94,10 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
 
   const options: StatsOptions = { ...scoringOptions, ...rangeOptions };
 
+  const isGenreMode = mode === "genres";
+  const isEraMode = mode === "years" || mode === "decades";
+  const eraGranularity: EraGranularity = mode === "decades" ? "decade" : "year";
+
   // Combined (all-people) totals, descending - what the picker lists, so
   // the most relevant names surface first without needing to search.
   const combinedArtistTotals = useMemo(
@@ -92,12 +108,17 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
     () => genreTotals(dataset, undefined, options),
     [dataset, options]
   );
+  const combinedEraTotals = useMemo(
+    () => eraTotals(dataset, eraGranularity, undefined, options),
+    [dataset, eraGranularity, options]
+  );
 
   const allArtistNames = useMemo(
     () => combinedArtistTotals.map((t) => t.artist),
     [combinedArtistTotals]
   );
   const allGenreNames = useMemo(() => combinedGenreTotals.map((t) => t.genre), [combinedGenreTotals]);
+  const allEraNames = useMemo(() => combinedEraTotals.map((t) => t.era), [combinedEraTotals]);
 
   const [selectedArtistSet, setSelectedArtistSet] = usePersistedSetState(
     "top25tracker:compareArtists",
@@ -107,14 +128,41 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
     "top25tracker:compareGenres",
     () => allGenreNames.slice(0, 1)
   );
+  // combinedEraTotals/allEraNames are computed for whichever granularity is
+  // CURRENTLY active, so this lazy default (only ever evaluated once, on
+  // this hook's first mount - same as the artist/genre defaults above) only
+  // produces a sensible non-empty pick for whichever of years/decades the
+  // user happens to land on mode on first ever visit; the other one simply
+  // starts empty, same as any selection set would for a mode never visited.
+  const [selectedYearSet, setSelectedYearSet] = usePersistedSetState(
+    "top25tracker:compareYears",
+    () => (eraGranularity === "year" ? allEraNames.slice(0, 1) : [])
+  );
+  const [selectedDecadeSet, setSelectedDecadeSet] = usePersistedSetState(
+    "top25tracker:compareDecades",
+    () => (eraGranularity === "decade" ? allEraNames.slice(0, 1) : [])
+  );
 
-  const isGenreMode = mode === "genres";
-  const allNames = isGenreMode ? allGenreNames : allArtistNames;
-  const selected = isGenreMode ? selectedGenreSet : selectedArtistSet;
-  const setSelected = isGenreMode ? setSelectedGenreSet : setSelectedArtistSet;
-  const combinedTotals: Array<{ name: string; total: number }> = isGenreMode
-    ? combinedGenreTotals.map((t) => ({ name: t.genre, total: t.total }))
-    : combinedArtistTotals.map((t) => ({ name: t.artist, total: t.total }));
+  const allNames = isEraMode ? allEraNames : isGenreMode ? allGenreNames : allArtistNames;
+  const selected = isEraMode
+    ? eraGranularity === "decade"
+      ? selectedDecadeSet
+      : selectedYearSet
+    : isGenreMode
+      ? selectedGenreSet
+      : selectedArtistSet;
+  const setSelected = isEraMode
+    ? eraGranularity === "decade"
+      ? setSelectedDecadeSet
+      : setSelectedYearSet
+    : isGenreMode
+      ? setSelectedGenreSet
+      : setSelectedArtistSet;
+  const combinedTotals: Array<{ name: string; total: number }> = isEraMode
+    ? combinedEraTotals.map((t) => ({ name: t.era, total: t.total }))
+    : isGenreMode
+      ? combinedGenreTotals.map((t) => ({ name: t.genre, total: t.total }))
+      : combinedArtistTotals.map((t) => ({ name: t.artist, total: t.total }));
 
   const selectedNames = useMemo(
     () => allNames.filter((a) => selected.has(a)),
@@ -150,26 +198,30 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
 
   const series = useMemo(
     () =>
-      isGenreMode
-        ? cumulativeGenreSeriesByPerson(dataset, people, selectedNames, options)
-        : cumulativeArtistSeriesByPerson(dataset, people, selectedNames, options),
-    [dataset, people, selectedNames, options, isGenreMode]
+      isEraMode
+        ? cumulativeEraSeriesByPerson(dataset, people, eraGranularity, selectedNames, options)
+        : isGenreMode
+          ? cumulativeGenreSeriesByPerson(dataset, people, selectedNames, options)
+          : cumulativeArtistSeriesByPerson(dataset, people, selectedNames, options),
+    [dataset, people, selectedNames, options, isGenreMode, isEraMode, eraGranularity]
   );
 
   const summaries = useMemo(
     () =>
-      isGenreMode
-        ? personGenreSummaries(dataset, people, selectedNames, options)
-        : personArtistSummaries(dataset, people, selectedNames, options),
-    [dataset, people, selectedNames, options, isGenreMode]
+      isEraMode
+        ? personEraSummaries(dataset, people, eraGranularity, selectedNames, options)
+        : isGenreMode
+          ? personGenreSummaries(dataset, people, selectedNames, options)
+          : personArtistSummaries(dataset, people, selectedNames, options),
+    [dataset, people, selectedNames, options, isGenreMode, isEraMode, eraGranularity]
   );
   const earliestMonth = summaries
     .map((s) => s.firstMonth)
     .filter((m): m is string => m !== null)
     .sort()[0];
 
-  const noun = isGenreMode ? "genre" : "artist";
-  const nounPlural = isGenreMode ? "genres" : "artists";
+  const noun = mode === "decades" ? "decade" : mode === "years" ? "year" : isGenreMode ? "genre" : "artist";
+  const nounPlural = `${noun}s`;
 
   return (
     <div className={styles.wrap}>
@@ -179,6 +231,9 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
           <p className={styles.sub}>
             Pick one or more {nounPlural} to see each person's cumulative count side by side - who
             started listening earlier, and how much
+            {isEraMode &&
+              combinedEraTotals.some((t) => t.era === "Unknown") &&
+              ' · "Unknown" is songs with no catalogued release date'}
           </p>
         </div>
         <ModeSwitch
@@ -186,6 +241,8 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
           options={[
             { value: "artists", label: "Artists" },
             { value: "genres", label: "Genres" },
+            { value: "years", label: "Years" },
+            { value: "decades", label: "Decades" },
           ]}
           onChange={switchMode}
           aria-label="Compare by"

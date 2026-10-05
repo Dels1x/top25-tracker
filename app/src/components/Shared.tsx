@@ -3,15 +3,22 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { Dataset } from "../data/types";
 import {
   sharedSongArtistTotals,
+  sharedSongEraTotals,
+  sharedSongGenreTotals,
   sharedSongsForArtist,
+  sharedSongsForEra,
+  sharedSongsForGenre,
   songsByPresence,
+  type EraGranularity,
   type SharedSong,
   type StatsOptions,
 } from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
 import { useGenreFilter } from "../lib/useGenreFilter";
+import { usePersistedState } from "../lib/usePersistedState";
 import { usePresenceFilter } from "../lib/usePresenceFilter";
 import { GenreFilter } from "./GenreFilter";
+import { ModeSwitch } from "./ModeSwitch";
 import { PresenceFilter } from "./PresenceFilter";
 import leaderboardStyles from "./Leaderboard.module.css";
 import styles from "./Shared.module.css";
@@ -20,6 +27,8 @@ interface SharedProps {
   dataset: Dataset;
   scoringOptions: StatsOptions;
 }
+
+type Mode = "artists" | "genres" | "years" | "decades";
 
 const PAGE_SIZE = 20;
 const SONG_PAGE_SIZE = 100;
@@ -48,8 +57,9 @@ function earliestAppearance(song: SharedSong): string {
 }
 
 export function Shared({ dataset, scoringOptions }: SharedProps) {
+  const [mode, setMode] = usePersistedState<Mode>("top25tracker:sharedMode", "artists");
   const [query, setQuery] = useState("");
-  const [expandedArtist, setExpandedArtist] = useState<string | null>(null);
+  const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [artistLimit, setArtistLimit] = useState(PAGE_SIZE);
   const [songLimit, setSongLimit] = useState(SONG_PAGE_SIZE);
   const [sortKey, setSortKey] = useState<SongSortKey>("date");
@@ -61,6 +71,12 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
     selectNone: selectNoneGenres,
   } = useGenreFilter("shared");
   const { requirementFor, cycle: cyclePresence, presenceMap } = usePresenceFilter(dataset.people);
+
+  const isGenreMode = mode === "genres";
+  const isEraMode = mode === "years" || mode === "decades";
+  const isArtistMode = mode === "artists";
+  const eraGranularity: EraGranularity = mode === "decades" ? "decade" : "year";
+  const noun = mode === "decades" ? "decade" : mode === "years" ? "year" : isGenreMode ? "genre" : "artist";
 
   // Which songs qualify changes with the per-person required/any/excluded
   // buttons (songsByPresence), but never with the identity toggles (that's
@@ -80,52 +96,83 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
     [dataset.people, requirementFor]
   );
 
-  // Leaderboard of artists by how many of the qualifying songs (per the
-  // active required/any/excluded buttons) they're credited on - see
-  // sharedSongArtistTotals in stats.ts. Counts by scoringArtists like every
-  // other leaderboard in the app, so a shared Armand Hammer song credits
-  // billy woods and E L U C I D individually too.
-  const artistTotals = useMemo(
-    () =>
-      sharedSongArtistTotals(
-        dataset,
-        { ...scoringOptions, genreFilter: selectedGenres },
-        presenceMap
-      ),
-    [dataset, scoringOptions, selectedGenres, presenceMap]
+  // Leaderboard of artists/genres/years/decades by how many of the
+  // qualifying songs (per the active required/any/excluded buttons) they're
+  // credited on/bucketed into - see sharedSongArtistTotals/
+  // sharedSongGenreTotals/sharedSongEraTotals in stats.ts, mirroring the
+  // per-person Leaderboard's own Artists/Genres/Years/Decades mode switch.
+  // Counts by scoringArtists like every other leaderboard in the app in
+  // artist mode, so a shared Armand Hammer song credits billy woods and
+  // E L U C I D individually too.
+  const genreOptions: StatsOptions = useMemo(
+    () => ({ ...scoringOptions, genreFilter: selectedGenres }),
+    [scoringOptions, selectedGenres]
   );
-  // Color follows the ARTIST, not their current rank under the active genre
-  // filter - built from the unfiltered ordering (identity toggles + presence
-  // filter only, no genreFilter) so toggling a genre checkbox never
-  // reshuffles which color an artist gets, same fix as Leaderboard/Timeline/
-  // the genre views.
+  const artistRows = useMemo(
+    () => sharedSongArtistTotals(dataset, genreOptions, presenceMap),
+    [dataset, genreOptions, presenceMap]
+  );
+  const genreRows = useMemo(
+    () => sharedSongGenreTotals(dataset, genreOptions, presenceMap),
+    [dataset, genreOptions, presenceMap]
+  );
+  const eraRows = useMemo(
+    () => sharedSongEraTotals(dataset, eraGranularity, genreOptions, presenceMap),
+    [dataset, eraGranularity, genreOptions, presenceMap]
+  );
+  const totals: Array<{ name: string; total: number }> = isEraMode
+    ? eraRows.map((r) => ({ name: r.era, total: r.total }))
+    : isGenreMode
+      ? genreRows.map((r) => ({ name: r.genre, total: r.total }))
+      : artistRows.map((r) => ({ name: r.artist, total: r.total }));
+
+  // Color follows the ARTIST/GENRE/ERA, not its current rank under the
+  // active genre filter - built from the unfiltered ordering (identity
+  // toggles + presence filter only, no genreFilter) so toggling a genre
+  // checkbox never reshuffles which color a row gets, same fix as
+  // Leaderboard/Timeline/the genre views.
   const stableArtistOrder = useMemo(
     () => sharedSongArtistTotals(dataset, scoringOptions, presenceMap).map((t) => t.artist),
     [dataset, scoringOptions, presenceMap]
   );
-  const artistColorMap = useMemo(
-    () => buildArtistColorMap(stableArtistOrder),
-    [stableArtistOrder]
+  const stableGenreOrder = useMemo(
+    () => sharedSongGenreTotals(dataset, scoringOptions, presenceMap).map((t) => t.genre),
+    [dataset, scoringOptions, presenceMap]
   );
-  const maxArtistTotal = artistTotals[0]?.total ?? 1;
-  const visibleArtistTotals = artistTotals.slice(0, artistLimit);
+  const stableEraOrder = useMemo(
+    () => sharedSongEraTotals(dataset, eraGranularity, scoringOptions, presenceMap).map((t) => t.era),
+    [dataset, eraGranularity, scoringOptions, presenceMap]
+  );
+  const colorMap = useMemo(
+    () =>
+      buildArtistColorMap(isEraMode ? stableEraOrder : isGenreMode ? stableGenreOrder : stableArtistOrder),
+    [isEraMode, isGenreMode, stableEraOrder, stableGenreOrder, stableArtistOrder]
+  );
+  const maxTotal = totals[0]?.total ?? 1;
+  // No pagination in genre/era mode - only a handful of buckets total, same
+  // as Leaderboard's own precedent.
+  const visibleTotals = isArtistMode ? totals.slice(0, artistLimit) : totals;
 
-  // Changing the genre filter, the presence buttons, or any identity toggle
-  // changes which artists qualify at all (or reshuffles their ranking) -
+  // Changing the mode, genre filter, presence buttons, or any identity
+  // toggle changes which rows qualify at all (or reshuffles their ranking) -
   // start back at the top rather than keep a "show more" depth from a
   // different filtered view (same as Leaderboard does for its own filters).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => setArtistLimit(PAGE_SIZE), [selectedGenres, scoringOptions, presenceMap]);
+  useEffect(() => setArtistLimit(PAGE_SIZE), [mode, selectedGenres, scoringOptions, presenceMap]);
 
   const isExpandedStillPresent = useMemo(
-    () => expandedArtist !== null && artistTotals.some((t) => t.artist === expandedArtist),
-    [expandedArtist, artistTotals]
+    () => expandedRow !== null && totals.some((t) => t.name === expandedRow),
+    [expandedRow, totals]
   );
-  const activeExpandedArtist = isExpandedStillPresent ? expandedArtist : null;
+  const activeExpandedRow = isExpandedStillPresent ? expandedRow : null;
 
-  const expandedArtistSongs = useMemo(() => {
-    if (!activeExpandedArtist) return [];
-    const result = sharedSongsForArtist(dataset, activeExpandedArtist, scoringOptions, presenceMap);
+  const expandedSongs = useMemo(() => {
+    if (!activeExpandedRow) return [];
+    const result = isEraMode
+      ? sharedSongsForEra(dataset, eraGranularity, activeExpandedRow, genreOptions, presenceMap)
+      : isGenreMode
+        ? sharedSongsForGenre(dataset, activeExpandedRow, genreOptions, presenceMap)
+        : sharedSongsForArtist(dataset, activeExpandedRow, genreOptions, presenceMap);
     return [...result].sort((a, b) => {
       let cmp: number;
       switch (sortKey) {
@@ -141,10 +188,25 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [dataset, activeExpandedArtist, sortKey, sortDir, scoringOptions, presenceMap]);
+  }, [
+    dataset,
+    activeExpandedRow,
+    isEraMode,
+    eraGranularity,
+    isGenreMode,
+    genreOptions,
+    presenceMap,
+    sortKey,
+    sortDir,
+  ]);
 
-  function toggleArtist(artist: string) {
-    setExpandedArtist((prev) => (prev === artist ? null : artist));
+  function toggleRow(name: string) {
+    setExpandedRow((prev) => (prev === name ? null : name));
+  }
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setExpandedRow(null);
   }
 
   function handleSort(key: SongSortKey) {
@@ -201,11 +263,32 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
         onCycle={cyclePresence}
       />
 
-      <h3 className={styles.sectionHeading}>Artists on those songs</h3>
-      <p className={styles.sectionSub}>
-        {artistTotals.length} artists &middot; counts include feature credits and group/member
-        attribution &middot; click an artist to see their shared songs
-      </p>
+      <div className={styles.sectionHeadRow}>
+        <div>
+          <h3 className={styles.sectionHeading}>
+            {noun.charAt(0).toUpperCase() + noun.slice(1)}s on those songs
+          </h3>
+          <p className={styles.sectionSub}>
+            {isArtistMode
+              ? `${totals.length} artists · counts include feature credits and group/member attribution`
+              : `${totals.length} ${noun}s`} &middot; click a {noun} to see its shared songs
+            {isEraMode &&
+              eraRows.some((r) => r.era === "Unknown") &&
+              " · \"Unknown\" is songs with no catalogued release date"}
+          </p>
+        </div>
+        <ModeSwitch
+          value={mode}
+          options={[
+            { value: "artists", label: "Artists" },
+            { value: "genres", label: "Genres" },
+            { value: "years", label: "Years" },
+            { value: "decades", label: "Decades" },
+          ]}
+          onChange={switchMode}
+          aria-label="Rank by"
+        />
+      </div>
 
       <GenreFilter
         selected={selectedGenres}
@@ -215,21 +298,21 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
       />
 
       <ol className={leaderboardStyles.list}>
-        {visibleArtistTotals.map((row, index) => {
-          const pct = (row.total / maxArtistTotal) * 100;
-          const color = artistColorMap.get(row.artist) ?? "var(--text-muted)";
-          const isOpen = activeExpandedArtist === row.artist;
+        {visibleTotals.map((row, index) => {
+          const pct = (row.total / maxTotal) * 100;
+          const color = colorMap.get(row.name) ?? "var(--text-muted)";
+          const isOpen = activeExpandedRow === row.name;
           return (
-            <li key={row.artist} className={leaderboardStyles.item}>
+            <li key={row.name} className={leaderboardStyles.item}>
               <button
                 type="button"
                 className={leaderboardStyles.row}
-                onClick={() => toggleArtist(row.artist)}
+                onClick={() => toggleRow(row.name)}
                 aria-expanded={isOpen}
               >
                 <span className={leaderboardStyles.rank}>{index + 1}</span>
-                <span className={leaderboardStyles.name} title={row.artist}>
-                  {row.artist}
+                <span className={leaderboardStyles.name} title={row.name}>
+                  {row.name}
                 </span>
                 <div className={leaderboardStyles.barTrack}>
                   <motion.div
@@ -279,7 +362,7 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
                       <span className={styles.artistSongHeaderStatic}>Artist(s)</span>
                     </div>
                     <ul className={styles.artistSongList}>
-                      {expandedArtistSongs.map((song) => (
+                      {expandedSongs.map((song) => (
                         <li key={song.trackKey} className={styles.artistSongRow}>
                           <span className={styles.artistSongDate}>
                             {formatMonth(earliestAppearance(song))}
@@ -310,13 +393,13 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
         })}
       </ol>
 
-      {artistLimit < artistTotals.length && (
+      {isArtistMode && artistLimit < totals.length && (
         <button
           type="button"
           className={leaderboardStyles.more}
           onClick={() => setArtistLimit((n) => n + PAGE_SIZE)}
         >
-          Show more ({artistTotals.length - artistLimit} remaining)
+          Show more ({totals.length - artistLimit} remaining)
         </button>
       )}
 

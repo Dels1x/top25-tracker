@@ -33,6 +33,32 @@
   margin-top: 0;
 }
 
+/* Same top border/spacing as a standalone .sectionHeading, but as a flex
+   row so a ModeSwitch can sit beside the heading+sub text (Shared's
+   Artists/Genres/Years/Decades switch, same placement as Leaderboard's
+   own headRow). */
+.sectionHeadRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 24px 0 4px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.sectionHeadRow .sectionHeading {
+  margin: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.sectionHeadRow:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
 .sectionSub {
   font-size: 13px;
   color: var(--text-muted);

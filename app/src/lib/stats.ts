@@ -729,6 +729,82 @@ export function cumulativeGenreSeriesByPerson(
   return series;
 }
 
+/** Same shape as PersonArtistSummary, but for a selected set of release years/decades. */
+export interface PersonEraSummary {
+  person: string;
+  total: number;
+  firstMonth: string | null;
+}
+
+/**
+ * Per-person total and earliest month for a selected set of release
+ * year/decade buckets - the era equivalent of personArtistSummaries, for
+ * Compare's "years"/"decades" modes. A track only ever has ONE release
+ * year/decade (eraBucketForTrack), so unlike personGenreSummaries there's no
+ * multi-bucket union to worry about - a matching track contributes exactly 1,
+ * never more, same as personArtistSummaries would for a single-artist
+ * selection.
+ */
+export function personEraSummaries(
+  dataset: Dataset,
+  people: string[],
+  granularity: EraGranularity,
+  eras: string[],
+  options?: StatsOptions
+): PersonEraSummary[] {
+  const eraSet = new Set(eras);
+  return people.map((person) => {
+    let total = 0;
+    let firstMonth: string | null = null;
+    for (const track of allTracks(dataset, person, options)) {
+      if (!eraSet.has(eraBucketForTrack(track, granularity))) continue;
+      total += 1;
+      if (firstMonth === null || track.month < firstMonth) firstMonth = track.month;
+    }
+    return { person, total, firstMonth };
+  });
+}
+
+/**
+ * Era equivalent of cumulativeArtistSeriesByPerson - one cumulative line per
+ * PERSON, summing counts across every release year/decade bucket in `eras`
+ * for that person, for Compare's "years"/"decades" modes (e.g. "who got into
+ * 2016 hip-hop earliest/most").
+ */
+export function cumulativeEraSeriesByPerson(
+  dataset: Dataset,
+  people: string[],
+  granularity: EraGranularity,
+  eras: string[],
+  options?: StatsOptions
+): CumulativeSeriesPoint[] {
+  const eraSet = new Set(eras);
+  const months = Array.from(new Set(people.flatMap((p) => sortedMonths(dataset, p, options)))).sort();
+
+  const perMonth = new Map<string, number>();
+  for (const person of people) {
+    for (const track of allTracks(dataset, person, options)) {
+      if (!eraSet.has(eraBucketForTrack(track, granularity))) continue;
+      const key = `${person}\u0000${track.month}`;
+      perMonth.set(key, (perMonth.get(key) ?? 0) + 1);
+    }
+  }
+
+  const running = new Map<string, number>(people.map((p) => [p, 0]));
+  const series: CumulativeSeriesPoint[] = [];
+  for (const month of months) {
+    const point: CumulativeSeriesPoint = { month };
+    for (const person of people) {
+      const delta = perMonth.get(`${person}\u0000${month}`) ?? 0;
+      const newTotal = (running.get(person) ?? 0) + delta;
+      running.set(person, newTotal);
+      point[person] = newTotal;
+    }
+    series.push(point);
+  }
+  return series;
+}
+
 /** One song that every person has had in their top 25 at some point, and when. */
 export interface SharedSong {
   trackKey: string;
@@ -744,6 +820,14 @@ export interface SharedSong {
    * song list in the app.
    */
   scoringArtists: string[];
+  /**
+   * Straight from the underlying Track (identical regardless of who picked
+   * it or when, so there's no ambiguity the way there is with "rank" or
+   * "month" for a song shared across people) - backs sharedSongEraTotals/
+   * sharedSongsForEra's Years/Decades mode, same releaseYear/releaseDecade
+   * bucketing releaseEra.ts already does for the per-person Leaderboard.
+   */
+  releaseDate: string | null;
   /** Every month (across every person) this song appeared, for display/sorting. */
   appearances: Array<{ person: string; month: string; rank: number }>;
 }
@@ -814,6 +898,7 @@ export function songsByPresence(
           album: track.album,
           creditedArtists: track.creditedArtists,
           scoringArtists,
+          releaseDate: track.releaseDate,
           appearances: [],
         };
         byKey.set(key, entry);
@@ -864,6 +949,22 @@ export function sharedSongs(dataset: Dataset, options?: StatsOptions): SharedSon
  * - this is what powers the Shared tab's per-person required/any/excluded
  * buttons. Omitted, it falls back to the original "shared by everyone" set.
  */
+/**
+ * The same per-artist genre-filter cut allTracks applies - drops an
+ * individual scoringArtist from a song if none of THEIR OWN genres are
+ * selected, rather than hiding the whole song. Shared by
+ * sharedSongArtistTotals/sharedSongGenreTotals/sharedSongEraTotals (and their
+ * sharedSongsFor* counterparts) below, which all need a song's
+ * genre-filtered artist list before counting/bucketing, same as how
+ * Leaderboard's own genre/era modes still apply genreFilter at the artist
+ * level underneath whatever the rows happen to be grouped by.
+ */
+function genreFilteredScoringArtists(song: SharedSong, options?: StatsOptions): string[] {
+  if (!options?.genreFilter) return song.scoringArtists;
+  const filter = options.genreFilter;
+  return song.scoringArtists.filter((a) => genresForArtists([a]).some((g) => filter.has(g)));
+}
+
 export function sharedSongArtistTotals(
   dataset: Dataset,
   options?: StatsOptions,
@@ -872,15 +973,10 @@ export function sharedSongArtistTotals(
   const songs = presence ? songsByPresence(dataset, presence, options) : sharedSongs(dataset, options);
   const totals = new Map<string, number>();
   for (const song of songs) {
-    let scoringArtists = song.scoringArtists;
     // Same per-artist genre filter allTracks applies - a shared song that's
     // a Kendrick Lamar/Kali Uchis collab, say, still drops Kendrick alone
     // when Hip-Hop is unchecked, rather than hiding the whole song.
-    if (options?.genreFilter) {
-      const filter = options.genreFilter;
-      scoringArtists = scoringArtists.filter((a) => genresForArtists([a]).some((g) => filter.has(g)));
-    }
-    for (const artist of scoringArtists) {
+    for (const artist of genreFilteredScoringArtists(song, options)) {
       totals.set(artist, (totals.get(artist) ?? 0) + 1);
     }
   }
@@ -906,6 +1002,101 @@ export function sharedSongsForArtist(
 ): SharedSong[] {
   const songs = presence ? songsByPresence(dataset, presence, options) : sharedSongs(dataset, options);
   return songs.filter((song) => song.scoringArtists.includes(artist));
+}
+
+/**
+ * Genre equivalent of sharedSongArtistTotals - of the qualifying shared
+ * songs, which major genres show up on the most of them, bucketed the same
+ * way genreTotals buckets a per-person track (genreBucketsForTrack, i.e. by
+ * each song's own resolved scoringArtists) so a song counts toward every
+ * genre any of its credited artists belongs to, same "counts toward
+ * everything it touches" rule as the regular Leaderboard's genre mode.
+ * `options.genreFilter` still applies at the artist level first (same as
+ * Leaderboard's own genre mode) - unchecking "Hip-Hop" drops hip-hop
+ * artists' contribution to a mixed-genre song's bucketing, it doesn't hide
+ * the "Hip-Hop" row itself (the row grouping and the artist-level filter are
+ * different axes, same precedent as Leaderboard).
+ */
+export function sharedSongGenreTotals(
+  dataset: Dataset,
+  options?: StatsOptions,
+  presence?: Map<string, PresenceRequirement>
+): GenreTotal[] {
+  const songs = presence ? songsByPresence(dataset, presence, options) : sharedSongs(dataset, options);
+  const totals = new Map<string, number>();
+  for (const song of songs) {
+    const scoringArtists = genreFilteredScoringArtists(song, options);
+    if (scoringArtists.length === 0) continue;
+    for (const genre of genresForArtists(scoringArtists)) {
+      totals.set(genre, (totals.get(genre) ?? 0) + 1);
+    }
+  }
+  // Shared never weights by placement, so count mirrors total exactly, same
+  // as sharedSongArtistTotals.
+  return Array.from(totals.entries())
+    .map(([genre, total]) => ({ genre, total, count: total }))
+    .sort((a, b) => b.total - a.total);
+}
+
+/** The subset of sharedSongs belonging to a given major genre - genre equivalent of sharedSongsForArtist. */
+export function sharedSongsForGenre(
+  dataset: Dataset,
+  genre: string,
+  options?: StatsOptions,
+  presence?: Map<string, PresenceRequirement>
+): SharedSong[] {
+  const songs = presence ? songsByPresence(dataset, presence, options) : sharedSongs(dataset, options);
+  return songs.filter((song) => {
+    const scoringArtists = genreFilteredScoringArtists(song, options);
+    return scoringArtists.length > 0 && genresForArtists(scoringArtists).includes(genre);
+  });
+}
+
+/**
+ * Release-year/decade equivalent of sharedSongArtistTotals - of the
+ * qualifying shared songs, which release year/decade shows up on the most of
+ * them, bucketed by each song's own releaseDate (eraBucketForTrack) exactly
+ * like the per-person Leaderboard's Years/Decades mode. A shared song only
+ * has one release date regardless of who picked it or when, so (unlike the
+ * artist/genre modes) there's no multi-bucket union here at all - same
+ * "exactly one bucket" property eraTotals already has. `options.genreFilter`
+ * still applies at the artist level first, same reasoning as
+ * sharedSongGenreTotals - a song with zero artists left after that filter
+ * drops out entirely (same as allTracks would drop it), same "a track that
+ * no longer credits anyone doesn't count toward anything" rule.
+ */
+export function sharedSongEraTotals(
+  dataset: Dataset,
+  granularity: EraGranularity,
+  options?: StatsOptions,
+  presence?: Map<string, PresenceRequirement>
+): EraTotal[] {
+  const songs = presence ? songsByPresence(dataset, presence, options) : sharedSongs(dataset, options);
+  const totals = new Map<string, number>();
+  for (const song of songs) {
+    if (genreFilteredScoringArtists(song, options).length === 0) continue;
+    const era = eraBucketForTrack(song, granularity);
+    totals.set(era, (totals.get(era) ?? 0) + 1);
+  }
+  return Array.from(totals.entries())
+    .map(([era, total]) => ({ era, total, count: total }))
+    .sort((a, b) => b.total - a.total);
+}
+
+/** The subset of sharedSongs belonging to a given release year/decade - era equivalent of sharedSongsForArtist. */
+export function sharedSongsForEra(
+  dataset: Dataset,
+  granularity: EraGranularity,
+  era: string,
+  options?: StatsOptions,
+  presence?: Map<string, PresenceRequirement>
+): SharedSong[] {
+  const songs = presence ? songsByPresence(dataset, presence, options) : sharedSongs(dataset, options);
+  return songs.filter(
+    (song) =>
+      genreFilteredScoringArtists(song, options).length > 0 &&
+      eraBucketForTrack(song, granularity) === era
+  );
 }
 
 export function cumulativeArtistSeries(
