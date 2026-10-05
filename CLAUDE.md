@@ -237,7 +237,36 @@ There is no test runner configured yet.
   a single rank/month a per-person track has. Shared's drill-down also needed its own 4-column
   `artistSongHeaderRow`/`artistSongRow` grid in `Shared.module.css` instead of reusing
   `Leaderboard`'s 5-column `.songRow` (which has a rank column Shared doesn't need). The existing
-  song-list section stays unchanged below it, now under its own "The songs" subheading), `Compare`
+  song-list section stays unchanged below it, now under its own "The songs" subheading). **A
+  `PresenceFilter` row of 3 per-person buttons** (`PresenceFilter.tsx` + `usePresenceFilter.ts`) sits
+  above the artist leaderboard, generalizing what counts as a qualifying song beyond the original
+  "every person's top 25" default: each button cycles `required` → `any` → `excluded` → `required` on
+  click for its person, independently - `required` means the song must have appeared in that person's
+  top 25 at some point, `excluded` means it must never have, and `any` (the no-op middle state) means
+  that person's history doesn't matter either way. With every button on `required` (the default on
+  first load, matching the tab's original behavior exactly), this reduces to the original shared-songs
+  set; with every button on `any`, it shows every song anyone has ever had in a top 25 at all,
+  regardless of who else did or didn't. `stats.ts`'s `sharedSongs` is now a thin wrapper around a more
+  general `songsByPresence(dataset, presence, options)`, where `presence` is a
+  `Map<person, PresenceRequirement>` (`PresenceRequirement = "required" | "excluded" | "any"`) - a
+  person missing from the map behaves the same as `"any"`. `sharedSongArtistTotals`/
+  `sharedSongsForArtist` both gained an optional trailing `presence` parameter (falling back to the
+  original "shared by everyone" set when omitted, so every other call site - there are none besides
+  `Shared.tsx` today, but the signature stays backward compatible regardless) keeps working unchanged.
+  The 3-state choice (rather than a plain checkbox) is what makes "doesn't matter" expressible at all -
+  a 2-state control could only toggle between "must be in" and "must not be in," with no way to say "I
+  don't care about this person," which is the state needed to reduce to a 2-person-only shared-songs
+  view, or to the "any song anyone ever had" all-time view. Persisted as a single
+  `{ [person]: PresenceRequirement }` record under one `sharedPresenceFilter` localStorage key (not
+  per-person keys) via the existing `usePersistedState`, defaulting every person to `required` so a
+  fresh browser sees the exact same page the tab always showed before this feature existed. The
+  heading/subheading text above the artist leaderboard switches between three phrasings (all-required /
+  all-any / mixed) so the page doesn't keep saying "everyone's top 25" once the buttons no longer mean
+  that. `includeDuplicates` is still inert here for the same reason as before (a qualifying song already
+  appears once regardless of the presence filter), and the genre filter / identity toggles compose with
+  the presence filter exactly like they already composed with the old all-required default - none of
+  that plumbing changed, only which songs make it into the set to begin with.
+  `Compare`
   (pick one or more artists OR genres — toggled via the same `ModeSwitch` component Leaderboard/
   Timeline now also use — e.g. a group's members, or a genre like "Hip-Hop" —
   and see each person's cumulative count for that selection on one chart, one line per PERSON rather
@@ -428,6 +457,12 @@ There is no test runner configured yet.
   album-only, date-only, both, or (rare, 4 tracks in the real dataset) neither, in which case the
   whole `cardMeta` span is omitted rather than showing an empty line - verified against real
   null/missing cases in the dataset rather than assumed correct from the JSX alone.
+- **`app/src/components/PresenceFilter.tsx`** + **`app/src/lib/usePresenceFilter.ts`** — the Shared
+  tab's 3 per-person required/any/excluded cycle buttons; see the `Shared` entry above for the full
+  behavior. `usePresenceFilter(people)` owns the persisted `{ [person]: PresenceRequirement }` record
+  and exposes `requirementFor`/`cycle`/`presenceMap` (the last one is what gets passed straight into
+  `songsByPresence`/`sharedSongArtistTotals`/`sharedSongsForArtist` in `stats.ts`) - `PresenceFilter.tsx`
+  itself is presentational only, rendering one button per person and calling `onCycle(person)` on click.
 - **`app/src/components/RankFilter.tsx`** + **`app/src/lib/useRankFilter.ts`** — the Leaderboard's
   Top 1/3/5/10/25 buttons: a segmented control (`role="radiogroup"`, styled like Compare's mode switch
   - one pill-shaped container, one filled/active button at a time) that acts as a true radio group,

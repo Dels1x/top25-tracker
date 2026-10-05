@@ -4,13 +4,15 @@ import type { Dataset } from "../data/types";
 import {
   sharedSongArtistTotals,
   sharedSongsForArtist,
-  sharedSongs,
+  songsByPresence,
   type SharedSong,
   type StatsOptions,
 } from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
 import { useGenreFilter } from "../lib/useGenreFilter";
+import { usePresenceFilter } from "../lib/usePresenceFilter";
 import { GenreFilter } from "./GenreFilter";
+import { PresenceFilter } from "./PresenceFilter";
 import leaderboardStyles from "./Leaderboard.module.css";
 import styles from "./Shared.module.css";
 
@@ -56,29 +58,48 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
     selectAll: selectAllGenres,
     selectNone: selectNoneGenres,
   } = useGenreFilter("shared");
+  const { requirementFor, cycle: cyclePresence, presenceMap } = usePresenceFilter(dataset.people);
 
-  // Which songs count as "shared" never changes with the identity toggles
-  // (that's keyed by raw trackKey), but WHO gets credited on them does -
-  // sharedSongs resolves scoringArtists the same way allTracks does, honoring
+  // Which songs qualify changes with the per-person required/any/excluded
+  // buttons (songsByPresence), but never with the identity toggles (that's
+  // keyed by raw trackKey) - those only change WHO gets credited on a
+  // qualifying song, resolved the same way allTracks does, honoring
   // uniteRelatedProjects/showProducers/showDuos from the shared options row.
-  const songs = useMemo(() => sharedSongs(dataset, scoringOptions), [dataset, scoringOptions]);
+  const songs = useMemo(
+    () => songsByPresence(dataset, presenceMap, scoringOptions),
+    [dataset, presenceMap, scoringOptions]
+  );
+  const allRequired = useMemo(
+    () => dataset.people.every((p) => requirementFor(p) === "required"),
+    [dataset.people, requirementFor]
+  );
+  const allAny = useMemo(
+    () => dataset.people.every((p) => requirementFor(p) === "any"),
+    [dataset.people, requirementFor]
+  );
 
-  // Leaderboard of artists by how many of the shared songs (ones that have
-  // appeared in EVERY person's top 25 at some point) they're credited on -
-  // see sharedSongArtistTotals in stats.ts. Counts by scoringArtists like
-  // every other leaderboard in the app, so a shared Armand Hammer song
-  // credits billy woods and E L U C I D individually too.
+  // Leaderboard of artists by how many of the qualifying songs (per the
+  // active required/any/excluded buttons) they're credited on - see
+  // sharedSongArtistTotals in stats.ts. Counts by scoringArtists like every
+  // other leaderboard in the app, so a shared Armand Hammer song credits
+  // billy woods and E L U C I D individually too.
   const artistTotals = useMemo(
-    () => sharedSongArtistTotals(dataset, { ...scoringOptions, genreFilter: selectedGenres }),
-    [dataset, scoringOptions, selectedGenres]
+    () =>
+      sharedSongArtistTotals(
+        dataset,
+        { ...scoringOptions, genreFilter: selectedGenres },
+        presenceMap
+      ),
+    [dataset, scoringOptions, selectedGenres, presenceMap]
   );
   // Color follows the ARTIST, not their current rank under the active genre
-  // filter - built from the unfiltered ordering (identity toggles only, no
-  // genreFilter) so toggling a genre checkbox never reshuffles which color
-  // an artist gets, same fix as Leaderboard/Timeline/the genre views.
+  // filter - built from the unfiltered ordering (identity toggles + presence
+  // filter only, no genreFilter) so toggling a genre checkbox never
+  // reshuffles which color an artist gets, same fix as Leaderboard/Timeline/
+  // the genre views.
   const stableArtistOrder = useMemo(
-    () => sharedSongArtistTotals(dataset, scoringOptions).map((t) => t.artist),
-    [dataset, scoringOptions]
+    () => sharedSongArtistTotals(dataset, scoringOptions, presenceMap).map((t) => t.artist),
+    [dataset, scoringOptions, presenceMap]
   );
   const artistColorMap = useMemo(
     () => buildArtistColorMap(stableArtistOrder),
@@ -87,12 +108,12 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
   const maxArtistTotal = artistTotals[0]?.total ?? 1;
   const visibleArtistTotals = artistTotals.slice(0, artistLimit);
 
-  // Changing the genre filter or any identity toggle changes which artists
-  // qualify at all (or reshuffles their ranking) - start back at the top
-  // rather than keep a "show more" depth from a different filtered view
-  // (same as Leaderboard does for its own filters).
+  // Changing the genre filter, the presence buttons, or any identity toggle
+  // changes which artists qualify at all (or reshuffles their ranking) -
+  // start back at the top rather than keep a "show more" depth from a
+  // different filtered view (same as Leaderboard does for its own filters).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => setArtistLimit(PAGE_SIZE), [selectedGenres, scoringOptions]);
+  useEffect(() => setArtistLimit(PAGE_SIZE), [selectedGenres, scoringOptions, presenceMap]);
 
   const isExpandedStillPresent = useMemo(
     () => expandedArtist !== null && artistTotals.some((t) => t.artist === expandedArtist),
@@ -102,7 +123,7 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
 
   const expandedArtistSongs = useMemo(() => {
     if (!activeExpandedArtist) return [];
-    const result = sharedSongsForArtist(dataset, activeExpandedArtist, scoringOptions);
+    const result = sharedSongsForArtist(dataset, activeExpandedArtist, scoringOptions, presenceMap);
     return [...result].sort((a, b) => {
       let cmp: number;
       switch (sortKey) {
@@ -118,7 +139,7 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [dataset, activeExpandedArtist, sortKey, sortDir, scoringOptions]);
+  }, [dataset, activeExpandedArtist, sortKey, sortDir, scoringOptions, presenceMap]);
 
   function toggleArtist(artist: string) {
     setExpandedArtist((prev) => (prev === artist ? null : artist));
@@ -148,12 +169,23 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
   return (
     <div className={styles.wrap}>
       <div className={styles.headRow}>
-        <h2 className={styles.heading}>Songs on everyone's top 25</h2>
+        <h2 className={styles.heading}>
+          {allAny ? "Songs from everyone's top 25" : "Songs on everyone's top 25"}
+        </h2>
         <p className={styles.sub}>
-          {songs.length} songs have appeared in every one of {dataset.people.length} people's top
-          25 at some point (not necessarily the same month)
+          {allRequired
+            ? `${songs.length} songs have appeared in every one of ${dataset.people.length} people's top 25 at some point (not necessarily the same month)`
+            : allAny
+              ? `${songs.length} songs have appeared in anyone's top 25 at some point`
+              : `${songs.length} songs match the filter below`}
         </p>
       </div>
+
+      <PresenceFilter
+        people={dataset.people}
+        requirementFor={requirementFor}
+        onCycle={cyclePresence}
+      />
 
       <h3 className={styles.sectionHeading}>Artists on those songs</h3>
       <p className={styles.sectionSub}>

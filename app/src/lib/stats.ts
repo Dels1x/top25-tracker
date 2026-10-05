@@ -749,25 +749,45 @@ export interface SharedSong {
 }
 
 /**
- * Finds every song that has appeared in EVERY person's top 25 at some point
- * (not necessarily the same month) - matched the same way duplicate songs
- * are matched elsewhere (trackKey: normalized title + credited-artist list),
- * so re-release title variants ("- Single Version" etc.) still count as the
+ * Per-person presence requirement for `songsByPresence` below:
+ * - "required": the song must have appeared in this person's top 25 at some
+ *   point for it to qualify at all.
+ * - "excluded": the song must have NEVER appeared in this person's top 25
+ *   for it to qualify.
+ * - "any" (or simply absent from the map): this person's history doesn't
+ *   affect qualification either way.
+ */
+export type PresenceRequirement = "required" | "excluded" | "any";
+
+/**
+ * Finds every song matching a per-person presence requirement (see
+ * PresenceRequirement) - matched the same way duplicate songs are matched
+ * elsewhere (trackKey: normalized title + credited-artist list), so
+ * re-release title variants ("- Single Version" etc.) still count as the
  * same song across people the same way they do within one person's history.
  * Always considers each person's FULL history regardless of includeDuplicates
  * (that option is about counting repeats, not about which songs exist at
  * all) - startMonth/endMonth still apply if the caller wants to scope the
  * search to a date range.
+ *
+ * `presence` maps person -> requirement; a person missing from the map (or
+ * explicitly "any") imposes no constraint. An all-"any" (or empty) map
+ * degenerates to "every song that appeared anywhere, for anyone" - this is
+ * the Shared tab's "all buttons set to any" case.
  */
-export function sharedSongs(dataset: Dataset, options?: StatsOptions): SharedSong[] {
+export function songsByPresence(
+  dataset: Dataset,
+  presence: Map<string, PresenceRequirement>,
+  options?: StatsOptions
+): SharedSong[] {
   // scoringArtists is resolved the same way allTracks does (unite related
   // projects / drop known producers / drop group names if those options are
   // on), so the "Unite similar artists/groups", "Show producers", and "Show
-  // duos" checkboxes affect who gets credit on a shared song exactly like
-  // they affect the regular per-person Leaderboard. This never changes
-  // WHICH songs count as "shared" though - that's still keyed by trackKey
-  // (title + raw credited artists), identical to how includeDuplicates only
-  // affects counting, not identity.
+  // duos" checkboxes affect who gets credit on a song exactly like they
+  // affect the regular per-person Leaderboard. This never changes WHICH
+  // songs qualify though - that's still keyed by trackKey (title + raw
+  // credited artists), identical to how includeDuplicates only affects
+  // counting, not identity.
   const groupNames = options?.showDuos ? null : new Set(dataset.groupNames);
 
   const byKey = new Map<string, SharedSong>();
@@ -802,13 +822,28 @@ export function sharedSongs(dataset: Dataset, options?: StatsOptions): SharedSon
     }
   }
 
-  const everyone = new Set(dataset.people);
   return Array.from(byKey.values())
     .filter((entry) => {
       const peoplePresent = new Set(entry.appearances.map((a) => a.person));
-      return everyone.size > 0 && peoplePresent.size === everyone.size;
+      for (const [person, requirement] of presence) {
+        if (requirement === "required" && !peoplePresent.has(person)) return false;
+        if (requirement === "excluded" && peoplePresent.has(person)) return false;
+      }
+      return true;
     })
     .sort((a, b) => a.title.localeCompare(b.title));
+}
+
+/**
+ * Finds every song that has appeared in EVERY person's top 25 at some point
+ * (not necessarily the same month) - the Shared tab's original, simplest
+ * case (every person's button set to "required"). Now a thin wrapper around
+ * `songsByPresence`, kept separate since every other call site/doc comment
+ * in this file already refers to "shared songs" as its own concept.
+ */
+export function sharedSongs(dataset: Dataset, options?: StatsOptions): SharedSong[] {
+  const presence = new Map<string, PresenceRequirement>(dataset.people.map((p) => [p, "required"]));
+  return songsByPresence(dataset, presence, options);
 }
 
 /**
@@ -823,9 +858,18 @@ export function sharedSongs(dataset: Dataset, options?: StatsOptions): SharedSon
  * "counts toward everyone it touches" rule artistTotals uses) - it does NOT
  * multiply by how many people's lists it appeared in, since a shared song
  * is one song, already guaranteed to be in all 3 lists by definition.
+ *
+ * `presence`, when given, overrides the "everyone required" default with an
+ * arbitrary per-person requirement (see PresenceRequirement/songsByPresence)
+ * - this is what powers the Shared tab's per-person required/any/excluded
+ * buttons. Omitted, it falls back to the original "shared by everyone" set.
  */
-export function sharedSongArtistTotals(dataset: Dataset, options?: StatsOptions): ArtistTotal[] {
-  const songs = sharedSongs(dataset, options);
+export function sharedSongArtistTotals(
+  dataset: Dataset,
+  options?: StatsOptions,
+  presence?: Map<string, PresenceRequirement>
+): ArtistTotal[] {
+  const songs = presence ? songsByPresence(dataset, presence, options) : sharedSongs(dataset, options);
   const totals = new Map<string, number>();
   for (const song of songs) {
     let scoringArtists = song.scoringArtists;
@@ -848,13 +892,20 @@ export function sharedSongArtistTotals(dataset: Dataset, options?: StatsOptions)
     .sort((a, b) => b.total - a.total);
 }
 
-/** The subset of sharedSongs a given artist is credited on (by scoringArtists) - backs a click-to-expand row in the Shared tab's artist leaderboard. */
+/**
+ * The subset of sharedSongs a given artist is credited on (by
+ * scoringArtists) - backs a click-to-expand row in the Shared tab's artist
+ * leaderboard. `presence` works the same way as in sharedSongArtistTotals -
+ * omitted falls back to the original "shared by everyone" set.
+ */
 export function sharedSongsForArtist(
   dataset: Dataset,
   artist: string,
-  options?: StatsOptions
+  options?: StatsOptions,
+  presence?: Map<string, PresenceRequirement>
 ): SharedSong[] {
-  return sharedSongs(dataset, options).filter((song) => song.scoringArtists.includes(artist));
+  const songs = presence ? songsByPresence(dataset, presence, options) : sharedSongs(dataset, options);
+  return songs.filter((song) => song.scoringArtists.includes(artist));
 }
 
 export function cumulativeArtistSeries(
