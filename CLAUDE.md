@@ -520,6 +520,24 @@ There is no test runner configured yet.
   album-only, date-only, both, or (rare, 4 tracks in the real dataset) neither, in which case the
   whole `cardMeta` span is omitted rather than showing an empty line - verified against real
   null/missing cases in the dataset rather than assumed correct from the JSX alone.
+  **Each card can show a real, playable Spotify preview** via a click-to-load "▶ Preview on
+  Spotify" button that swaps itself out for Spotify's own official embed `<iframe>`
+  (`https://open.spotify.com/embed/track/{spotifyId}`, a `SpotifyEmbed` helper component) - this is
+  the only way to get actual in-page playback at all, since neither the CSV export nor the Spotify
+  Web API expose raw audio (the old `preview_url` API field that used to return a direct 30s MP3 URL
+  was discontinued for new API users in Nov 2024). The embed plays a 30-second preview for any
+  visitor, or the full track for a visitor who happens to already be logged into Spotify Premium in
+  that browser tab - there's no way, and no need, for this component to tell which case it's in.
+  Uses `Track.spotifyId` (already populated at build time in `buildData.ts` from the CSV's
+  `Track URI` column, `null` for a `spotify:local:...` row with no streaming match) - a track with
+  no `spotifyId` renders no button/embed at all rather than a broken iframe. Deliberately
+  click-to-load rather than every card eagerly rendering its own iframe: up to 25 cards are on
+  screen per month, and mounting 25 Spotify iframes at once (most never clicked) would be wasteful
+  and slow to load. Only one card's embed can be open at a time (`openPreview`, a single
+  `"month-rank"` key string rather than a Set) - clicking a different card's button swaps which one
+  is open rather than stacking; switching person, scrubbing the position slider, or autoplay
+  advancing to the next month all close whatever's open, since the card it belonged to is about to
+  animate out or no longer matches the displayed month.
 - **`app/src/components/PresenceFilter.tsx`** + **`app/src/lib/usePresenceFilter.ts`** — the Shared
   tab's 3 per-person required/any/excluded cycle buttons; see the `Shared` entry above for the full
   behavior. `usePresenceFilter(people)` owns the persisted `{ [person]: PresenceRequirement }` record

@@ -10,6 +10,35 @@ interface ReplayProps {
   person: string;
 }
 
+/**
+ * Spotify's official oEmbed-style track embed - a real `<iframe>` pointed at
+ * open.spotify.com rather than anything built from raw audio. This is the
+ * only way to get an actual in-page "play" button at all: the Spotify Web
+ * API/CSV export never expose raw audio, only metadata + a track ID, and
+ * Spotify discontinued the old `preview_url` API field for new API users in
+ * Nov 2024. Plays a 30s preview for any visitor; a visitor who happens to be
+ * logged into Spotify Premium in that same browser tab gets the full track
+ * instead - this component has no way to tell which, and doesn't need to.
+ * No `spotifyId` (a `spotify:local:...` row with no streaming match) means
+ * no embed is possible for that track - the caller skips rendering this at
+ * all in that case rather than showing a broken iframe.
+ */
+function SpotifyEmbed({ spotifyId }: { spotifyId: string }) {
+  return (
+    <iframe
+      key={spotifyId}
+      className={styles.spotifyEmbed}
+      src={`https://open.spotify.com/embed/track/${spotifyId}?utm_source=generator`}
+      width="100%"
+      height="152"
+      style={{ border: 0 }}
+      allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+      loading="lazy"
+      title="Spotify preview player"
+    />
+  );
+}
+
 function formatMonthLong(month: string): string {
   const [year, m] = month.split("-");
   const date = new Date(Number(year), Number(m) - 1, 1);
@@ -98,12 +127,22 @@ export function Replay({ dataset, person }: ReplayProps) {
   const [playing, setPlaying] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // Which card (by "<month>-<rank>" key, same as each card's own React key)
+  // currently has its Spotify embed open, if any. A single string rather
+  // than a Set - at most one embed is ever shown at a time, deliberately:
+  // mounting 25 Spotify iframes per month (one per card) up front would be
+  // both wasteful (24 of them likely never get clicked) and would fight
+  // over audio focus if multiple were somehow started. Clicking a different
+  // card's "Preview" button swaps which one is open rather than stacking.
+  const [openPreview, setOpenPreview] = useState<string | null>(null);
+
   // Reset position when switching person.
   const [lastPerson, setLastPerson] = useState(person);
   if (lastPerson !== person) {
     setLastPerson(person);
     setIndex(0);
     setPlaying(false);
+    setOpenPreview(null);
   }
 
   useEffect(() => {
@@ -112,6 +151,7 @@ export function Replay({ dataset, person }: ReplayProps) {
       return;
     }
     intervalRef.current = setInterval(() => {
+      setOpenPreview(null);
       setIndex((i) => {
         if (i >= months.length - 1) {
           setPlaying(false);
@@ -171,6 +211,7 @@ export function Replay({ dataset, person }: ReplayProps) {
             onChange={(e) => {
               setPlaying(false);
               setIndex(Number(e.target.value));
+              setOpenPreview(null);
             }}
             aria-label="Replay position"
           />
@@ -188,34 +229,50 @@ export function Replay({ dataset, person }: ReplayProps) {
 
       <ol className={styles.grid}>
         <AnimatePresence mode="popLayout">
-          {current.tracks.map((track) => (
-            <motion.li
-              key={`${current.month}-${track.rank}`}
-              className={track.rank === 1 ? `${styles.card} ${styles.cardFirst}` : styles.card}
-              layout
-              initial={{ opacity: 0, scale: 0.92, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.92 }}
-              transition={{ duration: 0.3, delay: (25 - track.rank) * 0.01 }}
-            >
-              <span className={styles.rank}>#{track.rank}</span>
-              <div className={styles.cardBody}>
-                <span className={styles.cardTitle} title={track.title}>
-                  {track.title}
-                </span>
-                <span className={styles.cardArtist} title={track.creditedArtists.join(", ")}>
-                  {track.creditedArtists.join(", ")}
-                </span>
-                {(track.album || track.releaseDate) && (
-                  <span className={styles.cardMeta} title={track.album}>
-                    {track.album}
-                    {track.album && formatReleaseDate(track.releaseDate) && " · "}
-                    {formatReleaseDate(track.releaseDate)}
+          {current.tracks.map((track) => {
+            const cardKey = `${current.month}-${track.rank}`;
+            const isOpen = openPreview === cardKey;
+            return (
+              <motion.li
+                key={cardKey}
+                className={track.rank === 1 ? `${styles.card} ${styles.cardFirst}` : styles.card}
+                layout
+                initial={{ opacity: 0, scale: 0.92, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.92 }}
+                transition={{ duration: 0.3, delay: (25 - track.rank) * 0.01 }}
+              >
+                <span className={styles.rank}>#{track.rank}</span>
+                <div className={styles.cardBody}>
+                  <span className={styles.cardTitle} title={track.title}>
+                    {track.title}
                   </span>
-                )}
-              </div>
-            </motion.li>
-          ))}
+                  <span className={styles.cardArtist} title={track.creditedArtists.join(", ")}>
+                    {track.creditedArtists.join(", ")}
+                  </span>
+                  {(track.album || track.releaseDate) && (
+                    <span className={styles.cardMeta} title={track.album}>
+                      {track.album}
+                      {track.album && formatReleaseDate(track.releaseDate) && " · "}
+                      {formatReleaseDate(track.releaseDate)}
+                    </span>
+                  )}
+                  {track.spotifyId &&
+                    (isOpen ? (
+                      <SpotifyEmbed spotifyId={track.spotifyId} />
+                    ) : (
+                      <button
+                        type="button"
+                        className={styles.previewButton}
+                        onClick={() => setOpenPreview(cardKey)}
+                      >
+                        ▶ Preview on Spotify
+                      </button>
+                    ))}
+                </div>
+              </motion.li>
+            );
+          })}
         </AnimatePresence>
       </ol>
     </div>

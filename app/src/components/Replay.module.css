@@ -256,6 +256,39 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Click-to-load Spotify preview: a plain text-style button rather than the
+   bold .playButton treatment (there are up to 25 of these on screen at
+   once, one per card - a loud button per card would be visual noise) that
+   swaps itself out for the actual iframe on click. Tracks with no
+   spotifyId (a spotify:local:... row with no streaming match) don't render
+   this at all - see Replay.tsx. */
+.previewButton {
+  align-self: flex-start;
+  margin-top: 6px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  padding: 5px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.previewButton:hover {
+  color: var(--text-primary);
+  border-color: var(--series-1);
+}
+
+/* Spotify's own embed widget. min-width: 0 so it never forces the grid
+   column wider than the card's existing content does - an iframe's
+   intrinsic width would otherwise push a narrow card wide on some browsers. */
+.spotifyEmbed {
+  margin-top: 8px;
+  min-width: 0;
+  border-radius: 12px;
+}
+
 @media (max-width: 560px) {
   .wrap {
     padding: 20px 18px 22px;
