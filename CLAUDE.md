@@ -193,11 +193,18 @@ There is no test runner configured yet.
   Both pairs were merged into one component each, mirroring how `Compare` already merges its own
   artists/genres split into one view instead of two tabs - `GenreLeaderboard.tsx`/`GenreTimeline.tsx`
   are deleted, and the view list shrank from 7 tabs to 5 (`Leaderboard`/`Timeline`/`Replay`/`Shared`/
-  `Compare`). In `Leaderboard`'s genre mode: `RankFilter`, "weight by placement", the `GenreFilter`
-  panel (filtering genre ROWS by genre makes no sense), pagination (only ~19 genre/subgenre buckets
-  total, see `artistGenres.ts`, vs potentially hundreds of artists), and `StatsRow` (no genre
-  equivalent for "Top artist") all hide - exactly matching what the old standalone
-  `GenreLeaderboard` showed, nothing more or less. In `Timeline`'s genre mode, every genre is shown
+  `Compare`). `RankFilter`, "weight by placement", and the `GenreFilter` panel are all per-TRACK or
+  per-ARTIST filters (`StatsOptions.maxRank`/`weightByRank`/`genreFilter`) that don't care what the
+  leaderboard ROWS are grouped by, so as of a later pass they're shown and fully wired in every
+  `Leaderboard` mode, including genre mode itself - unchecking "Hip-Hop" there drops hip-hop
+  artists' contribution from a mixed-genre track's point total, it does not hide the "Hip-Hop" row
+  (the row grouping and the artist-level filter are different axes). Only pagination (only ~19
+  genre/subgenre buckets total, see `artistGenres.ts`, vs potentially hundreds of artists) and
+  `StatsRow` (no genre equivalent for "Top artist") stay artists-only - exactly matching what the
+  old standalone `GenreLeaderboard` showed. `GenreTotal`/`EraTotal` (`stats.ts`) both carry a
+  `count` field alongside `total`, mirroring `ArtistTotal.count`, so the leaderboard row's value
+  column can show "`N`pts (`count`)" in every mode once "weight by placement" is on, not just
+  artists mode. In `Timeline`'s genre mode, every genre is shown
   by default rather than a top-N subset (same as the old `GenreTimeline` default), with its own
   separate persisted "shown" set (`genreTimelineShown:${person}`, untouched from before) so toggling
   visible lines in one mode never bleeds into the other. **The 3 artist-identity toggles
@@ -266,10 +273,13 @@ There is no test runner configured yet.
   (same shape, same options), parameterized by an explicit `granularity: "year" | "decade"` rather
   than being two separate function families, since year vs. decade is just a different bucketing
   function (`yearBucketForTrack` vs `decadeBucketForTrack`) applied the same way everywhere else.
-  In `Leaderboard`, years/decades mode hides exactly the same controls genre mode does (`RankFilter`,
-  "weight by placement", the `GenreFilter` panel, `StatsRow`, pagination) for the same reasons -
-  there's no genre-filter equivalent needed here at all, since there's no hierarchy to filter by, just
-  a flat sorted-by-total bucket list like every other mode. In `Timeline`, years/decades default to
+  In `Leaderboard`, years/decades mode shows `RankFilter`/"weight by placement"/the `GenreFilter`
+  panel same as every other mode now (see above - these are per-track/per-artist filters,
+  independent of what the rows happen to be grouped by); only `StatsRow` and pagination stay
+  artists-only there too, for the same reasons as genre mode. There's still no analogue of a genre
+  *hierarchy* to build for years/decades specifically - just a flat sorted-by-total bucket list like
+  every other mode, with the (pre-existing) `GenreFilter` panel still filtering by genre at the
+  artist level underneath it. In `Timeline`, years/decades default to
   showing every bucket (same as genre mode), with their own separate persisted "shown" set keyed by
   BOTH person and granularity (`eraTimelineShown:${granularity}:${person}`) so switching between Years
   and Decades - which have entirely different bucket name spaces ("1994" vs "1990s") - never carries

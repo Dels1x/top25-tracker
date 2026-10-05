@@ -345,6 +345,13 @@ export interface CumulativeSeriesPoint {
 export interface GenreTotal {
   genre: string;
   total: number;
+  /**
+   * Raw number of qualifying track occurrences behind `total` - same
+   * purpose as ArtistTotal.count (always a plain integer, independent of
+   * weightByRank) so the UI can show "pts (count)" in genre mode too, now
+   * that "weight by placement" applies there as well.
+   */
+  count: number;
 }
 
 export interface GenreMonthCount {
@@ -373,13 +380,15 @@ export function genreTotals(
   options?: StatsOptions
 ): GenreTotal[] {
   const totals = new Map<string, number>();
+  const counts = new Map<string, number>();
   for (const track of allTracks(dataset, person, options)) {
     for (const genre of genreBucketsForTrack(track)) {
       totals.set(genre, (totals.get(genre) ?? 0) + track.points);
+      counts.set(genre, (counts.get(genre) ?? 0) + 1);
     }
   }
   return Array.from(totals.entries())
-    .map(([genre, total]) => ({ genre, total }))
+    .map(([genre, total]) => ({ genre, total, count: counts.get(genre) ?? 0 }))
     .sort((a, b) => b.total - a.total);
 }
 
@@ -455,6 +464,8 @@ export type EraGranularity = "year" | "decade";
 export interface EraTotal {
   era: string;
   total: number;
+  /** Same purpose as GenreTotal.count / ArtistTotal.count - see those. */
+  count: number;
 }
 
 export interface EraMonthCount {
@@ -482,12 +493,14 @@ export function eraTotals(
   options?: StatsOptions
 ): EraTotal[] {
   const totals = new Map<string, number>();
+  const counts = new Map<string, number>();
   for (const track of allTracks(dataset, person, options)) {
     const era = eraBucketForTrack(track, granularity);
     totals.set(era, (totals.get(era) ?? 0) + track.points);
+    counts.set(era, (counts.get(era) ?? 0) + 1);
   }
   return Array.from(totals.entries())
-    .map(([era, total]) => ({ era, total }))
+    .map(([era, total]) => ({ era, total, count: counts.get(era) ?? 0 }))
     .sort((a, b) => b.total - a.total);
 }
 
