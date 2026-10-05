@@ -250,6 +250,31 @@ There is no test runner configured yet.
   despite its artist-specific name), plus `Layout` / `StatsRow` / `StatTile` / `ModeSwitch` shell
   pieces. `App.tsx` just wires person/view selection state and imports `data.json` directly (no
   runtime CSV parsing, no backend/API).
+  **`Leaderboard`/`Timeline`'s `ModeSwitch` grew two more modes beyond Artists/Genres: Years and
+  Decades** - bucketing by each track's own `releaseDate` (see `app/src/lib/releaseEra.ts`) rather
+  than by its artist(s). This is a much simpler bucketing than genres: a track has exactly ONE
+  release date, so it counts toward exactly one year and one decade bucket, never a union of several
+  the way a multi-genre/multi-artist track can. `releaseEra.ts` exports `releaseYear`/
+  `releaseDecade`/`yearBucketForTrack`/`decadeBucketForTrack` - no hand-maintained lookup table
+  needed at all (unlike `artistGenres.ts`), since the bucket is derived straight from data already on
+  the `Track`. Both `null` (47 of 3118 tracks in the real dataset have no `releaseDate` at all) and
+  the literal `"0000"` sentinel Spotify's own catalog uses for at least one track ("Imported Goods" by
+  Action Bronson, which has no real release-date metadata) fall into the same `"Unknown"` bucket -
+  verified directly against the real dataset rather than assumed, since `"0000"` would otherwise
+  silently parse as year 0 and corrupt the oldest-decade bucket. `stats.ts`'s `eraTotals`/
+  `eraMonthCounts`/`tracksForEra`/`cumulativeEraSeries` mirror the genre-scoped functions exactly
+  (same shape, same options), parameterized by an explicit `granularity: "year" | "decade"` rather
+  than being two separate function families, since year vs. decade is just a different bucketing
+  function (`yearBucketForTrack` vs `decadeBucketForTrack`) applied the same way everywhere else.
+  In `Leaderboard`, years/decades mode hides exactly the same controls genre mode does (`RankFilter`,
+  "weight by placement", the `GenreFilter` panel, `StatsRow`, pagination) for the same reasons -
+  there's no genre-filter equivalent needed here at all, since there's no hierarchy to filter by, just
+  a flat sorted-by-total bucket list like every other mode. In `Timeline`, years/decades default to
+  showing every bucket (same as genre mode), with their own separate persisted "shown" set keyed by
+  BOTH person and granularity (`eraTimelineShown:${granularity}:${person}`) so switching between Years
+  and Decades - which have entirely different bucket name spaces ("1994" vs "1990s") - never carries
+  over a stale selection from the other granularity. Same precedent as genre mode on the 3
+  artist-identity toggles: visible-but-inert in years/decades mode too, not hidden.
 - **`app/src/components/ModeSwitch.tsx`** — the pill-shaped "Artists / Genres" (or similar) mode
   switch, originally built standalone inside `Compare.tsx` and extracted into its own small generic
   component (`<T extends string>`, a `value`/`options`/`onChange` triplet plus an `aria-label`) once

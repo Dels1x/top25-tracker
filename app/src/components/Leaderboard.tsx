@@ -3,10 +3,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { Dataset } from "../data/types";
 import {
   artistTotals,
+  eraTotals,
   genreTotals,
   sortedMonths,
   tracksForArtist,
+  tracksForEra,
   tracksForGenre,
+  type EraGranularity,
   type StatsOptions,
 } from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
@@ -29,7 +32,7 @@ interface LeaderboardProps {
   scoringOptions: StatsOptions;
 }
 
-type Mode = "artists" | "genres";
+type Mode = "artists" | "genres" | "years" | "decades";
 
 const PAGE_SIZE = 20;
 
@@ -67,6 +70,16 @@ function formatMonth(month: string): string {
  * are NOT hidden in genre mode though, matching Compare's own precedent -
  * they're harmless no-ops there (genreTotals/tracksForGenre simply don't
  * look at them) rather than something the component itself needs to hide.
+ *
+ * "years"/"decades" modes (bucketing by each track's own release date - see
+ * releaseEra.ts) hide exactly the same controls genre mode does, for the
+ * same reasons (RankFilter/weight-by-placement/GenreFilter/StatsRow all
+ * either make no sense or have no equivalent once rows are release
+ * years/decades instead of artists), and also leave the 3 identity
+ * checkboxes visible-but-inert, same precedent. Unlike genres, a track only
+ * ever has ONE release year/decade (no multi-bucket union), so there's no
+ * analogue of a genre hierarchy/filter to build here at all - just a flat
+ * bucket list, sorted by total like every other mode.
  */
 export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProps) {
   const [mode, setMode] = usePersistedState<Mode>("top25tracker:leaderboardMode", "artists");
@@ -76,6 +89,12 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
 
   const isGenreMode = mode === "genres";
+  const isEraMode = mode === "years" || mode === "decades";
+  const eraGranularity: EraGranularity = mode === "decades" ? "decade" : "year";
+  // Shared by both genre and era modes - every control that only makes sense
+  // for a per-artist row (RankFilter, weight-by-placement, the genre filter
+  // panel, StatsRow, pagination) hides whenever rows aren't artists.
+  const isArtistMode = mode === "artists";
 
   const availableMonths = useMemo(() => sortedMonths(dataset, person), [dataset, person]);
   const {
@@ -97,9 +116,10 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
   const [maxRank, setMaxRank] = useRankFilter(person);
   const [weightByRank, setWeightByRank] = useWeightByRank(person);
 
-  // Only includeDuplicates/startMonth/endMonth are meaningful for genres -
-  // the artist-identity options (unite/producers/duos) don't apply, same as
-  // the old standalone GenreLeaderboard.
+  // Only includeDuplicates/startMonth/endMonth are meaningful for genres (or
+  // years/decades) - the artist-identity options (unite/producers/duos)
+  // don't apply, same as the old standalone GenreLeaderboard. Shared as-is
+  // by era mode too, since both are equally artist-identity-independent.
   const genreOptions: StatsOptions = useMemo(
     () => ({ includeDuplicates: scoringOptions.includeDuplicates, ...rangeOptions }),
     [scoringOptions.includeDuplicates, rangeOptions]
@@ -131,11 +151,17 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
     () => genreTotals(dataset, person, genreOptions),
     [dataset, person, genreOptions]
   );
-  const totals: Array<{ name: string; total: number; count: number }> = isGenreMode
-    ? genreRows.map((r) => ({ name: r.genre, total: r.total, count: r.total }))
-    : artistRows.map((r) => ({ name: r.artist, total: r.total, count: r.count }));
+  const eraRows = useMemo(
+    () => eraTotals(dataset, eraGranularity, person, genreOptions),
+    [dataset, eraGranularity, person, genreOptions]
+  );
+  const totals: Array<{ name: string; total: number; count: number }> = isEraMode
+    ? eraRows.map((r) => ({ name: r.era, total: r.total, count: r.total }))
+    : isGenreMode
+      ? genreRows.map((r) => ({ name: r.genre, total: r.total, count: r.total }))
+      : artistRows.map((r) => ({ name: r.artist, total: r.total, count: r.count }));
 
-  // Color must follow the ARTIST/GENRE, never its current rank in this
+  // Color must follow the ARTIST/GENRE/ERA, never its current rank in this
   // filtered view - so the color map is built from a STABLE ordering
   // (all-time totals for this person, under the identity toggles only -
   // never range/genre/rank/weight, which all reshuffle order without
@@ -154,15 +180,24 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
       ),
     [dataset, person, scoringOptions.includeDuplicates]
   );
+  const stableEraOrder = useMemo(
+    () =>
+      eraTotals(dataset, eraGranularity, person, {
+        includeDuplicates: scoringOptions.includeDuplicates,
+      }).map((t) => t.era),
+    [dataset, eraGranularity, person, scoringOptions.includeDuplicates]
+  );
   const colorMap = useMemo(
-    () => buildArtistColorMap(isGenreMode ? stableGenreOrder : stableArtistOrder),
-    [isGenreMode, stableGenreOrder, stableArtistOrder]
+    () =>
+      buildArtistColorMap(isEraMode ? stableEraOrder : isGenreMode ? stableGenreOrder : stableArtistOrder),
+    [isEraMode, isGenreMode, stableEraOrder, stableGenreOrder, stableArtistOrder]
   );
 
   const max = totals[0]?.total ?? 1;
-  // No pagination in genre mode - only ~19 genre/subgenre buckets total (see
-  // artistGenres.ts), unlike the potentially hundreds of artists.
-  const visible = isGenreMode ? totals : totals.slice(0, limit);
+  // No pagination in genre/era mode - only a handful of buckets total (~19
+  // genres, or however many distinct release years/decades appear in
+  // someone's history), unlike the potentially hundreds of artists.
+  const visible = isArtistMode ? totals.slice(0, limit) : totals;
 
   // Changing the range, scoring options, genre filter, rank filter, or mode
   // changes which rows qualify/exist at all - start back at the top rather
@@ -183,20 +218,22 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
 
   const expandedTracks = useMemo(() => {
     if (!activeExpanded) return [];
-    const tracks = isGenreMode
-      ? tracksForGenre(dataset, activeExpanded, person, genreOptions)
-      : // Deliberately includes maxRank (so a song excluded from the
-        // artist's total by the rank filter doesn't show up in their
-        // drill-down either) but not genreFilter - the drill-down has
-        // always shown an artist's full song list regardless of the genre
-        // checkboxes, since genreFilter is a per-ARTIST cutoff (did THIS
-        // artist qualify), not a reason to hide one of their own songs from
-        // them once they're shown at all.
-        tracksForArtist(dataset, activeExpanded, person, {
-          ...scoringOptions,
-          ...rangeOptions,
-          maxRank: maxRank === 25 ? undefined : maxRank,
-        });
+    const tracks = isEraMode
+      ? tracksForEra(dataset, eraGranularity, activeExpanded, person, genreOptions)
+      : isGenreMode
+        ? tracksForGenre(dataset, activeExpanded, person, genreOptions)
+        : // Deliberately includes maxRank (so a song excluded from the
+          // artist's total by the rank filter doesn't show up in their
+          // drill-down either) but not genreFilter - the drill-down has
+          // always shown an artist's full song list regardless of the genre
+          // checkboxes, since genreFilter is a per-ARTIST cutoff (did THIS
+          // artist qualify), not a reason to hide one of their own songs from
+          // them once they're shown at all.
+          tracksForArtist(dataset, activeExpanded, person, {
+            ...scoringOptions,
+            ...rangeOptions,
+            maxRank: maxRank === 25 ? undefined : maxRank,
+          });
     return [...tracks].sort((a, b) => {
       let cmp: number;
       switch (sortKey) {
@@ -219,6 +256,8 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
     dataset,
     activeExpanded,
     person,
+    isEraMode,
+    eraGranularity,
     isGenreMode,
     genreOptions,
     scoringOptions,
@@ -248,17 +287,24 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
     setExpanded(null);
   }
 
-  const noun = isGenreMode ? "genre" : "artist";
+  const noun = mode === "decades" ? "decade" : mode === "years" ? "year" : isGenreMode ? "genre" : "artist";
 
   return (
     <div className={styles.wrap}>
-      {!isGenreMode && <StatsRow dataset={dataset} person={person} options={combinedOptions} />}
+      {isArtistMode && <StatsRow dataset={dataset} person={person} options={combinedOptions} />}
 
       <div className={styles.headRow}>
         <div>
           <h2 className={styles.heading}>Songs per {noun}</h2>
           <p className={styles.sub}>
-            {isGenreMode ? (
+            {isEraMode ? (
+              <>
+                {scoringOptions.includeDuplicates === false && " · repeat songs counted once"}
+                &middot; click a {noun} to see its songs
+                {eraRows.some((r) => r.era === "Unknown") &&
+                  " · \"Unknown\" is songs with no catalogued release date"}
+              </>
+            ) : isGenreMode ? (
               <>
                 {scoringOptions.includeDuplicates === false && " · repeat songs counted once"}
                 &middot; click a genre to see its songs
@@ -280,6 +326,8 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
           options={[
             { value: "artists", label: "Artists" },
             { value: "genres", label: "Genres" },
+            { value: "years", label: "Years" },
+            { value: "decades", label: "Decades" },
           ]}
           onChange={switchMode}
           aria-label="Rank by"
@@ -297,7 +345,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
         onYear={applyYear}
       />
 
-      {!isGenreMode && (
+      {isArtistMode && (
         <>
           <div className={styles.filterRow}>
             <RankFilter value={maxRank} onChange={setMaxRank} />
@@ -344,9 +392,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
                   />
                 </div>
                 <span className={styles.value}>
-                  {!isGenreMode && weightByRank
-                    ? `${Math.round(row.total)}pts (${row.count})`
-                    : row.total}
+                  {isArtistMode && weightByRank ? `${Math.round(row.total)}pts (${row.count})` : row.total}
                 </span>
                 <span className={styles.chevron} data-open={isOpen} aria-hidden="true">
                   ▾
@@ -410,7 +456,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
         })}
       </ol>
 
-      {!isGenreMode && limit < totals.length && (
+      {isArtistMode && limit < totals.length && (
         <button type="button" className={styles.more} onClick={() => setLimit((n) => n + PAGE_SIZE)}>
           Show more ({totals.length - limit} remaining)
         </button>

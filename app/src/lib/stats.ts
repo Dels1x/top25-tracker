@@ -3,6 +3,7 @@ import { uniteRelatedProject } from "./relatedProjects";
 import { isKnownProducer } from "./knownProducers";
 import { genresForArtists } from "./artistGenres";
 import { isDistinctRecording } from "./trackDisambiguation";
+import { decadeBucketForTrack, yearBucketForTrack } from "./releaseEra";
 
 /** One point per occurrence of an artist in `scoringArtists` across a track. */
 export interface ArtistMonthCount {
@@ -442,6 +443,116 @@ export function cumulativeGenreSeries(
       const newTotal = (running.get(genre) ?? 0) + delta;
       running.set(genre, newTotal);
       point[genre] = newTotal;
+    }
+    series.push(point);
+  }
+
+  return series;
+}
+
+export type EraGranularity = "year" | "decade";
+
+export interface EraTotal {
+  era: string;
+  total: number;
+}
+
+export interface EraMonthCount {
+  era: string;
+  month: string;
+  count: number;
+}
+
+/**
+ * The release-year or release-decade bucket a track counts toward (see
+ * releaseEra.ts) - a track only ever has one release date, so unlike
+ * genreBucketsForTrack this is always exactly one bucket, never a union.
+ */
+function eraBucketForTrack(track: Pick<Track, "releaseDate">, granularity: EraGranularity): string {
+  return granularity === "decade"
+    ? decadeBucketForTrack(track.releaseDate)
+    : yearBucketForTrack(track.releaseDate);
+}
+
+/** Total tracks per release year/decade across all months (optionally for one person). */
+export function eraTotals(
+  dataset: Dataset,
+  granularity: EraGranularity,
+  person?: string,
+  options?: StatsOptions
+): EraTotal[] {
+  const totals = new Map<string, number>();
+  for (const track of allTracks(dataset, person, options)) {
+    const era = eraBucketForTrack(track, granularity);
+    totals.set(era, (totals.get(era) ?? 0) + track.points);
+  }
+  return Array.from(totals.entries())
+    .map(([era, total]) => ({ era, total }))
+    .sort((a, b) => b.total - a.total);
+}
+
+/** Per-month track counts per release year/decade, for building a time series chart. */
+export function eraMonthCounts(
+  dataset: Dataset,
+  granularity: EraGranularity,
+  person?: string,
+  options?: StatsOptions
+): EraMonthCount[] {
+  const counts = new Map<string, number>(); // key: `${era}\u0000${month}`
+  for (const track of allTracks(dataset, person, options)) {
+    const era = eraBucketForTrack(track, granularity);
+    const key = `${era}\u0000${track.month}`;
+    counts.set(key, (counts.get(key) ?? 0) + track.points);
+  }
+  return Array.from(counts.entries()).map(([key, count]) => {
+    const [era, month] = key.split("\u0000");
+    return { era, month, count };
+  });
+}
+
+/**
+ * All tracks counting toward a given release year/decade, newest month
+ * first - the exact set backing its number in eraTotals (same options, same
+ * dedup rule), for display in a "show me the songs" dropdown.
+ */
+export function tracksForEra(
+  dataset: Dataset,
+  granularity: EraGranularity,
+  era: string,
+  person?: string,
+  options?: StatsOptions
+): Array<Track & { month: string; person: string }> {
+  return allTracks(dataset, person, options)
+    .filter((track) => eraBucketForTrack(track, granularity) === era)
+    .sort((a, b) => b.month.localeCompare(a.month));
+}
+
+/** Same shape as cumulativeArtistSeries, but for release years/decades. */
+export function cumulativeEraSeries(
+  dataset: Dataset,
+  granularity: EraGranularity,
+  person: string | undefined,
+  topEras: string[],
+  options?: StatsOptions
+): CumulativeSeriesPoint[] {
+  const months = sortedMonths(dataset, person, options);
+  const perMonth = eraMonthCounts(dataset, granularity, person, options);
+
+  const lookup = new Map<string, number>();
+  for (const { era, month, count } of perMonth) {
+    lookup.set(`${era}\u0000${month}`, count);
+  }
+
+  const running = new Map<string, number>(topEras.map((e) => [e, 0]));
+  const series: CumulativeSeriesPoint[] = [];
+
+  for (const month of months) {
+    const point: CumulativeSeriesPoint = { month };
+    for (const era of topEras) {
+      const delta = lookup.get(`${era}\u0000${month}`) ?? 0;
+      const newTotal = (running.get(era) ?? 0) + delta;
+      running.set(era, newTotal);
+      point[era] = newTotal;
     }
     series.push(point);
   }

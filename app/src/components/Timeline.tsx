@@ -12,9 +12,12 @@ import type { Dataset } from "../data/types";
 import {
   artistTotals,
   cumulativeArtistSeries,
+  cumulativeEraSeries,
   cumulativeGenreSeries,
+  eraTotals,
   genreTotals,
   sortedMonths,
+  type EraGranularity,
   type StatsOptions,
 } from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
@@ -30,7 +33,7 @@ interface TimelineProps {
   scoringOptions: StatsOptions;
 }
 
-type Mode = "artists" | "genres";
+type Mode = "artists" | "genres" | "years" | "decades";
 
 const DEFAULT_SHOWN = 6;
 
@@ -50,10 +53,17 @@ function formatMonth(month: string): string {
  * legend toggles), genre mode shows every genre by default - there are only
  * ~19 possible genres/subgenres (see artistGenres.ts), so no trimming is
  * needed the way there is for a potentially-hundreds-strong artist pool.
+ *
+ * "years"/"decades" modes track each line's release-year/decade bucket (see
+ * releaseEra.ts) instead - same "show everything by default" behavior as
+ * genre mode, since a person's history only ever spans a few dozen release
+ * years/decades at most, same small-bucket-count reasoning.
  */
 export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
   const [mode, setMode] = usePersistedState<Mode>("top25tracker:timelineMode", "artists");
   const isGenreMode = mode === "genres";
+  const isEraMode = mode === "years" || mode === "decades";
+  const eraGranularity: EraGranularity = mode === "decades" ? "decade" : "year";
 
   const availableMonths = useMemo(() => sortedMonths(dataset, person), [dataset, person]);
 
@@ -84,14 +94,19 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
     () => genreTotals(dataset, person, genreOptions),
     [dataset, person, genreOptions]
   );
+  const eraTotalsList = useMemo(
+    () => eraTotals(dataset, eraGranularity, person, genreOptions),
+    [dataset, eraGranularity, person, genreOptions]
+  );
   const allArtists = useMemo(() => artistTotalsList.map((t) => t.artist), [artistTotalsList]);
   const allGenres = useMemo(() => genreTotalsList.map((t) => t.genre), [genreTotalsList]);
-  const allNames = isGenreMode ? allGenres : allArtists;
+  const allEras = useMemo(() => eraTotalsList.map((t) => t.era), [eraTotalsList]);
+  const allNames = isEraMode ? allEras : isGenreMode ? allGenres : allArtists;
 
-  // Color follows the ARTIST/GENRE, not its current rank within the selected
-  // range - built from the all-time ordering (identity toggles only, no
-  // range) so narrowing/widening the range never reshuffles which color a
-  // line gets, the same fix applied to Leaderboard.
+  // Color follows the ARTIST/GENRE/ERA, not its current rank within the
+  // selected range - built from the all-time ordering (identity toggles
+  // only, no range) so narrowing/widening the range never reshuffles which
+  // color a line gets, the same fix applied to Leaderboard.
   const stableArtistOrder = useMemo(
     () => artistTotals(dataset, person, scoringOptions).map((t) => t.artist),
     [dataset, person, scoringOptions]
@@ -103,17 +118,28 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
       ),
     [dataset, person, scoringOptions.includeDuplicates]
   );
+  const stableEraOrder = useMemo(
+    () =>
+      eraTotals(dataset, eraGranularity, person, {
+        includeDuplicates: scoringOptions.includeDuplicates,
+      }).map((t) => t.era),
+    [dataset, eraGranularity, person, scoringOptions.includeDuplicates]
+  );
   const colorMap = useMemo(
-    () => buildArtistColorMap(isGenreMode ? stableGenreOrder : stableArtistOrder),
-    [isGenreMode, stableGenreOrder, stableArtistOrder]
+    () =>
+      buildArtistColorMap(isEraMode ? stableEraOrder : isGenreMode ? stableGenreOrder : stableArtistOrder),
+    [isEraMode, isGenreMode, stableEraOrder, stableGenreOrder, stableArtistOrder]
   );
 
   // Keyed per person AND per mode - each person has a different artist
-  // pool, and artists/genres are entirely different name spaces, so
-  // "shown" selections shouldn't bleed across either axis. Defaults to the
+  // pool, and artists/genres/eras are entirely different name spaces, so
+  // "shown" selections shouldn't bleed across any of them. Defaults to the
   // top N artists the first time this person is viewed in artist mode;
-  // genre mode defaults to everything shown (same as the old
-  // GenreTimeline), since there are only ~19 possible genres total.
+  // genre/era modes default to everything shown (same as the old
+  // GenreTimeline), since there are only a couple dozen possible buckets at
+  // most either way. Years and decades get their own separate persisted set
+  // too (not shared with each other) since switching granularity changes
+  // the bucket names entirely (e.g. "1994" vs "1990s").
   const [shownArtists, setShownArtists] = usePersistedSetState(
     `top25tracker:timelineShown:${person}`,
     () => allArtists.slice(0, DEFAULT_SHOWN)
@@ -122,8 +148,12 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
     `top25tracker:genreTimelineShown:${person}`,
     () => allGenres
   );
-  const shown = isGenreMode ? shownGenres : shownArtists;
-  const setShown = isGenreMode ? setShownGenres : setShownArtists;
+  const [shownEras, setShownEras] = usePersistedSetState(
+    `top25tracker:eraTimelineShown:${eraGranularity}:${person}`,
+    () => allEras
+  );
+  const shown = isEraMode ? shownEras : isGenreMode ? shownGenres : shownArtists;
+  const setShown = isEraMode ? setShownEras : isGenreMode ? setShownGenres : setShownArtists;
 
   const artistSeries = useMemo(
     () => cumulativeArtistSeries(dataset, person, allArtists, { ...scoringOptions, ...rangeOptions }),
@@ -133,7 +163,11 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
     () => cumulativeGenreSeries(dataset, person, allGenres, genreOptions),
     [dataset, person, allGenres, genreOptions]
   );
-  const series = isGenreMode ? genreSeries : artistSeries;
+  const eraSeries = useMemo(
+    () => cumulativeEraSeries(dataset, eraGranularity, person, allEras, genreOptions),
+    [dataset, eraGranularity, person, allEras, genreOptions]
+  );
+  const series = isEraMode ? eraSeries : isGenreMode ? genreSeries : artistSeries;
 
   function toggle(name: string) {
     setShown((prev) => {
@@ -157,15 +191,15 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
   }
 
   const visibleNames = allNames.filter((n) => shown.has(n));
-  const noun = isGenreMode ? "genre" : "artist";
+  const noun = mode === "decades" ? "decade" : mode === "years" ? "year" : isGenreMode ? "genre" : "artist";
+  const byLabel =
+    mode === "decades" ? "by decade " : mode === "years" ? "by year " : isGenreMode ? "by genre " : "";
 
   return (
     <div className={styles.wrap}>
       <div className={styles.headRow}>
         <div>
-          <h2 className={styles.heading}>
-            Cumulative songs {isGenreMode ? "by genre " : ""}over time
-          </h2>
+          <h2 className={styles.heading}>Cumulative songs {byLabel}over time</h2>
           <p className={styles.sub}>Toggle {noun}s to compare their growth month over month</p>
         </div>
         <div className={styles.bulkActions}>
@@ -174,6 +208,8 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
             options={[
               { value: "artists", label: "Artists" },
               { value: "genres", label: "Genres" },
+              { value: "years", label: "Years" },
+              { value: "decades", label: "Decades" },
             ]}
             onChange={switchMode}
             aria-label="Track by"
