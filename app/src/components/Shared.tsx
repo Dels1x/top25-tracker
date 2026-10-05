@@ -22,6 +22,7 @@ interface SharedProps {
 }
 
 const PAGE_SIZE = 20;
+const SONG_PAGE_SIZE = 100;
 
 type SongSortKey = "date" | "title" | "album";
 type SortDirection = "asc" | "desc";
@@ -50,6 +51,7 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
   const [query, setQuery] = useState("");
   const [expandedArtist, setExpandedArtist] = useState<string | null>(null);
   const [artistLimit, setArtistLimit] = useState(PAGE_SIZE);
+  const [songLimit, setSongLimit] = useState(SONG_PAGE_SIZE);
   const [sortKey, setSortKey] = useState<SongSortKey>("date");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
   const {
@@ -165,6 +167,18 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
         s.creditedArtists.some((a) => a.toLowerCase().includes(q))
     );
   }, [songs, query]);
+
+  // The full song list can run into the hundreds (e.g. every song anyone's
+  // ever picked, with all presence buttons on "any") and rendering every row
+  // at once - each with its own framer-motion mount animation - is what was
+  // causing the lag. Page it the same way the artist leaderboard above
+  // already pages, just with a bigger page size since these rows are
+  // smaller/simpler than the artist rows. Resets to the first page whenever
+  // the underlying filtered set changes (search query or presence/identity
+  // filters), same reasoning as the artistLimit reset above - an old "show
+  // more" depth from a different filtered set isn't meaningful here either.
+  useEffect(() => setSongLimit(SONG_PAGE_SIZE), [filtered]);
+  const visibleSongs = filtered.slice(0, songLimit);
 
   return (
     <div className={styles.wrap}>
@@ -320,7 +334,7 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
         <p className={styles.empty}>No matches.</p>
       ) : (
         <ol className={styles.list}>
-          {filtered.map((song, index) => (
+          {visibleSongs.map((song, index) => (
             <motion.li
               key={song.trackKey}
               className={styles.item}
@@ -348,6 +362,16 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
             </motion.li>
           ))}
         </ol>
+      )}
+
+      {songLimit < filtered.length && (
+        <button
+          type="button"
+          className={leaderboardStyles.more}
+          onClick={() => setSongLimit((n) => n + SONG_PAGE_SIZE)}
+        >
+          Show more ({filtered.length - songLimit} remaining)
+        </button>
       )}
     </div>
   );

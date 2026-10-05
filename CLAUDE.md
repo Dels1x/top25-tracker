@@ -266,6 +266,15 @@ There is no test runner configured yet.
   appears once regardless of the presence filter), and the genre filter / identity toggles compose with
   the presence filter exactly like they already composed with the old all-required default - none of
   that plumbing changed, only which songs make it into the set to begin with.
+  **"The songs" list is paginated** (`songLimit`/`SONG_PAGE_SIZE = 100` in `Shared.tsx`, same
+  "Show more" button pattern as the artist leaderboard's own `PAGE_SIZE = 20`/`artistLimit`) because
+  with the presence filter loosened toward "any" this list can run into the hundreds of rows - each
+  one a `motion.li` with its own mount animation - which was visibly laggy rendered all at once. Only
+  the first `songLimit` of the (search-query-)`filtered` array is actually rendered
+  (`visibleSongs`); clicking "Show more" adds another 100. Resets back to the first page whenever
+  `filtered` itself changes - a new search query or a presence/genre/identity filter change - same
+  reasoning as `artistLimit`'s own reset effect just above: an old scroll-depth from a *different*
+  filtered set isn't meaningful once the set underneath it has changed.
   `Compare`
   (pick one or more artists OR genres — toggled via the same `ModeSwitch` component Leaderboard/
   Timeline now also use — e.g. a group's members, or a genre like "Hip-Hop" —
