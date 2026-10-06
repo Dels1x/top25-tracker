@@ -389,8 +389,13 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
                   // Same rank-axis treatment as Timeline's own placements
                   // mode - #1 is best, so flip the axis and anchor the
                   // domain at 1 instead of letting it start at 0 like every
-                  // other (count-based) mode here does.
+                  // other (count-based) mode here does. Logarithmic scale
+                  // (see Timeline's own YAxis for the full rationale) so
+                  // #200->#190 reads as the minor move it is while #10->#1
+                  // reads as the much harder climb it actually is - safe
+                  // specifically because rank is always >= 1, never 0.
                   reversed={isPlacementsMode}
+                  scale={isPlacementsMode ? "log" : "auto"}
                   domain={isPlacementsMode ? [1, "auto"] : undefined}
                   tickFormatter={isPlacementsMode ? (v: number) => `#${v}` : undefined}
                 />

@@ -339,7 +339,19 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
               // this mode on purpose - see cumulativeArtistRankSeries's doc
               // comment on why a gap (hasn't charted yet) should render as a
               // true gap, not a line jumping straight from nothing to a rank.
+              // `scale="log"` on top of that (a real, explicit product
+              // request, not a cosmetic add) is what actually makes the
+              // visual distance meaningful: going from #200 to #190 is a
+              // trivial move far down an artist's climb, while #10 to #1 is
+              // the hardest, most competitive stretch of the whole
+              // leaderboard - a LINEAR rank axis draws both as the identical
+              // 10-unit gap, which understates how much harder the low end
+              // is. Safe here specifically because rank is always >= 1
+              // (log(1) = 0, no negative/zero rank ever occurs) - this isn't
+              // reused for any count-based axis in this file, which CAN
+              // legitimately be 0 and would break under log.
               reversed={isPlacementsMode}
+              scale={isPlacementsMode ? "log" : "auto"}
               domain={isPlacementsMode ? [1, "auto"] : undefined}
               tickFormatter={isPlacementsMode ? (v: number) => `#${v}` : undefined}
             />
