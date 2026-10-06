@@ -339,19 +339,23 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
               // this mode on purpose - see cumulativeArtistRankSeries's doc
               // comment on why a gap (hasn't charted yet) should render as a
               // true gap, not a line jumping straight from nothing to a rank.
-              // `scale="log"` on top of that (a real, explicit product
+              // `scale="sqrt"` on top of that (a real, explicit product
               // request, not a cosmetic add) is what actually makes the
               // visual distance meaningful: going from #200 to #190 is a
               // trivial move far down an artist's climb, while #10 to #1 is
-              // the hardest, most competitive stretch of the whole
-              // leaderboard - a LINEAR rank axis draws both as the identical
-              // 10-unit gap, which understates how much harder the low end
-              // is. Safe here specifically because rank is always >= 1
-              // (log(1) = 0, no negative/zero rank ever occurs) - this isn't
-              // reused for any count-based axis in this file, which CAN
-              // legitimately be 0 and would break under log.
+              // a much harder, more competitive stretch of the leaderboard -
+              // a LINEAR rank axis draws both as the identical 10-unit gap,
+              // which understates how much harder the low end is. A plain
+              // log scale was tried first and rejected as too aggressive -
+              // it compressed the whole tail into an unreadably thin sliver
+              // (e.g. #10->#1 vs #200->#190 came out ~45x, vs sqrt's much
+              // gentler ~6x for the same two gaps) - sqrt keeps "harder at
+              // the top" without crushing the rest of the chart. Safe here
+              // specifically because rank is always >= 1, never 0 or
+              // negative - this isn't reused for any count-based axis in
+              // this file.
               reversed={isPlacementsMode}
-              scale={isPlacementsMode ? "log" : "auto"}
+              scale={isPlacementsMode ? "sqrt" : "auto"}
               domain={isPlacementsMode ? [1, "auto"] : undefined}
               tickFormatter={isPlacementsMode ? (v: number) => `#${v}` : undefined}
             />
@@ -359,7 +363,17 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
             {visibleNames.map((name) => (
               <Line
                 key={name}
-                type="monotone"
+                // "natural" gives Placements mode a visibly softer, rounder
+                // curve than "monotone" between months, while still passing
+                // exactly through every real rank value - nothing is
+                // smoothed away, unlike a "basis" curve which would
+                // approximate rather than hit each point exactly. Every
+                // other mode keeps "monotone", which is the right choice for
+                // a cumulative count: it guarantees the curve never dips
+                // below a true step between two points, a property that
+                // doesn't matter for a rank series (which legitimately goes
+                // up and down) but does matter for a running total.
+                type={isPlacementsMode ? "natural" : "monotone"}
                 dataKey={name}
                 stroke={colorMap.get(name) ?? "var(--text-muted)"}
                 strokeWidth={2}

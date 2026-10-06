@@ -389,13 +389,15 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
                   // Same rank-axis treatment as Timeline's own placements
                   // mode - #1 is best, so flip the axis and anchor the
                   // domain at 1 instead of letting it start at 0 like every
-                  // other (count-based) mode here does. Logarithmic scale
-                  // (see Timeline's own YAxis for the full rationale) so
-                  // #200->#190 reads as the minor move it is while #10->#1
-                  // reads as the much harder climb it actually is - safe
-                  // specifically because rank is always >= 1, never 0.
+                  // other (count-based) mode here does. sqrt scale (see
+                  // Timeline's own YAxis for the full rationale, including
+                  // why a plain log scale was tried and rejected as too
+                  // aggressive) so #200->#190 reads as the minor move it is
+                  // while #10->#1 reads as harder, without crushing the rest
+                  // of the chart - safe specifically because rank is always
+                  // >= 1, never 0.
                   reversed={isPlacementsMode}
-                  scale={isPlacementsMode ? "log" : "auto"}
+                  scale={isPlacementsMode ? "sqrt" : "auto"}
                   domain={isPlacementsMode ? [1, "auto"] : undefined}
                   tickFormatter={isPlacementsMode ? (v: number) => `#${v}` : undefined}
                 />
@@ -403,7 +405,9 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
                 {people.map((person) => (
                   <Line
                     key={person}
-                    type="monotone"
+                    // "natural" for a softer curve in Placements mode, same
+                    // reasoning as Timeline's own Line - see its comment.
+                    type={isPlacementsMode ? "natural" : "monotone"}
                     dataKey={person}
                     stroke={colorMap.get(person) ?? "var(--text-muted)"}
                     strokeWidth={2}
