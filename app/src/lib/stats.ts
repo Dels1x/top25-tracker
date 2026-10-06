@@ -294,7 +294,7 @@ export function artistTotals(
   }
   return Array.from(totals.entries())
     .map(([artist, total]) => ({ artist, total, count: counts.get(artist) ?? 0 }))
-    .sort((a, b) => b.total - a.total);
+    .sort((a, b) => b.total - a.total || a.artist.localeCompare(b.artist));
 }
 
 /** Per-month point counts per artist, for building a time series chart. */
@@ -652,6 +652,88 @@ export function cumulativeArtistSeriesByPerson(
     }
     series.push(point);
   }
+  return series;
+}
+
+/**
+ * Compare's "Placements" mode: one line per PERSON, each showing where the
+ * selected artist set stood in THAT PERSON'S OWN all-time artist leaderboard,
+ * as of each month - the person-scoped equivalent of
+ * cumulativeArtistRankSeries. There's no single cross-person leaderboard to
+ * rank within (each person has their own independent Leaderboard tab), so
+ * "placement" here means: build person X's own artistTotals-through-this-
+ * month exactly like cumulativeArtistRankSeries does, but treat every artist
+ * in `artists` (e.g. a group's members) as ONE combined pseudo-entry (summed
+ * total) competing against every other individual artist in that person's
+ * leaderboard - mirroring how cumulativeArtistSeriesByPerson already sums the
+ * selected set into one number per person rather than one line per artist.
+ * This answers "who ranks this artist/group highest in their own personal
+ * top artists" rather than "who has the most points for them" (which is what
+ * the Artists-mode line already answers) - a person who has fewer total
+ * songs by this artist can still rank them #1 in their own leaderboard if
+ * they simply have fewer artists overall, which the plain count line can't
+ * show.
+ *
+ * Same null-for-"hasn't charted yet" / recompute-every-month-regardless
+ * behavior as cumulativeArtistRankSeries, applied independently per person.
+ */
+export function artistRankSeriesByPerson(
+  dataset: Dataset,
+  people: string[],
+  artists: string[],
+  options?: StatsOptions
+): CumulativeSeriesPoint[] {
+  const artistSet = new Set(artists);
+  const months = Array.from(new Set(people.flatMap((p) => sortedMonths(dataset, p, options)))).sort();
+
+  // Per person: `${artist}\u0000${month}` -> delta that month (the combined
+  // set folded into one pseudo-artist key). The key is the selection's own
+  // sorted/joined artist names, not an arbitrary sentinel - a sentinel
+  // chosen to always sort before (or after) every real name would
+  // systematically win or lose every tie against a real artist regardless
+  // of name, which isn't a real "placement." Using the real name(s) means
+  // the alphabetical tiebreak below resolves a tie exactly the way it would
+  // if the lead selected artist were competing standalone (no real artist
+  // name can collide with a multi-artist joined string; a single-artist
+  // selection collides with itself correctly, which is the desired case).
+  const SELECTED_KEY = [...artistSet].sort().join(", ");
+  const perPersonDelta = new Map<string, Map<string, number>>();
+  const perPersonArtists = new Map<string, Set<string>>();
+
+  for (const person of people) {
+    const deltaLookup = new Map<string, number>();
+    const everyArtist = new Set<string>();
+    for (const { artist, month, count } of artistMonthCounts(dataset, person, options)) {
+      const key = artistSet.has(artist) ? SELECTED_KEY : artist;
+      everyArtist.add(key);
+      const dkey = `${key}\u0000${month}`;
+      deltaLookup.set(dkey, (deltaLookup.get(dkey) ?? 0) + count);
+    }
+    perPersonDelta.set(person, deltaLookup);
+    perPersonArtists.set(person, everyArtist);
+  }
+
+  const runningByPerson = new Map<string, Map<string, number>>(people.map((p) => [p, new Map()]));
+  const series: CumulativeSeriesPoint[] = [];
+
+  for (const month of months) {
+    const point: CumulativeSeriesPoint = { month };
+    for (const person of people) {
+      const running = runningByPerson.get(person)!;
+      const deltaLookup = perPersonDelta.get(person)!;
+      for (const artist of perPersonArtists.get(person)!) {
+        const delta = deltaLookup.get(`${artist}\u0000${month}`) ?? 0;
+        if (delta !== 0) running.set(artist, (running.get(artist) ?? 0) + delta);
+      }
+      const ranked = Array.from(running.entries())
+        .filter(([, total]) => total > 0)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+      const rank = ranked.findIndex(([key]) => key === SELECTED_KEY);
+      point[person] = rank === -1 ? (null as unknown as number) : rank + 1;
+    }
+    series.push(point);
+  }
+
   return series;
 }
 
@@ -1123,6 +1205,85 @@ export function cumulativeArtistSeries(
       const newTotal = (running.get(artist) ?? 0) + delta;
       running.set(artist, newTotal);
       point[artist] = newTotal;
+    }
+    series.push(point);
+  }
+
+  return series;
+}
+
+/**
+ * Timeline's "Placements" mode: for each tracked artist, where did they stand
+ * in the all-time Leaderboard ranking AS OF each month - i.e. re-run
+ * artistTotals using only tracks through that month, then report that
+ * artist's 1-indexed position in the resulting descending-by-total order
+ * (1 = the #1 artist overall so far). This is a fundamentally different shape
+ * from cumulativeArtistSeries: that one is a running total that only ever
+ * goes up; this one can go up OR down even in a month the tracked artist gets
+ * no new song at all, because every OTHER artist's total is still being
+ * re-ranked around them each month too (someone else overtaking them moves
+ * their placement even though their own count didn't change).
+ *
+ * A month before an artist's first-ever qualifying track has no meaningful
+ * placement (they aren't on the leaderboard at all yet) and is `null` there -
+ * the UI should render that as a gap, not a fabricated rank. From their first
+ * chart onward, every subsequent month gets a real (possibly unchanged, if
+ * nobody passed them) rank - this was an explicit product decision (recompute
+ * every month regardless of whether this artist had a new song that month),
+ * not a simplification.
+ *
+ * Built month-by-month via a single running-totals map rather than calling
+ * artistTotals fresh per month (which would be O(months) full re-scans of
+ * every track) - each month's leaderboard only needs that month's deltas
+ * folded into the running totals already built, same incremental approach
+ * cumulativeArtistSeries itself uses, just with a sort+indexOf per month on
+ * top instead of a flat lookup.
+ */
+export function cumulativeArtistRankSeries(
+  dataset: Dataset,
+  person: string | undefined,
+  trackedArtists: string[],
+  options?: StatsOptions
+): CumulativeSeriesPoint[] {
+  const months = sortedMonths(dataset, person, options);
+  const perMonth = artistMonthCounts(dataset, person, options);
+
+  // `${artist}\u0000${month}` -> this artist's point delta in that month
+  const deltaLookup = new Map<string, number>();
+  // Every artist who has ANY delta in some month, so a month's full
+  // leaderboard re-rank considers every artist who could possibly be ahead of
+  // a tracked one, not just the tracked set itself.
+  const everyArtist = new Set<string>();
+  for (const { artist, month, count } of perMonth) {
+    deltaLookup.set(`${artist}\u0000${month}`, count);
+    everyArtist.add(artist);
+  }
+
+  const running = new Map<string, number>();
+  const series: CumulativeSeriesPoint[] = [];
+
+  for (const month of months) {
+    for (const artist of everyArtist) {
+      const delta = deltaLookup.get(`${artist}\u0000${month}`) ?? 0;
+      if (delta !== 0) running.set(artist, (running.get(artist) ?? 0) + delta);
+    }
+    // Full leaderboard as of this month, descending by total - same
+    // tiebreak (alphabetical) artistTotals itself uses, so "placement" here
+    // matches what the Leaderboard tab would show if you looked at it with
+    // the range end set to this same month.
+    const ranked = Array.from(running.entries())
+      .filter(([, total]) => total > 0)
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    const rankOf = new Map<string, number>();
+    ranked.forEach(([artist], idx) => rankOf.set(artist, idx + 1));
+
+    const point: CumulativeSeriesPoint = { month };
+    for (const artist of trackedArtists) {
+      const rank = rankOf.get(artist);
+      // null (not undefined) for "hasn't charted yet" - Recharts skips a
+      // null data point in a line (gap) rather than plotting it as 0, which
+      // would otherwise read as "ranked #0", a nonsensical placement.
+      point[artist] = rank ?? (null as unknown as number);
     }
     series.push(point);
   }

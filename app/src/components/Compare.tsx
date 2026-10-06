@@ -10,6 +10,7 @@ import {
 } from "recharts";
 import type { Dataset } from "../data/types";
 import {
+  artistRankSeriesByPerson,
   artistTotals,
   cumulativeArtistSeriesByPerson,
   cumulativeEraSeriesByPerson,
@@ -35,7 +36,7 @@ interface CompareProps {
   scoringOptions: StatsOptions;
 }
 
-type Mode = "artists" | "genres" | "years" | "decades";
+type Mode = "artists" | "genres" | "years" | "decades" | "placements";
 
 function formatMonth(month: string): string {
   const [year, m] = month.split("-");
@@ -96,6 +97,12 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
 
   const isGenreMode = mode === "genres";
   const isEraMode = mode === "years" || mode === "decades";
+  // Placements is artist-scoped (same "artists only" decision as Timeline's
+  // own placements mode) - it reuses "artists" mode's exact picker/selection
+  // state (allArtistNames/selectedArtistSet, since isGenreMode/isEraMode are
+  // both false for it too), only the chart series differs (rank per person
+  // instead of a running count per person).
+  const isPlacementsMode = mode === "placements";
   const eraGranularity: EraGranularity = mode === "decades" ? "decade" : "year";
 
   // Combined (all-people) totals, descending - what the picker lists, so
@@ -198,12 +205,14 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
 
   const series = useMemo(
     () =>
-      isEraMode
-        ? cumulativeEraSeriesByPerson(dataset, people, eraGranularity, selectedNames, options)
-        : isGenreMode
-          ? cumulativeGenreSeriesByPerson(dataset, people, selectedNames, options)
-          : cumulativeArtistSeriesByPerson(dataset, people, selectedNames, options),
-    [dataset, people, selectedNames, options, isGenreMode, isEraMode, eraGranularity]
+      isPlacementsMode
+        ? artistRankSeriesByPerson(dataset, people, selectedNames, options)
+        : isEraMode
+          ? cumulativeEraSeriesByPerson(dataset, people, eraGranularity, selectedNames, options)
+          : isGenreMode
+            ? cumulativeGenreSeriesByPerson(dataset, people, selectedNames, options)
+            : cumulativeArtistSeriesByPerson(dataset, people, selectedNames, options),
+    [dataset, people, selectedNames, options, isPlacementsMode, isGenreMode, isEraMode, eraGranularity]
   );
 
   const summaries = useMemo(
@@ -229,8 +238,9 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
         <div>
           <h2 className={styles.heading}>Compare across people</h2>
           <p className={styles.sub}>
-            Pick one or more {nounPlural} to see each person's cumulative count side by side - who
-            started listening earlier, and how much
+            {isPlacementsMode
+              ? `Pick one or more ${nounPlural} to see where each person ranked them in their own all-time leaderboard, month by month`
+              : `Pick one or more ${nounPlural} to see each person's cumulative count side by side - who started listening earlier, and how much`}
             {isEraMode &&
               combinedEraTotals.some((t) => t.era === "Unknown") &&
               ' · "Unknown" is songs with no catalogued release date'}
@@ -243,6 +253,7 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
             { value: "genres", label: "Genres" },
             { value: "years", label: "Years" },
             { value: "decades", label: "Decades" },
+            { value: "placements", label: "Placements" },
           ]}
           onChange={switchMode}
           aria-label="Compare by"
@@ -375,8 +386,15 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
                   axisLine={false}
                   allowDecimals={false}
                   width={28}
+                  // Same rank-axis treatment as Timeline's own placements
+                  // mode - #1 is best, so flip the axis and anchor the
+                  // domain at 1 instead of letting it start at 0 like every
+                  // other (count-based) mode here does.
+                  reversed={isPlacementsMode}
+                  domain={isPlacementsMode ? [1, "auto"] : undefined}
+                  tickFormatter={isPlacementsMode ? (v: number) => `#${v}` : undefined}
                 />
-                <Tooltip content={<ChartTooltip colorMap={colorMap} />} />
+                <Tooltip content={<ChartTooltip colorMap={colorMap} isRank={isPlacementsMode} />} />
                 {people.map((person) => (
                   <Line
                     key={person}
@@ -403,14 +421,17 @@ function ChartTooltip({
   payload,
   label,
   colorMap,
+  isRank,
 }: {
   active?: boolean;
   payload?: Array<{ dataKey: string; value: number; color?: string }>;
   label?: string;
   colorMap: Map<string, string>;
+  /** Placements mode: lower is better - sort ascending and render "#N". See Timeline's own ChartTooltip. */
+  isRank?: boolean;
 }) {
   if (!active || !payload || payload.length === 0) return null;
-  const sorted = [...payload].sort((a, b) => b.value - a.value);
+  const sorted = [...payload].sort((a, b) => (isRank ? a.value - b.value : b.value - a.value));
   return (
     <div className={styles.tooltip}>
       <div className={styles.tooltipMonth}>{label ? formatMonth(label) : ""}</div>
@@ -421,7 +442,7 @@ function ChartTooltip({
             style={{ background: colorMap.get(p.dataKey) ?? "var(--text-muted)" }}
           />
           <span className={styles.tooltipName}>{p.dataKey}</span>
-          <span className={styles.tooltipValue}>{p.value}</span>
+          <span className={styles.tooltipValue}>{isRank ? `#${p.value}` : p.value}</span>
         </div>
       ))}
     </div>

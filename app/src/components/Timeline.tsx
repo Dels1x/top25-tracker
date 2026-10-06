@@ -11,6 +11,7 @@ import {
 import type { Dataset } from "../data/types";
 import {
   artistTotals,
+  cumulativeArtistRankSeries,
   cumulativeArtistSeries,
   cumulativeEraSeries,
   cumulativeGenreSeries,
@@ -35,7 +36,7 @@ interface TimelineProps {
   scoringOptions: StatsOptions;
 }
 
-type Mode = "artists" | "genres" | "years" | "decades";
+type Mode = "artists" | "genres" | "years" | "decades" | "placements";
 
 const DEFAULT_SHOWN = 6;
 
@@ -73,6 +74,13 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
   const [mode, setMode] = usePersistedState<Mode>("top25tracker:timelineMode", "artists");
   const isGenreMode = mode === "genres";
   const isEraMode = mode === "years" || mode === "decades";
+  // Placements is artist-scoped (see the "Artists only" product decision in
+  // cumulativeArtistRankSeries's own doc comment) - it reuses the exact same
+  // artist list/shown-set/color assignment as plain "artists" mode, only the
+  // chart's Y value (rank instead of running count) and axis orientation
+  // differ, so it piggybacks on every `isGenreMode`/`isEraMode`-false branch
+  // below rather than needing its own parallel allArtists/shownArtists state.
+  const isPlacementsMode = mode === "placements";
   const eraGranularity: EraGranularity = mode === "decades" ? "decade" : "year";
 
   const availableMonths = useMemo(() => sortedMonths(dataset, person), [dataset, person]);
@@ -201,7 +209,27 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
     () => cumulativeEraSeries(dataset, eraGranularity, person, allEras, genreOptions),
     [dataset, eraGranularity, person, allEras, genreOptions]
   );
-  const series = isEraMode ? eraSeries : isGenreMode ? genreSeries : artistSeries;
+  // Placements: same artist list as plain artist mode, but the value per
+  // month is this artist's 1-indexed RANK in the all-time leaderboard as of
+  // that month (see cumulativeArtistRankSeries), not a running count - a
+  // fundamentally different series shape, computed separately rather than
+  // derived from artistSeries.
+  const placementSeries = useMemo(
+    () =>
+      cumulativeArtistRankSeries(dataset, person, allArtists, {
+        ...scoringOptions,
+        ...rangeOptions,
+        genreFilter: selectedGenres,
+      }),
+    [dataset, person, allArtists, scoringOptions, rangeOptions, selectedGenres]
+  );
+  const series = isPlacementsMode
+    ? placementSeries
+    : isEraMode
+      ? eraSeries
+      : isGenreMode
+        ? genreSeries
+        : artistSeries;
 
   function toggle(name: string) {
     setShown((prev) => {
@@ -233,8 +261,14 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
     <div className={styles.wrap}>
       <div className={styles.headRow}>
         <div>
-          <h2 className={styles.heading}>Cumulative songs {byLabel}over time</h2>
-          <p className={styles.sub}>Toggle {noun}s to compare their growth month over month</p>
+          <h2 className={styles.heading}>
+            {isPlacementsMode ? "Leaderboard placement over time" : `Cumulative songs ${byLabel}over time`}
+          </h2>
+          <p className={styles.sub}>
+            {isPlacementsMode
+              ? "Toggle artists to compare where they stood in the all-time leaderboard, month by month"
+              : `Toggle ${noun}s to compare their growth month over month`}
+          </p>
         </div>
         <div className={styles.bulkActions}>
           <ModeSwitch
@@ -244,6 +278,7 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
               { value: "genres", label: "Genres" },
               { value: "years", label: "Years" },
               { value: "decades", label: "Decades" },
+              { value: "placements", label: "Placements" },
             ]}
             onChange={switchMode}
             aria-label="Track by"
@@ -296,8 +331,19 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
               axisLine={false}
               allowDecimals={false}
               width={28}
+              // Placements is a RANK, not a count - #1 is the best possible
+              // value, so the axis is flipped (1 at top) and anchored to
+              // start at 1 rather than 0, which a plain count axis always
+              // does. `reversed` on its own still lets the domain's auto-max
+              // float normally; connectNulls is NOT set on the Line below for
+              // this mode on purpose - see cumulativeArtistRankSeries's doc
+              // comment on why a gap (hasn't charted yet) should render as a
+              // true gap, not a line jumping straight from nothing to a rank.
+              reversed={isPlacementsMode}
+              domain={isPlacementsMode ? [1, "auto"] : undefined}
+              tickFormatter={isPlacementsMode ? (v: number) => `#${v}` : undefined}
             />
-            <Tooltip content={<ChartTooltip colorMap={colorMap} />} />
+            <Tooltip content={<ChartTooltip colorMap={colorMap} isRank={isPlacementsMode} />} />
             {visibleNames.map((name) => (
               <Line
                 key={name}
@@ -344,14 +390,23 @@ function ChartTooltip({
   payload,
   label,
   colorMap,
+  isRank,
 }: {
   active?: boolean;
   payload?: Array<{ dataKey: string; value: number; color?: string }>;
   label?: string;
   colorMap: Map<string, string>;
+  /**
+   * Placements mode: lower is better, so the tooltip sorts ASCENDING
+   * (rank #1 first) instead of the usual descending-by-value, and each
+   * value renders as "#N" rather than a bare count. Recharts already omits
+   * a line from `payload` entirely when its value is null (hasn't charted
+   * yet that month), so no extra filtering is needed here for that case.
+   */
+  isRank?: boolean;
 }) {
   if (!active || !payload || payload.length === 0) return null;
-  const sorted = [...payload].sort((a, b) => b.value - a.value);
+  const sorted = [...payload].sort((a, b) => (isRank ? a.value - b.value : b.value - a.value));
   return (
     <div className={styles.tooltip}>
       <div className={styles.tooltipMonth}>{label ? formatMonth(label) : ""}</div>
@@ -362,7 +417,7 @@ function ChartTooltip({
             style={{ background: colorMap.get(p.dataKey) ?? "var(--text-muted)" }}
           />
           <span className={styles.tooltipName}>{p.dataKey}</span>
-          <span className={styles.tooltipValue}>{p.value}</span>
+          <span className={styles.tooltipValue}>{isRank ? `#${p.value}` : p.value}</span>
         </div>
       ))}
     </div>

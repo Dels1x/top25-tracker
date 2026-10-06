@@ -377,6 +377,46 @@ There is no test runner configured yet.
   and Decades - which have entirely different bucket name spaces ("1994" vs "1990s") - never carries
   over a stale selection from the other granularity. Same precedent as genre mode on the 3
   artist-identity toggles: visible-but-inert in years/decades mode too, not hidden.
+  **`Timeline` and `Compare` both gained a 5th `ModeSwitch` option, "Placements"** - deliberately
+  ARTIST-ONLY (not extended to genres/years/decades, unlike every other cross-cutting filter in this
+  file) since "placement" maps onto the existing per-artist Leaderboard ranking specifically; a
+  genre/era bucket pool is small enough (~19 genres, ~10 decades) that ranking within it is far less
+  interesting. This mode answers a genuinely different question than the other 4, which are all some
+  flavor of "cumulative count over time" (a line that only ever goes up) - Placements instead tracks
+  **where an artist stood in the all-time Leaderboard ranking, AS OF each month** (`stats.ts`'s
+  `cumulativeArtistRankSeries` for Timeline, `artistRankSeriesByPerson` for Compare) - i.e. re-run
+  `artistTotals` using only tracks through that month, then report the tracked artist's 1-indexed
+  position in that snapshot's descending-by-total order (1 = the #1 artist overall so far). This can
+  move up OR down in a month the tracked artist gets no new song at all, since every other artist's
+  total is still being re-ranked around them each month too - an artist's line can fall even with zero
+  change to their own count, if someone else just overtook them. This was an explicit product decision
+  (recompute the full leaderboard every month, not just on months the tracked artist has a new entry) -
+  verified against the real dataset that rank actually moves in response to other artists catching up,
+  not just when the tracked artist's own count changes. A month before an artist's first-ever
+  qualifying track has no placement at all and is `null` there (not rank 0 or some fabricated value) -
+  Recharts renders this as a genuine gap in the line, which is why the `Line` for this mode does NOT
+  set `connectNulls`. Both `YAxis`es flip for this mode (`reversed`, domain anchored at `[1, "auto"]`
+  instead of the usual 0-based count domain) and format ticks as `#N`, and both `ChartTooltip`s gained
+  an `isRank` flag that sorts the tooltip rows ASCENDING (rank 1 first, not highest-value-first like
+  every count-based mode) and renders each value as `#N`. In `Timeline`, Placements reuses artist
+  mode's entire picker/shown-set/color-assignment plumbing unchanged (`isPlacementsMode` is a separate
+  flag from `isGenreMode`/`isEraMode`, so every "neither genre nor era" branch already covers it for
+  free) - only the series/axis/tooltip actually branch on it. Same reuse in `Compare`: Placements picks
+  from and persists to the exact same `compareArtists` selection set "artists" mode uses (it IS artist
+  mode's selection, just charted differently), and the summary row above the chart still shows each
+  person's plain song COUNT/first-month for the selection (via the unchanged `personArtistSummaries`) -
+  only the chart itself switches to rank. `Compare`'s rank series treats the whole selected artist set
+  (e.g. a group's members) as one combined pseudo-entry competing for position against every other
+  individual artist in that person's OWN leaderboard (there's no single cross-person leaderboard to
+  rank within, since each person has an independent Leaderboard tab) - this answers "who ranks this
+  artist/group highest in THEIR OWN personal top artists," a different question from the Artists-mode
+  line's plain point total, since a person with fewer total songs by an artist can still rank them
+  higher if they simply have fewer artists overall. The combined pseudo-entry's tiebreak key is the
+  selection's own sorted/joined artist name(s), not an arbitrary sentinel string - a sentinel chosen to
+  always sort before/after every real name would systematically win or lose ties against real artists
+  regardless of who they actually are, which isn't a meaningful placement. `artistTotals`'s own sort
+  also gained an explicit alphabetical tiebreak (previously unordered among exact ties) so every rank
+  computed off of it is deterministic rather than depending on incidental Map iteration order.
 - **`app/src/components/ModeSwitch.tsx`** — the pill-shaped "Artists / Genres" (or similar) mode
   switch, originally built standalone inside `Compare.tsx` and extracted into its own small generic
   component (`<T extends string>`, a `value`/`options`/`onChange` triplet plus an `aria-label`) once
