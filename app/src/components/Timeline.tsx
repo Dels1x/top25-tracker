@@ -13,8 +13,10 @@ import {
   artistTotals,
   cumulativeArtistRankSeries,
   cumulativeArtistSeries,
+  cumulativeDurationSeries,
   cumulativeEraSeries,
   cumulativeGenreSeries,
+  durationTotals,
   eraTotals,
   genreTotals,
   sortedMonths,
@@ -36,7 +38,7 @@ interface TimelineProps {
   scoringOptions: StatsOptions;
 }
 
-type Mode = "artists" | "genres" | "years" | "decades" | "placements";
+type Mode = "artists" | "genres" | "years" | "decades" | "placements" | "duration";
 
 const DEFAULT_SHOWN = 6;
 
@@ -81,6 +83,7 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
   // differ, so it piggybacks on every `isGenreMode`/`isEraMode`-false branch
   // below rather than needing its own parallel allArtists/shownArtists state.
   const isPlacementsMode = mode === "placements";
+  const isDurationMode = mode === "duration";
   const eraGranularity: EraGranularity = mode === "decades" ? "decade" : "year";
 
   const availableMonths = useMemo(() => sortedMonths(dataset, person), [dataset, person]);
@@ -135,10 +138,15 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
     () => eraTotals(dataset, eraGranularity, person, genreOptions),
     [dataset, eraGranularity, person, genreOptions]
   );
+  const durationTotalsList = useMemo(
+    () => durationTotals(dataset, person, genreOptions),
+    [dataset, person, genreOptions]
+  );
   const allArtists = useMemo(() => artistTotalsList.map((t) => t.artist), [artistTotalsList]);
   const allGenres = useMemo(() => genreTotalsList.map((t) => t.genre), [genreTotalsList]);
   const allEras = useMemo(() => eraTotalsList.map((t) => t.era), [eraTotalsList]);
-  const allNames = isEraMode ? allEras : isGenreMode ? allGenres : allArtists;
+  const allDurations = useMemo(() => durationTotalsList.map((t) => t.bucket), [durationTotalsList]);
+  const allNames = isDurationMode ? allDurations : isEraMode ? allEras : isGenreMode ? allGenres : allArtists;
 
   // Color follows the ARTIST/GENRE/ERA, not its current rank within the
   // selected range - built from the all-time ordering (identity toggles
@@ -162,10 +170,25 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
       }).map((t) => t.era),
     [dataset, eraGranularity, person, scoringOptions.includeDuplicates]
   );
+  const stableDurationOrder = useMemo(
+    () =>
+      durationTotals(dataset, person, { includeDuplicates: scoringOptions.includeDuplicates }).map(
+        (t) => t.bucket
+      ),
+    [dataset, person, scoringOptions.includeDuplicates]
+  );
   const colorMap = useMemo(
     () =>
-      buildArtistColorMap(isEraMode ? stableEraOrder : isGenreMode ? stableGenreOrder : stableArtistOrder),
-    [isEraMode, isGenreMode, stableEraOrder, stableGenreOrder, stableArtistOrder]
+      buildArtistColorMap(
+        isDurationMode
+          ? stableDurationOrder
+          : isEraMode
+            ? stableEraOrder
+            : isGenreMode
+              ? stableGenreOrder
+              : stableArtistOrder
+      ),
+    [isDurationMode, isEraMode, isGenreMode, stableDurationOrder, stableEraOrder, stableGenreOrder, stableArtistOrder]
   );
 
   // Keyed per person AND per mode - each person has a different artist
@@ -189,8 +212,24 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
     `top25tracker:eraTimelineShown:${eraGranularity}:${person}`,
     () => allEras
   );
-  const shown = isEraMode ? shownEras : isGenreMode ? shownGenres : shownArtists;
-  const setShown = isEraMode ? setShownEras : isGenreMode ? setShownGenres : setShownArtists;
+  const [shownDurations, setShownDurations] = usePersistedSetState(
+    `top25tracker:durationTimelineShown:${person}`,
+    () => allDurations
+  );
+  const shown = isDurationMode
+    ? shownDurations
+    : isEraMode
+      ? shownEras
+      : isGenreMode
+        ? shownGenres
+        : shownArtists;
+  const setShown = isDurationMode
+    ? setShownDurations
+    : isEraMode
+      ? setShownEras
+      : isGenreMode
+        ? setShownGenres
+        : setShownArtists;
 
   const artistSeries = useMemo(
     () =>
@@ -209,6 +248,10 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
     () => cumulativeEraSeries(dataset, eraGranularity, person, allEras, genreOptions),
     [dataset, eraGranularity, person, allEras, genreOptions]
   );
+  const durationSeries = useMemo(
+    () => cumulativeDurationSeries(dataset, person, allDurations, genreOptions),
+    [dataset, person, allDurations, genreOptions]
+  );
   // Placements: same artist list as plain artist mode, but the value per
   // month is this artist's 1-indexed RANK in the all-time leaderboard as of
   // that month (see cumulativeArtistRankSeries), not a running count - a
@@ -225,11 +268,13 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
   );
   const series = isPlacementsMode
     ? placementSeries
-    : isEraMode
-      ? eraSeries
-      : isGenreMode
-        ? genreSeries
-        : artistSeries;
+    : isDurationMode
+      ? durationSeries
+      : isEraMode
+        ? eraSeries
+        : isGenreMode
+          ? genreSeries
+          : artistSeries;
 
   function toggle(name: string) {
     setShown((prev) => {
@@ -253,9 +298,26 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
   }
 
   const visibleNames = allNames.filter((n) => shown.has(n));
-  const noun = mode === "decades" ? "decade" : mode === "years" ? "year" : isGenreMode ? "genre" : "artist";
+  const noun =
+    mode === "decades"
+      ? "decade"
+      : mode === "years"
+        ? "year"
+        : isDurationMode
+          ? "duration"
+          : isGenreMode
+            ? "genre"
+            : "artist";
   const byLabel =
-    mode === "decades" ? "by decade " : mode === "years" ? "by year " : isGenreMode ? "by genre " : "";
+    mode === "decades"
+      ? "by decade "
+      : mode === "years"
+        ? "by year "
+        : isDurationMode
+          ? "by duration "
+          : isGenreMode
+            ? "by genre "
+            : "";
 
   return (
     <div className={styles.wrap}>
@@ -279,6 +341,7 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
               { value: "years", label: "Years" },
               { value: "decades", label: "Decades" },
               { value: "placements", label: "Placements" },
+              { value: "duration", label: "Duration" },
             ]}
             onChange={switchMode}
             aria-label="Track by"

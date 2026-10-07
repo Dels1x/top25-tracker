@@ -4,6 +4,7 @@ import { isKnownProducer } from "./knownProducers";
 import { genresForArtists } from "./artistGenres";
 import { isDistinctRecording } from "./trackDisambiguation";
 import { decadeBucketForTrack, yearBucketForTrack } from "./releaseEra";
+import { DURATION_BUCKETS, durationBucketForTrack } from "./durationBuckets";
 
 /** One point per occurrence of an artist in `scoringArtists` across a track. */
 export interface ArtistMonthCount {
@@ -573,6 +574,112 @@ export function cumulativeEraSeries(
   return series;
 }
 
+export interface DurationTotal {
+  bucket: string;
+  total: number;
+  /** Same purpose as GenreTotal.count / ArtistTotal.count - see those. */
+  count: number;
+}
+
+export interface DurationMonthCount {
+  bucket: string;
+  month: string;
+  count: number;
+}
+
+/**
+ * Total tracks per track-length bucket (durationBuckets.ts) across all
+ * months (optionally for one person) - same shape as eraTotals/genreTotals,
+ * but a track only ever has ONE duration bucket (no multi-bucket union, same
+ * property eraTotals has). Sorted by BUCKET ORDER (shortest to longest), not
+ * by total - unlike every other *Totals function here, "longest bucket by
+ * song count" isn't a useful primary ordering for a duration breakdown; the
+ * natural reading order is short-to-long, same as how a listener would
+ * expect a duration histogram laid out.
+ */
+export function durationTotals(
+  dataset: Dataset,
+  person?: string,
+  options?: StatsOptions
+): DurationTotal[] {
+  const totals = new Map<string, number>();
+  const counts = new Map<string, number>();
+  for (const track of allTracks(dataset, person, options)) {
+    const bucket = durationBucketForTrack(track.durationMs);
+    totals.set(bucket, (totals.get(bucket) ?? 0) + track.points);
+    counts.set(bucket, (counts.get(bucket) ?? 0) + 1);
+  }
+  return Array.from(totals.entries())
+    .map(([bucket, total]) => ({ bucket, total, count: counts.get(bucket) ?? 0 }))
+    .sort((a, b) => DURATION_BUCKETS.indexOf(a.bucket) - DURATION_BUCKETS.indexOf(b.bucket));
+}
+
+/** Per-month track counts per duration bucket, for building a time series chart. */
+export function durationMonthCounts(
+  dataset: Dataset,
+  person?: string,
+  options?: StatsOptions
+): DurationMonthCount[] {
+  const counts = new Map<string, number>(); // key: `${bucket}\u0000${month}`
+  for (const track of allTracks(dataset, person, options)) {
+    const bucket = durationBucketForTrack(track.durationMs);
+    const key = `${bucket}\u0000${track.month}`;
+    counts.set(key, (counts.get(key) ?? 0) + track.points);
+  }
+  return Array.from(counts.entries()).map(([key, count]) => {
+    const [bucket, month] = key.split("\u0000");
+    return { bucket, month, count };
+  });
+}
+
+/**
+ * All tracks counting toward a given duration bucket, newest month first -
+ * the exact set backing its number in durationTotals (same options, same
+ * dedup rule), for display in a "show me the songs" dropdown.
+ */
+export function tracksForDuration(
+  dataset: Dataset,
+  bucket: string,
+  person?: string,
+  options?: StatsOptions
+): Array<Track & { month: string; person: string }> {
+  return allTracks(dataset, person, options)
+    .filter((track) => durationBucketForTrack(track.durationMs) === bucket)
+    .sort((a, b) => b.month.localeCompare(a.month));
+}
+
+/** Same shape as cumulativeArtistSeries, but for duration buckets. */
+export function cumulativeDurationSeries(
+  dataset: Dataset,
+  person: string | undefined,
+  topBuckets: string[],
+  options?: StatsOptions
+): CumulativeSeriesPoint[] {
+  const months = sortedMonths(dataset, person, options);
+  const perMonth = durationMonthCounts(dataset, person, options);
+
+  const lookup = new Map<string, number>();
+  for (const { bucket, month, count } of perMonth) {
+    lookup.set(`${bucket}\u0000${month}`, count);
+  }
+
+  const running = new Map<string, number>(topBuckets.map((b) => [b, 0]));
+  const series: CumulativeSeriesPoint[] = [];
+
+  for (const month of months) {
+    const point: CumulativeSeriesPoint = { month };
+    for (const bucket of topBuckets) {
+      const delta = lookup.get(`${bucket}\u0000${month}`) ?? 0;
+      const newTotal = (running.get(bucket) ?? 0) + delta;
+      running.set(bucket, newTotal);
+      point[bucket] = newTotal;
+    }
+    series.push(point);
+  }
+
+  return series;
+}
+
 /** One person's first (earliest-month) and total count toward a selected artist set, for Compare's summary row. */
 export interface PersonArtistSummary {
   person: string;
@@ -887,6 +994,78 @@ export function cumulativeEraSeriesByPerson(
   return series;
 }
 
+/** Same shape as PersonArtistSummary, but for a selected set of duration buckets. */
+export interface PersonDurationSummary {
+  person: string;
+  total: number;
+  firstMonth: string | null;
+}
+
+/**
+ * Per-person total and earliest month for a selected set of duration
+ * buckets - the duration equivalent of personArtistSummaries, for Compare's
+ * "duration" mode. A track only ever has ONE duration bucket
+ * (durationBucketForTrack), so like personEraSummaries there's no
+ * multi-bucket union to worry about.
+ */
+export function personDurationSummaries(
+  dataset: Dataset,
+  people: string[],
+  buckets: string[],
+  options?: StatsOptions
+): PersonDurationSummary[] {
+  const bucketSet = new Set(buckets);
+  return people.map((person) => {
+    let total = 0;
+    let firstMonth: string | null = null;
+    for (const track of allTracks(dataset, person, options)) {
+      if (!bucketSet.has(durationBucketForTrack(track.durationMs))) continue;
+      total += 1;
+      if (firstMonth === null || track.month < firstMonth) firstMonth = track.month;
+    }
+    return { person, total, firstMonth };
+  });
+}
+
+/**
+ * Duration equivalent of cumulativeArtistSeriesByPerson - one cumulative
+ * line per PERSON, summing counts across every duration bucket in `buckets`
+ * for that person, for Compare's "duration" mode (e.g. "who picks longer
+ * songs, and since when").
+ */
+export function cumulativeDurationSeriesByPerson(
+  dataset: Dataset,
+  people: string[],
+  buckets: string[],
+  options?: StatsOptions
+): CumulativeSeriesPoint[] {
+  const bucketSet = new Set(buckets);
+  const months = Array.from(new Set(people.flatMap((p) => sortedMonths(dataset, p, options)))).sort();
+
+  const perMonth = new Map<string, number>();
+  for (const person of people) {
+    for (const track of allTracks(dataset, person, options)) {
+      if (!bucketSet.has(durationBucketForTrack(track.durationMs))) continue;
+      const key = `${person}\u0000${track.month}`;
+      perMonth.set(key, (perMonth.get(key) ?? 0) + 1);
+    }
+  }
+
+  const running = new Map<string, number>(people.map((p) => [p, 0]));
+  const series: CumulativeSeriesPoint[] = [];
+  for (const month of months) {
+    const point: CumulativeSeriesPoint = { month };
+    for (const person of people) {
+      const delta = perMonth.get(`${person}\u0000${month}`) ?? 0;
+      const newTotal = (running.get(person) ?? 0) + delta;
+      running.set(person, newTotal);
+      point[person] = newTotal;
+    }
+    series.push(point);
+  }
+  return series;
+}
+
 /** One song that every person has had in their top 25 at some point, and when. */
 export interface SharedSong {
   trackKey: string;
@@ -910,6 +1089,12 @@ export interface SharedSong {
    * bucketing releaseEra.ts already does for the per-person Leaderboard.
    */
   releaseDate: string | null;
+  /**
+   * Straight from the underlying Track, same reasoning as releaseDate above
+   * (unambiguous regardless of who picked the song or when) - backs
+   * sharedSongDurationTotals/sharedSongsForDuration's Duration mode.
+   */
+  durationMs: number | null;
   /** Every month (across every person) this song appeared, for display/sorting. */
   appearances: Array<{ person: string; month: string; rank: number }>;
 }
@@ -981,6 +1166,7 @@ export function songsByPresence(
           creditedArtists: track.creditedArtists,
           scoringArtists,
           releaseDate: track.releaseDate,
+          durationMs: track.durationMs,
           appearances: [],
         };
         byKey.set(key, entry);
@@ -1178,6 +1364,49 @@ export function sharedSongsForEra(
     (song) =>
       genreFilteredScoringArtists(song, options).length > 0 &&
       eraBucketForTrack(song, granularity) === era
+  );
+}
+
+/**
+ * Duration-bucket equivalent of sharedSongArtistTotals - of the qualifying
+ * shared songs, which duration bucket shows up on the most of them, bucketed
+ * by each song's own durationMs (durationBucketForTrack) exactly like the
+ * per-person Leaderboard's Duration mode. A shared song only has one
+ * duration regardless of who picked it or when, so (like the era modes)
+ * there's no multi-bucket union here. `options.genreFilter` still applies at
+ * the artist level first, same reasoning as sharedSongEraTotals.
+ */
+export function sharedSongDurationTotals(
+  dataset: Dataset,
+  options?: StatsOptions,
+  presence?: Map<string, PresenceRequirement>
+): DurationTotal[] {
+  const songs = presence ? songsByPresence(dataset, presence, options) : sharedSongs(dataset, options);
+  const totals = new Map<string, number>();
+  const counts = new Map<string, number>();
+  for (const song of songs) {
+    if (genreFilteredScoringArtists(song, options).length === 0) continue;
+    const bucket = durationBucketForTrack(song.durationMs);
+    totals.set(bucket, (totals.get(bucket) ?? 0) + 1);
+    counts.set(bucket, (counts.get(bucket) ?? 0) + 1);
+  }
+  return Array.from(totals.entries())
+    .map(([bucket, total]) => ({ bucket, total, count: counts.get(bucket) ?? 0 }))
+    .sort((a, b) => DURATION_BUCKETS.indexOf(a.bucket) - DURATION_BUCKETS.indexOf(b.bucket));
+}
+
+/** The subset of sharedSongs belonging to a given duration bucket - duration equivalent of sharedSongsForArtist. */
+export function sharedSongsForDuration(
+  dataset: Dataset,
+  bucket: string,
+  options?: StatsOptions,
+  presence?: Map<string, PresenceRequirement>
+): SharedSong[] {
+  const songs = presence ? songsByPresence(dataset, presence, options) : sharedSongs(dataset, options);
+  return songs.filter(
+    (song) =>
+      genreFilteredScoringArtists(song, options).length > 0 &&
+      durationBucketForTrack(song.durationMs) === bucket
   );
 }
 

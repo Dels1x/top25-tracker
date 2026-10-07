@@ -13,6 +13,8 @@ export interface Track {
   scoringArtists: string[];
   album: string;
   releaseDate: string | null;
+  /** Straight from the CSV's "Duration (ms)" column; null if missing/unparseable. */
+  durationMs: number | null;
   spotifyId: string | null;
   isrc: string | null;
   genres: string[];

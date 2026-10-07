@@ -13,11 +13,14 @@ import {
   artistRankSeriesByPerson,
   artistTotals,
   cumulativeArtistSeriesByPerson,
+  cumulativeDurationSeriesByPerson,
   cumulativeEraSeriesByPerson,
   cumulativeGenreSeriesByPerson,
+  durationTotals,
   eraTotals,
   genreTotals,
   personArtistSummaries,
+  personDurationSummaries,
   personEraSummaries,
   personGenreSummaries,
   sortedMonths,
@@ -36,7 +39,7 @@ interface CompareProps {
   scoringOptions: StatsOptions;
 }
 
-type Mode = "artists" | "genres" | "years" | "decades" | "placements";
+type Mode = "artists" | "genres" | "years" | "decades" | "placements" | "duration";
 
 function formatMonth(month: string): string {
   const [year, m] = month.split("-");
@@ -103,6 +106,7 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
   // both false for it too), only the chart series differs (rank per person
   // instead of a running count per person).
   const isPlacementsMode = mode === "placements";
+  const isDurationMode = mode === "duration";
   const eraGranularity: EraGranularity = mode === "decades" ? "decade" : "year";
 
   // Combined (all-people) totals, descending - what the picker lists, so
@@ -119,6 +123,10 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
     () => eraTotals(dataset, eraGranularity, undefined, options),
     [dataset, eraGranularity, options]
   );
+  const combinedDurationTotals = useMemo(
+    () => durationTotals(dataset, undefined, options),
+    [dataset, options]
+  );
 
   const allArtistNames = useMemo(
     () => combinedArtistTotals.map((t) => t.artist),
@@ -126,6 +134,10 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
   );
   const allGenreNames = useMemo(() => combinedGenreTotals.map((t) => t.genre), [combinedGenreTotals]);
   const allEraNames = useMemo(() => combinedEraTotals.map((t) => t.era), [combinedEraTotals]);
+  const allDurationNames = useMemo(
+    () => combinedDurationTotals.map((t) => t.bucket),
+    [combinedDurationTotals]
+  );
 
   const [selectedArtistSet, setSelectedArtistSet] = usePersistedSetState(
     "top25tracker:compareArtists",
@@ -149,27 +161,43 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
     "top25tracker:compareDecades",
     () => (eraGranularity === "decade" ? allEraNames.slice(0, 1) : [])
   );
+  const [selectedDurationSet, setSelectedDurationSet] = usePersistedSetState(
+    "top25tracker:compareDurations",
+    () => allDurationNames.slice(0, 1)
+  );
 
-  const allNames = isEraMode ? allEraNames : isGenreMode ? allGenreNames : allArtistNames;
-  const selected = isEraMode
-    ? eraGranularity === "decade"
-      ? selectedDecadeSet
-      : selectedYearSet
-    : isGenreMode
-      ? selectedGenreSet
-      : selectedArtistSet;
-  const setSelected = isEraMode
-    ? eraGranularity === "decade"
-      ? setSelectedDecadeSet
-      : setSelectedYearSet
-    : isGenreMode
-      ? setSelectedGenreSet
-      : setSelectedArtistSet;
-  const combinedTotals: Array<{ name: string; total: number }> = isEraMode
-    ? combinedEraTotals.map((t) => ({ name: t.era, total: t.total }))
-    : isGenreMode
-      ? combinedGenreTotals.map((t) => ({ name: t.genre, total: t.total }))
-      : combinedArtistTotals.map((t) => ({ name: t.artist, total: t.total }));
+  const allNames = isDurationMode
+    ? allDurationNames
+    : isEraMode
+      ? allEraNames
+      : isGenreMode
+        ? allGenreNames
+        : allArtistNames;
+  const selected = isDurationMode
+    ? selectedDurationSet
+    : isEraMode
+      ? eraGranularity === "decade"
+        ? selectedDecadeSet
+        : selectedYearSet
+      : isGenreMode
+        ? selectedGenreSet
+        : selectedArtistSet;
+  const setSelected = isDurationMode
+    ? setSelectedDurationSet
+    : isEraMode
+      ? eraGranularity === "decade"
+        ? setSelectedDecadeSet
+        : setSelectedYearSet
+      : isGenreMode
+        ? setSelectedGenreSet
+        : setSelectedArtistSet;
+  const combinedTotals: Array<{ name: string; total: number }> = isDurationMode
+    ? combinedDurationTotals.map((t) => ({ name: t.bucket, total: t.total }))
+    : isEraMode
+      ? combinedEraTotals.map((t) => ({ name: t.era, total: t.total }))
+      : isGenreMode
+        ? combinedGenreTotals.map((t) => ({ name: t.genre, total: t.total }))
+        : combinedArtistTotals.map((t) => ({ name: t.artist, total: t.total }));
 
   const selectedNames = useMemo(
     () => allNames.filter((a) => selected.has(a)),
@@ -207,30 +235,53 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
     () =>
       isPlacementsMode
         ? artistRankSeriesByPerson(dataset, people, selectedNames, options)
-        : isEraMode
-          ? cumulativeEraSeriesByPerson(dataset, people, eraGranularity, selectedNames, options)
-          : isGenreMode
-            ? cumulativeGenreSeriesByPerson(dataset, people, selectedNames, options)
-            : cumulativeArtistSeriesByPerson(dataset, people, selectedNames, options),
-    [dataset, people, selectedNames, options, isPlacementsMode, isGenreMode, isEraMode, eraGranularity]
+        : isDurationMode
+          ? cumulativeDurationSeriesByPerson(dataset, people, selectedNames, options)
+          : isEraMode
+            ? cumulativeEraSeriesByPerson(dataset, people, eraGranularity, selectedNames, options)
+            : isGenreMode
+              ? cumulativeGenreSeriesByPerson(dataset, people, selectedNames, options)
+              : cumulativeArtistSeriesByPerson(dataset, people, selectedNames, options),
+    [
+      dataset,
+      people,
+      selectedNames,
+      options,
+      isPlacementsMode,
+      isDurationMode,
+      isGenreMode,
+      isEraMode,
+      eraGranularity,
+    ]
   );
 
   const summaries = useMemo(
     () =>
-      isEraMode
-        ? personEraSummaries(dataset, people, eraGranularity, selectedNames, options)
-        : isGenreMode
-          ? personGenreSummaries(dataset, people, selectedNames, options)
-          : personArtistSummaries(dataset, people, selectedNames, options),
-    [dataset, people, selectedNames, options, isGenreMode, isEraMode, eraGranularity]
+      isDurationMode
+        ? personDurationSummaries(dataset, people, selectedNames, options)
+        : isEraMode
+          ? personEraSummaries(dataset, people, eraGranularity, selectedNames, options)
+          : isGenreMode
+            ? personGenreSummaries(dataset, people, selectedNames, options)
+            : personArtistSummaries(dataset, people, selectedNames, options),
+    [dataset, people, selectedNames, options, isDurationMode, isGenreMode, isEraMode, eraGranularity]
   );
   const earliestMonth = summaries
     .map((s) => s.firstMonth)
     .filter((m): m is string => m !== null)
     .sort()[0];
 
-  const noun = mode === "decades" ? "decade" : mode === "years" ? "year" : isGenreMode ? "genre" : "artist";
-  const nounPlural = `${noun}s`;
+  const noun =
+    mode === "decades"
+      ? "decade"
+      : mode === "years"
+        ? "year"
+        : isDurationMode
+          ? "duration bucket"
+          : isGenreMode
+            ? "genre"
+            : "artist";
+  const nounPlural = isDurationMode ? "duration buckets" : `${noun}s`;
 
   return (
     <div className={styles.wrap}>
@@ -244,6 +295,9 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
             {isEraMode &&
               combinedEraTotals.some((t) => t.era === "Unknown") &&
               ' · "Unknown" is songs with no catalogued release date'}
+            {isDurationMode &&
+              combinedDurationTotals.some((t) => t.bucket === "Unknown") &&
+              ' · "Unknown" is songs with no catalogued duration'}
           </p>
         </div>
         <ModeSwitch
@@ -254,6 +308,7 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
             { value: "years", label: "Years" },
             { value: "decades", label: "Decades" },
             { value: "placements", label: "Placements" },
+            { value: "duration", label: "Duration" },
           ]}
           onChange={switchMode}
           aria-label="Compare by"

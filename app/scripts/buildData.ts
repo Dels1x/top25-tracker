@@ -50,6 +50,7 @@ interface RawRow {
   "Album Name": string;
   "Artist Name(s)": string;
   "Release Date": string;
+  "Duration (ms)": string;
   Genres: string;
   [key: string]: string;
 }
@@ -96,6 +97,7 @@ function parseMonthFile(person: string, filename: string, csvText: string): Mont
         scoringArtists: expandCreditedArtists(creditedArtists),
         album: (row["Album Name"] ?? "").trim(),
         releaseDate: row["Release Date"]?.trim() || null,
+        durationMs: row["Duration (ms)"]?.trim() ? Number(row["Duration (ms)"]) || null : null,
         spotifyId: row["Track URI"]?.startsWith("spotify:track:")
           ? row["Track URI"].slice("spotify:track:".length)
           : null,

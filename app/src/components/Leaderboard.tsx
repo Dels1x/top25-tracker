@@ -3,10 +3,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { Dataset } from "../data/types";
 import {
   artistTotals,
+  durationTotals,
   eraTotals,
   genreTotals,
   sortedMonths,
   tracksForArtist,
+  tracksForDuration,
   tracksForEra,
   tracksForGenre,
   type EraGranularity,
@@ -32,7 +34,7 @@ interface LeaderboardProps {
   scoringOptions: StatsOptions;
 }
 
-type Mode = "artists" | "genres" | "years" | "decades";
+type Mode = "artists" | "genres" | "years" | "decades" | "duration";
 
 const PAGE_SIZE = 20;
 
@@ -97,6 +99,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
 
   const isGenreMode = mode === "genres";
   const isEraMode = mode === "years" || mode === "decades";
+  const isDurationMode = mode === "duration";
   const eraGranularity: EraGranularity = mode === "decades" ? "decade" : "year";
   const isArtistMode = mode === "artists";
   // RankFilter / "weight by placement" / GenreFilter are all per-TRACK or
@@ -175,11 +178,17 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
     () => eraTotals(dataset, eraGranularity, person, genreOptions),
     [dataset, eraGranularity, person, genreOptions]
   );
-  const totals: Array<{ name: string; total: number; count: number }> = isEraMode
-    ? eraRows.map((r) => ({ name: r.era, total: r.total, count: r.count }))
-    : isGenreMode
-      ? genreRows.map((r) => ({ name: r.genre, total: r.total, count: r.count }))
-      : artistRows.map((r) => ({ name: r.artist, total: r.total, count: r.count }));
+  const durationRows = useMemo(
+    () => durationTotals(dataset, person, genreOptions),
+    [dataset, person, genreOptions]
+  );
+  const totals: Array<{ name: string; total: number; count: number }> = isDurationMode
+    ? durationRows.map((r) => ({ name: r.bucket, total: r.total, count: r.count }))
+    : isEraMode
+      ? eraRows.map((r) => ({ name: r.era, total: r.total, count: r.count }))
+      : isGenreMode
+        ? genreRows.map((r) => ({ name: r.genre, total: r.total, count: r.count }))
+        : artistRows.map((r) => ({ name: r.artist, total: r.total, count: r.count }));
 
   // Color must follow the ARTIST/GENRE/ERA, never its current rank in this
   // filtered view - so the color map is built from a STABLE ordering
@@ -207,10 +216,30 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
       }).map((t) => t.era),
     [dataset, eraGranularity, person, scoringOptions.includeDuplicates]
   );
+  // Duration's own bucket order is already fixed/stable (DURATION_BUCKETS,
+  // never reshuffled by range/rank/weight filters the way artist/genre/era
+  // totals can be) - still routed through the same buildArtistColorMap call
+  // as every other mode rather than special-cased, so a bucket's color is
+  // assigned the same way any other stable-ordered entity's is.
+  const stableDurationOrder = useMemo(
+    () =>
+      durationTotals(dataset, person, { includeDuplicates: scoringOptions.includeDuplicates }).map(
+        (t) => t.bucket
+      ),
+    [dataset, person, scoringOptions.includeDuplicates]
+  );
   const colorMap = useMemo(
     () =>
-      buildArtistColorMap(isEraMode ? stableEraOrder : isGenreMode ? stableGenreOrder : stableArtistOrder),
-    [isEraMode, isGenreMode, stableEraOrder, stableGenreOrder, stableArtistOrder]
+      buildArtistColorMap(
+        isDurationMode
+          ? stableDurationOrder
+          : isEraMode
+            ? stableEraOrder
+            : isGenreMode
+              ? stableGenreOrder
+              : stableArtistOrder
+      ),
+    [isDurationMode, isEraMode, isGenreMode, stableDurationOrder, stableEraOrder, stableGenreOrder, stableArtistOrder]
   );
 
   const max = totals[0]?.total ?? 1;
@@ -238,7 +267,9 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
 
   const expandedTracks = useMemo(() => {
     if (!activeExpanded) return [];
-    const tracks = isEraMode
+    const tracks = isDurationMode
+      ? tracksForDuration(dataset, activeExpanded, person, genreOptions)
+      : isEraMode
       ? tracksForEra(dataset, eraGranularity, activeExpanded, person, genreOptions)
       : isGenreMode
         ? tracksForGenre(dataset, activeExpanded, person, genreOptions)
@@ -276,6 +307,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
     dataset,
     activeExpanded,
     person,
+    isDurationMode,
     isEraMode,
     eraGranularity,
     isGenreMode,
@@ -307,7 +339,16 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
     setExpanded(null);
   }
 
-  const noun = mode === "decades" ? "decade" : mode === "years" ? "year" : isGenreMode ? "genre" : "artist";
+  const noun =
+    mode === "decades"
+      ? "decade"
+      : mode === "years"
+        ? "year"
+        : isDurationMode
+          ? "duration"
+          : isGenreMode
+            ? "genre"
+            : "artist";
 
   return (
     <div className={styles.wrap}>
@@ -315,9 +356,18 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
 
       <div className={styles.headRow}>
         <div>
-          <h2 className={styles.heading}>Songs per {noun}</h2>
+          <h2 className={styles.heading}>{isDurationMode ? "Songs per duration" : `Songs per ${noun}`}</h2>
           <p className={styles.sub}>
-            {isEraMode ? (
+            {isDurationMode ? (
+              <>
+                {scoringOptions.includeDuplicates === false && " · repeat songs counted once"}
+                {maxRank !== 25 && ` · only counting #1-${maxRank} each month`}
+                {weightByRank && " · weighted by placement"} &middot; click a bucket to see its
+                songs
+                {durationRows.some((r) => r.bucket === "Unknown") &&
+                  " · \"Unknown\" is songs with no catalogued duration"}
+              </>
+            ) : isEraMode ? (
               <>
                 {scoringOptions.includeDuplicates === false && " · repeat songs counted once"}
                 {maxRank !== 25 && ` · only counting #1-${maxRank} each month`}
@@ -352,6 +402,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
             { value: "genres", label: "Genres" },
             { value: "years", label: "Years" },
             { value: "decades", label: "Decades" },
+            { value: "duration", label: "Duration" },
           ]}
           onChange={switchMode}
           aria-label="Rank by"

@@ -417,6 +417,46 @@ There is no test runner configured yet.
   regardless of who they actually are, which isn't a meaningful placement. `artistTotals`'s own sort
   also gained an explicit alphabetical tiebreak (previously unordered among exact ties) so every rank
   computed off of it is deterministic rather than depending on incidental Map iteration order.
+  **Leaderboard, Timeline, Shared, and Compare all gained a "Duration" mode** - bucketing by each
+  track's own length (`Duration (ms)` from the CSV, now `Track.durationMs` - `app/src/lib/
+  durationBuckets.ts`) rather than by artist/genre/era. Like years/decades (`releaseEra.ts`), this
+  needs no hand-maintained lookup table at all - the bucket is derived straight from data already on
+  the `Track`, and a track only ever has ONE duration bucket, never a multi-bucket union. Buckets are
+  1-minute-wide from "Under 1 min" through "5-6 min" (where the overwhelming majority of real tracks
+  land - verified: 2966 of 3118 real tracks fall in the 2-6 minute range), then 2-minute-wide for
+  "6-7 min"/"8-9 min" (i.e. "6-7 min" spans 6:00-7:59), then wide tail bands ("10-20 min"/"20-30 min"/
+  "Over 30 min") for the rare long-form outlier (a DJ mix, a suite, a podcast-length track) where
+  minute-by-minute buckets would just produce a long run of empty rows - this exact, non-uniform
+  width scheme was the project owner's own explicit spec, confirmed by direct back-and-forth rather
+  than assumed from their first, looser phrasing of it. `durationBucketForTrack` returns `"Unknown"`
+  for a missing/zero/unparseable duration (1 of 3118 real tracks), same "Unknown" convention
+  `yearBucketForTrack`/`decadeBucketForTrack` already use for a missing release date - shown with the
+  same style of "Unknown is songs with no catalogued duration" explainer text those modes already
+  show for release date. **Unlike every other mode's `*Totals` function, `durationTotals`/
+  `sharedSongDurationTotals` sort by BUCKET ORDER (`DURATION_BUCKETS`, shortest to longest), not by
+  total** - "longest bucket by song count" isn't a meaningful primary ordering for a duration
+  breakdown the way descending-by-total is for an artist/genre/era leaderboard; the natural reading
+  order for a duration histogram is short-to-long, so this is a deliberate exception to the "every
+  `*Totals` sorts by total descending" pattern every other bucketing dimension in this file follows.
+  `stats.ts` gained `durationTotals`/`durationMonthCounts`/`tracksForDuration`/
+  `cumulativeDurationSeries` (Leaderboard/Timeline's per-person shape, mirroring `eraTotals`/
+  `eraMonthCounts`/`tracksForEra`/`cumulativeEraSeries`), `personDurationSummaries`/
+  `cumulativeDurationSeriesByPerson` (Compare's per-person-line shape, mirroring `personEraSummaries`/
+  `cumulativeEraSeriesByPerson`), and `sharedSongDurationTotals`/`sharedSongsForDuration` (Shared's
+  shape, mirroring `sharedSongEraTotals`/`sharedSongsForEra`, including the same `genreFilter`-at-the-
+  artist-level-first behavior every other `sharedSong*` function applies before bucketing). `SharedSong`
+  gained a `durationMs` field (lifted straight from the underlying `Track`, same reasoning as its
+  existing `releaseDate` field - unambiguous regardless of who picked the song or when). In every
+  component, Duration mode slots in exactly where years/decades already do: same `GenreFilter`/
+  `RankFilter`/"weight by placement" treatment in Leaderboard (per-track/per-artist filters that don't
+  care what the rows are grouped by), same "show every bucket by default" Timeline behavior with its
+  own persisted shown-set (`durationTimelineShown:${person}`, not keyed by granularity since there's
+  only one duration granularity, unlike years/decades), same `compareDurations` persisted selection set
+  in Compare, and the same artist-identity-toggles-are-visible-but-inert treatment every non-artist
+  mode already gets. Color stability uses the same `stableOrder`-pattern fix as every other mode
+  (built from identity-toggles-only options, never range/genre/rank/weight) even though
+  `DURATION_BUCKETS`' fixed order is already inherently stable on its own - kept consistent with every
+  other mode's color-assignment plumbing rather than special-cased.
 - **`app/src/components/ModeSwitch.tsx`** — the pill-shaped "Artists / Genres" (or similar) mode
   switch, originally built standalone inside `Compare.tsx` and extracted into its own small generic
   component (`<T extends string>`, a `value`/`options`/`onChange` triplet plus an `aria-label`) once
