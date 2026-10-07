@@ -10,8 +10,10 @@ import {
 } from "recharts";
 import type { Dataset } from "../data/types";
 import {
+  albumTotals,
   artistRankSeriesByPerson,
   artistTotals,
+  cumulativeAlbumSeriesByPerson,
   cumulativeArtistSeriesByPerson,
   cumulativeDurationSeriesByPerson,
   cumulativeEraSeriesByPerson,
@@ -19,6 +21,7 @@ import {
   durationTotals,
   eraTotals,
   genreTotals,
+  personAlbumSummaries,
   personArtistSummaries,
   personDurationSummaries,
   personEraSummaries,
@@ -39,7 +42,7 @@ interface CompareProps {
   scoringOptions: StatsOptions;
 }
 
-type Mode = "artists" | "genres" | "years" | "decades" | "placements" | "duration";
+type Mode = "artists" | "genres" | "years" | "decades" | "placements" | "duration" | "albums";
 
 function formatMonth(month: string): string {
   const [year, m] = month.split("-");
@@ -107,6 +110,7 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
   // instead of a running count per person).
   const isPlacementsMode = mode === "placements";
   const isDurationMode = mode === "duration";
+  const isAlbumMode = mode === "albums";
   const eraGranularity: EraGranularity = mode === "decades" ? "decade" : "year";
 
   // Combined (all-people) totals, descending - what the picker lists, so
@@ -127,6 +131,10 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
     () => durationTotals(dataset, undefined, options),
     [dataset, options]
   );
+  const combinedAlbumTotals = useMemo(
+    () => albumTotals(dataset, undefined, options),
+    [dataset, options]
+  );
 
   const allArtistNames = useMemo(
     () => combinedArtistTotals.map((t) => t.artist),
@@ -137,6 +145,10 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
   const allDurationNames = useMemo(
     () => combinedDurationTotals.map((t) => t.bucket),
     [combinedDurationTotals]
+  );
+  const allAlbumNames = useMemo(
+    () => combinedAlbumTotals.map((t) => t.album),
+    [combinedAlbumTotals]
   );
 
   const [selectedArtistSet, setSelectedArtistSet] = usePersistedSetState(
@@ -165,39 +177,51 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
     "top25tracker:compareDurations",
     () => allDurationNames.slice(0, 1)
   );
+  const [selectedAlbumSet, setSelectedAlbumSet] = usePersistedSetState(
+    "top25tracker:compareAlbums",
+    () => allAlbumNames.slice(0, 1)
+  );
 
-  const allNames = isDurationMode
-    ? allDurationNames
-    : isEraMode
-      ? allEraNames
-      : isGenreMode
-        ? allGenreNames
-        : allArtistNames;
-  const selected = isDurationMode
-    ? selectedDurationSet
-    : isEraMode
-      ? eraGranularity === "decade"
-        ? selectedDecadeSet
-        : selectedYearSet
-      : isGenreMode
-        ? selectedGenreSet
-        : selectedArtistSet;
-  const setSelected = isDurationMode
-    ? setSelectedDurationSet
-    : isEraMode
-      ? eraGranularity === "decade"
-        ? setSelectedDecadeSet
-        : setSelectedYearSet
-      : isGenreMode
-        ? setSelectedGenreSet
-        : setSelectedArtistSet;
-  const combinedTotals: Array<{ name: string; total: number }> = isDurationMode
-    ? combinedDurationTotals.map((t) => ({ name: t.bucket, total: t.total }))
-    : isEraMode
-      ? combinedEraTotals.map((t) => ({ name: t.era, total: t.total }))
-      : isGenreMode
-        ? combinedGenreTotals.map((t) => ({ name: t.genre, total: t.total }))
-        : combinedArtistTotals.map((t) => ({ name: t.artist, total: t.total }));
+  const allNames = isAlbumMode
+    ? allAlbumNames
+    : isDurationMode
+      ? allDurationNames
+      : isEraMode
+        ? allEraNames
+        : isGenreMode
+          ? allGenreNames
+          : allArtistNames;
+  const selected = isAlbumMode
+    ? selectedAlbumSet
+    : isDurationMode
+      ? selectedDurationSet
+      : isEraMode
+        ? eraGranularity === "decade"
+          ? selectedDecadeSet
+          : selectedYearSet
+        : isGenreMode
+          ? selectedGenreSet
+          : selectedArtistSet;
+  const setSelected = isAlbumMode
+    ? setSelectedAlbumSet
+    : isDurationMode
+      ? setSelectedDurationSet
+      : isEraMode
+        ? eraGranularity === "decade"
+          ? setSelectedDecadeSet
+          : setSelectedYearSet
+        : isGenreMode
+          ? setSelectedGenreSet
+          : setSelectedArtistSet;
+  const combinedTotals: Array<{ name: string; total: number }> = isAlbumMode
+    ? combinedAlbumTotals.map((t) => ({ name: t.album, total: t.total }))
+    : isDurationMode
+      ? combinedDurationTotals.map((t) => ({ name: t.bucket, total: t.total }))
+      : isEraMode
+        ? combinedEraTotals.map((t) => ({ name: t.era, total: t.total }))
+        : isGenreMode
+          ? combinedGenreTotals.map((t) => ({ name: t.genre, total: t.total }))
+          : combinedArtistTotals.map((t) => ({ name: t.artist, total: t.total }));
 
   const selectedNames = useMemo(
     () => allNames.filter((a) => selected.has(a)),
@@ -235,19 +259,22 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
     () =>
       isPlacementsMode
         ? artistRankSeriesByPerson(dataset, people, selectedNames, options)
-        : isDurationMode
-          ? cumulativeDurationSeriesByPerson(dataset, people, selectedNames, options)
-          : isEraMode
-            ? cumulativeEraSeriesByPerson(dataset, people, eraGranularity, selectedNames, options)
-            : isGenreMode
-              ? cumulativeGenreSeriesByPerson(dataset, people, selectedNames, options)
-              : cumulativeArtistSeriesByPerson(dataset, people, selectedNames, options),
+        : isAlbumMode
+          ? cumulativeAlbumSeriesByPerson(dataset, people, selectedNames, options)
+          : isDurationMode
+            ? cumulativeDurationSeriesByPerson(dataset, people, selectedNames, options)
+            : isEraMode
+              ? cumulativeEraSeriesByPerson(dataset, people, eraGranularity, selectedNames, options)
+              : isGenreMode
+                ? cumulativeGenreSeriesByPerson(dataset, people, selectedNames, options)
+                : cumulativeArtistSeriesByPerson(dataset, people, selectedNames, options),
     [
       dataset,
       people,
       selectedNames,
       options,
       isPlacementsMode,
+      isAlbumMode,
       isDurationMode,
       isGenreMode,
       isEraMode,
@@ -257,14 +284,26 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
 
   const summaries = useMemo(
     () =>
-      isDurationMode
-        ? personDurationSummaries(dataset, people, selectedNames, options)
-        : isEraMode
-          ? personEraSummaries(dataset, people, eraGranularity, selectedNames, options)
-          : isGenreMode
-            ? personGenreSummaries(dataset, people, selectedNames, options)
-            : personArtistSummaries(dataset, people, selectedNames, options),
-    [dataset, people, selectedNames, options, isDurationMode, isGenreMode, isEraMode, eraGranularity]
+      isAlbumMode
+        ? personAlbumSummaries(dataset, people, selectedNames, options)
+        : isDurationMode
+          ? personDurationSummaries(dataset, people, selectedNames, options)
+          : isEraMode
+            ? personEraSummaries(dataset, people, eraGranularity, selectedNames, options)
+            : isGenreMode
+              ? personGenreSummaries(dataset, people, selectedNames, options)
+              : personArtistSummaries(dataset, people, selectedNames, options),
+    [
+      dataset,
+      people,
+      selectedNames,
+      options,
+      isAlbumMode,
+      isDurationMode,
+      isGenreMode,
+      isEraMode,
+      eraGranularity,
+    ]
   );
   const earliestMonth = summaries
     .map((s) => s.firstMonth)
@@ -278,9 +317,11 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
         ? "year"
         : isDurationMode
           ? "duration bucket"
-          : isGenreMode
-            ? "genre"
-            : "artist";
+          : isAlbumMode
+            ? "album"
+            : isGenreMode
+              ? "genre"
+              : "artist";
   const nounPlural = isDurationMode ? "duration buckets" : `${noun}s`;
 
   return (
@@ -298,6 +339,9 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
             {isDurationMode &&
               combinedDurationTotals.some((t) => t.bucket === "Unknown") &&
               ' · "Unknown" is songs with no catalogued duration'}
+            {isAlbumMode &&
+              combinedAlbumTotals.some((t) => t.album === "Unknown") &&
+              ' · "Unknown" is songs with no catalogued album'}
           </p>
         </div>
         <ModeSwitch
@@ -309,6 +353,7 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
             { value: "decades", label: "Decades" },
             { value: "placements", label: "Placements" },
             { value: "duration", label: "Duration" },
+            { value: "albums", label: "Albums" },
           ]}
           onChange={switchMode}
           aria-label="Compare by"

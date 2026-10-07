@@ -5,6 +5,7 @@ import { genresForArtists } from "./artistGenres";
 import { isDistinctRecording } from "./trackDisambiguation";
 import { decadeBucketForTrack, yearBucketForTrack } from "./releaseEra";
 import { DURATION_BUCKETS, durationBucketForTrack } from "./durationBuckets";
+import { albumBucketForTrack } from "./albumBuckets";
 
 /** One point per occurrence of an artist in `scoringArtists` across a track. */
 export interface ArtistMonthCount {
@@ -681,6 +682,110 @@ export function cumulativeDurationSeries(
 }
 
 /** One person's first (earliest-month) and total count toward a selected artist set, for Compare's summary row. */
+export interface AlbumTotal {
+  album: string;
+  total: number;
+  /** Same purpose as GenreTotal.count / ArtistTotal.count - see those. */
+  count: number;
+}
+
+export interface AlbumMonthCount {
+  album: string;
+  month: string;
+  count: number;
+}
+
+/**
+ * Total tracks per album across all months (optionally for one person) -
+ * same shape as genreTotals/eraTotals, but a track only ever has ONE album
+ * (no multi-bucket union, same property eraTotals/durationTotals have).
+ * Unlike durationTotals, this sorts by total descending like every other
+ * *Totals function here - there's no meaningful fixed reading order for
+ * album titles the way there is for a duration histogram.
+ */
+export function albumTotals(
+  dataset: Dataset,
+  person?: string,
+  options?: StatsOptions
+): AlbumTotal[] {
+  const totals = new Map<string, number>();
+  const counts = new Map<string, number>();
+  for (const track of allTracks(dataset, person, options)) {
+    const album = albumBucketForTrack(track.album);
+    totals.set(album, (totals.get(album) ?? 0) + track.points);
+    counts.set(album, (counts.get(album) ?? 0) + 1);
+  }
+  return Array.from(totals.entries())
+    .map(([album, total]) => ({ album, total, count: counts.get(album) ?? 0 }))
+    .sort((a, b) => b.total - a.total);
+}
+
+/** Per-month track counts per album, for building a time series chart. */
+export function albumMonthCounts(
+  dataset: Dataset,
+  person?: string,
+  options?: StatsOptions
+): AlbumMonthCount[] {
+  const counts = new Map<string, number>(); // key: `${album}\u0000${month}`
+  for (const track of allTracks(dataset, person, options)) {
+    const album = albumBucketForTrack(track.album);
+    const key = `${album}\u0000${track.month}`;
+    counts.set(key, (counts.get(key) ?? 0) + track.points);
+  }
+  return Array.from(counts.entries()).map(([key, count]) => {
+    const [album, month] = key.split("\u0000");
+    return { album, month, count };
+  });
+}
+
+/**
+ * All tracks counting toward a given album, newest month first - the exact
+ * set backing its number in albumTotals (same options, same dedup rule), for
+ * display in a "show me the songs" dropdown.
+ */
+export function tracksForAlbum(
+  dataset: Dataset,
+  album: string,
+  person?: string,
+  options?: StatsOptions
+): Array<Track & { month: string; person: string }> {
+  return allTracks(dataset, person, options)
+    .filter((track) => albumBucketForTrack(track.album) === album)
+    .sort((a, b) => b.month.localeCompare(a.month));
+}
+
+/** Same shape as cumulativeArtistSeries, but for albums. */
+export function cumulativeAlbumSeries(
+  dataset: Dataset,
+  person: string | undefined,
+  topAlbums: string[],
+  options?: StatsOptions
+): CumulativeSeriesPoint[] {
+  const months = sortedMonths(dataset, person, options);
+  const perMonth = albumMonthCounts(dataset, person, options);
+
+  const lookup = new Map<string, number>();
+  for (const { album, month, count } of perMonth) {
+    lookup.set(`${album}\u0000${month}`, count);
+  }
+
+  const running = new Map<string, number>(topAlbums.map((a) => [a, 0]));
+  const series: CumulativeSeriesPoint[] = [];
+
+  for (const month of months) {
+    const point: CumulativeSeriesPoint = { month };
+    for (const album of topAlbums) {
+      const delta = lookup.get(`${album}\u0000${month}`) ?? 0;
+      const newTotal = (running.get(album) ?? 0) + delta;
+      running.set(album, newTotal);
+      point[album] = newTotal;
+    }
+    series.push(point);
+  }
+
+  return series;
+}
+
 export interface PersonArtistSummary {
   person: string;
   total: number;
@@ -1066,6 +1171,77 @@ export function cumulativeDurationSeriesByPerson(
   return series;
 }
 
+/** Same shape as PersonArtistSummary, but for a selected set of albums. */
+export interface PersonAlbumSummary {
+  person: string;
+  total: number;
+  firstMonth: string | null;
+}
+
+/**
+ * Per-person total and earliest month for a selected set of albums - the
+ * album equivalent of personArtistSummaries, for Compare's "albums" mode. A
+ * track only ever has ONE album (albumBucketForTrack), so like
+ * personDurationSummaries there's no multi-bucket union to worry about.
+ */
+export function personAlbumSummaries(
+  dataset: Dataset,
+  people: string[],
+  albums: string[],
+  options?: StatsOptions
+): PersonAlbumSummary[] {
+  const albumSet = new Set(albums);
+  return people.map((person) => {
+    let total = 0;
+    let firstMonth: string | null = null;
+    for (const track of allTracks(dataset, person, options)) {
+      if (!albumSet.has(albumBucketForTrack(track.album))) continue;
+      total += 1;
+      if (firstMonth === null || track.month < firstMonth) firstMonth = track.month;
+    }
+    return { person, total, firstMonth };
+  });
+}
+
+/**
+ * Album equivalent of cumulativeArtistSeriesByPerson - one cumulative line
+ * per PERSON, summing counts across every album in `albums` for that
+ * person, for Compare's "albums" mode (e.g. "who got into this album
+ * earlier / more").
+ */
+export function cumulativeAlbumSeriesByPerson(
+  dataset: Dataset,
+  people: string[],
+  albums: string[],
+  options?: StatsOptions
+): CumulativeSeriesPoint[] {
+  const albumSet = new Set(albums);
+  const months = Array.from(new Set(people.flatMap((p) => sortedMonths(dataset, p, options)))).sort();
+
+  const perMonth = new Map<string, number>();
+  for (const person of people) {
+    for (const track of allTracks(dataset, person, options)) {
+      if (!albumSet.has(albumBucketForTrack(track.album))) continue;
+      const key = `${person}\u0000${track.month}`;
+      perMonth.set(key, (perMonth.get(key) ?? 0) + 1);
+    }
+  }
+
+  const running = new Map<string, number>(people.map((p) => [p, 0]));
+  const series: CumulativeSeriesPoint[] = [];
+  for (const month of months) {
+    const point: CumulativeSeriesPoint = { month };
+    for (const person of people) {
+      const delta = perMonth.get(`${person}\u0000${month}`) ?? 0;
+      const newTotal = (running.get(person) ?? 0) + delta;
+      running.set(person, newTotal);
+      point[person] = newTotal;
+    }
+    series.push(point);
+  }
+  return series;
+}
+
 /** One song that every person has had in their top 25 at some point, and when. */
 export interface SharedSong {
   trackKey: string;
@@ -1407,6 +1583,50 @@ export function sharedSongsForDuration(
     (song) =>
       genreFilteredScoringArtists(song, options).length > 0 &&
       durationBucketForTrack(song.durationMs) === bucket
+  );
+}
+
+/**
+ * Album equivalent of sharedSongArtistTotals - of the qualifying shared
+ * songs, which album shows up on the most of them, bucketed by each song's
+ * own album (albumBucketForTrack) exactly like the per-person Leaderboard's
+ * Albums mode. A shared song only has one album regardless of who picked it
+ * or when, so (like the era/duration modes) there's no multi-bucket union
+ * here. `options.genreFilter` still applies at the artist level first, same
+ * reasoning as sharedSongDurationTotals. Sorted by total descending, same as
+ * albumTotals (not bucket order - that exception is specific to duration).
+ */
+export function sharedSongAlbumTotals(
+  dataset: Dataset,
+  options?: StatsOptions,
+  presence?: Map<string, PresenceRequirement>
+): AlbumTotal[] {
+  const songs = presence ? songsByPresence(dataset, presence, options) : sharedSongs(dataset, options);
+  const totals = new Map<string, number>();
+  const counts = new Map<string, number>();
+  for (const song of songs) {
+    if (genreFilteredScoringArtists(song, options).length === 0) continue;
+    const album = albumBucketForTrack(song.album);
+    totals.set(album, (totals.get(album) ?? 0) + 1);
+    counts.set(album, (counts.get(album) ?? 0) + 1);
+  }
+  return Array.from(totals.entries())
+    .map(([album, total]) => ({ album, total, count: counts.get(album) ?? 0 }))
+    .sort((a, b) => b.total - a.total);
+}
+
+/** The subset of sharedSongs belonging to a given album - album equivalent of sharedSongsForArtist. */
+export function sharedSongsForAlbum(
+  dataset: Dataset,
+  album: string,
+  options?: StatsOptions,
+  presence?: Map<string, PresenceRequirement>
+): SharedSong[] {
+  const songs = presence ? songsByPresence(dataset, presence, options) : sharedSongs(dataset, options);
+  return songs.filter(
+    (song) =>
+      genreFilteredScoringArtists(song, options).length > 0 &&
+      albumBucketForTrack(song.album) === album
   );
 }
 

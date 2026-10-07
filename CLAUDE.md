@@ -424,7 +424,9 @@ There is no test runner configured yet.
   the `Track`, and a track only ever has ONE duration bucket, never a multi-bucket union. Buckets are
   1-minute-wide from "Under 1 min" through "5-6 min" (where the overwhelming majority of real tracks
   land - verified: 2966 of 3118 real tracks fall in the 2-6 minute range), then 2-minute-wide for
-  "6-7 min"/"8-9 min" (i.e. "6-7 min" spans 6:00-7:59), then wide tail bands ("10-20 min"/"20-30 min"/
+  "6-8 min"/"8-10 min" (i.e. "6-8 min" spans 6:00-7:59 - labeled with its actual boundary rather than
+  "6-7 min", which would misleadingly read as 1-minute-wide like every band before it), then wide tail
+  bands ("10-20 min"/"20-30 min"/
   "Over 30 min") for the rare long-form outlier (a DJ mix, a suite, a podcast-length track) where
   minute-by-minute buckets would just produce a long run of empty rows - this exact, non-uniform
   width scheme was the project owner's own explicit spec, confirmed by direct back-and-forth rather
@@ -457,6 +459,33 @@ There is no test runner configured yet.
   (built from identity-toggles-only options, never range/genre/rank/weight) even though
   `DURATION_BUCKETS`' fixed order is already inherently stable on its own - kept consistent with every
   other mode's color-assignment plumbing rather than special-cased.
+  **Leaderboard, Timeline, Shared, and Compare all gained an "Albums" mode too** - bucketing by each
+  track's own album title (`Track.album`, already populated from the CSV's "Album Name" column -
+  `app/src/lib/albumBuckets.ts`). Unlike duration, there's no numeric range to bucket at all - the
+  "bucket" is just the album string literally, so `albumBucketForTrack` is a one-line getter with no
+  lookup table and no rounding logic, mapping a missing/blank album straight to `"Unknown"` (4 of 3118
+  real tracks - mostly `spotify:local:...` rows with no catalog metadata), the same "Unknown" sentinel
+  convention `yearBucketForTrack`/`durationBucketForTrack` already use for their own missing-metadata
+  cases. A track only ever has ONE album, same as release year/decade/duration (and unlike genre) - no
+  multi-bucket union. Unlike Duration's deliberate bucket-order exception, `albumTotals`/
+  `sharedSongAlbumTotals` sort by total descending like every other dimension here (artist/genre/era) -
+  there's no meaningful fixed reading order for album titles the way there is for a duration histogram,
+  so Albums doesn't inherit that exception. `stats.ts` gained `albumTotals`/`albumMonthCounts`/
+  `tracksForAlbum`/`cumulativeAlbumSeries`, `personAlbumSummaries`/`cumulativeAlbumSeriesByPerson`, and
+  `sharedSongAlbumTotals`/`sharedSongsForAlbum`, mirroring the exact same three function families
+  Duration just added (`durationTotals`-shaped/`personDurationSummaries`-shaped/
+  `sharedSongDurationTotals`-shaped respectively) - `SharedSong` didn't need a new field for this, since
+  its existing `album` field (present since before Duration was added) already carries what
+  `albumBucketForTrack` needs. **Albums needed one real divergence from Duration's wiring**: unlike
+  Duration's fixed ~12 buckets, album counts run into the hundreds (918 unique albums in the real
+  dataset - the same order of magnitude "potentially hundreds of artists" pagination was built for,
+  not genre/era/duration's couple-dozen-buckets-at-most case) - so Albums mode joins ARTIST mode's
+  pagination treatment in Leaderboard/Shared (`isPaginatedMode = isArtistMode || isAlbumMode`, gating
+  both the slice and the "Show more" button) instead of genre/era/duration's "show every row, no
+  pagination" default, and in Timeline it defaults its shown-set to a top-N subset
+  (`allAlbums.slice(0, DEFAULT_SHOWN)`, same as artist mode's own default) rather than "show everything"
+  - a hundreds-strong legend would be unusable otherwise. Compare didn't need any divergence here since
+  its picker is already a search box over all names regardless of mode, not a fixed legend list.
 - **`app/src/components/ModeSwitch.tsx`** — the pill-shaped "Artists / Genres" (or similar) mode
   switch, originally built standalone inside `Compare.tsx` and extracted into its own small generic
   component (`<T extends string>`, a `value`/`options`/`onChange` triplet plus an `aria-label`) once

@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Dataset } from "../data/types";
 import {
+  albumTotals,
   artistTotals,
   durationTotals,
   eraTotals,
   genreTotals,
   sortedMonths,
+  tracksForAlbum,
   tracksForArtist,
   tracksForDuration,
   tracksForEra,
@@ -34,7 +36,7 @@ interface LeaderboardProps {
   scoringOptions: StatsOptions;
 }
 
-type Mode = "artists" | "genres" | "years" | "decades" | "duration";
+type Mode = "artists" | "genres" | "years" | "decades" | "duration" | "albums";
 
 const PAGE_SIZE = 20;
 
@@ -100,8 +102,16 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
   const isGenreMode = mode === "genres";
   const isEraMode = mode === "years" || mode === "decades";
   const isDurationMode = mode === "duration";
+  const isAlbumMode = mode === "albums";
   const eraGranularity: EraGranularity = mode === "decades" ? "decade" : "year";
   const isArtistMode = mode === "artists";
+  // Albums can number in the hundreds (918 unique albums in the real
+  // dataset - same order of magnitude as the "potentially hundreds of
+  // artists" case pagination was built for), unlike genres/eras/duration's
+  // small fixed bucket counts - so Albums mode paginates too, alongside
+  // artists mode, rather than joining genre/era/duration's "show everything"
+  // treatment.
+  const isPaginatedMode = isArtistMode || isAlbumMode;
   // RankFilter / "weight by placement" / GenreFilter are all per-TRACK or
   // per-ARTIST filters (see StatsOptions.maxRank/weightByRank/genreFilter) -
   // none of them care what the ROWS are grouped by, so all three apply
@@ -182,7 +192,13 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
     () => durationTotals(dataset, person, genreOptions),
     [dataset, person, genreOptions]
   );
-  const totals: Array<{ name: string; total: number; count: number }> = isDurationMode
+  const albumRows = useMemo(
+    () => albumTotals(dataset, person, genreOptions),
+    [dataset, person, genreOptions]
+  );
+  const totals: Array<{ name: string; total: number; count: number }> = isAlbumMode
+    ? albumRows.map((r) => ({ name: r.album, total: r.total, count: r.count }))
+    : isDurationMode
     ? durationRows.map((r) => ({ name: r.bucket, total: r.total, count: r.count }))
     : isEraMode
       ? eraRows.map((r) => ({ name: r.era, total: r.total, count: r.count }))
@@ -228,10 +244,19 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
       ),
     [dataset, person, scoringOptions.includeDuplicates]
   );
+  const stableAlbumOrder = useMemo(
+    () =>
+      albumTotals(dataset, person, { includeDuplicates: scoringOptions.includeDuplicates }).map(
+        (t) => t.album
+      ),
+    [dataset, person, scoringOptions.includeDuplicates]
+  );
   const colorMap = useMemo(
     () =>
       buildArtistColorMap(
-        isDurationMode
+        isAlbumMode
+          ? stableAlbumOrder
+          : isDurationMode
           ? stableDurationOrder
           : isEraMode
             ? stableEraOrder
@@ -239,14 +264,26 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
               ? stableGenreOrder
               : stableArtistOrder
       ),
-    [isDurationMode, isEraMode, isGenreMode, stableDurationOrder, stableEraOrder, stableGenreOrder, stableArtistOrder]
+    [
+      isAlbumMode,
+      isDurationMode,
+      isEraMode,
+      isGenreMode,
+      stableAlbumOrder,
+      stableDurationOrder,
+      stableEraOrder,
+      stableGenreOrder,
+      stableArtistOrder,
+    ]
   );
 
   const max = totals[0]?.total ?? 1;
-  // No pagination in genre/era mode - only a handful of buckets total (~19
-  // genres, or however many distinct release years/decades appear in
-  // someone's history), unlike the potentially hundreds of artists.
-  const visible = isArtistMode ? totals.slice(0, limit) : totals;
+  // No pagination in genre/era/duration mode - only a handful of buckets
+  // total (~19 genres, or however many distinct release years/decades/
+  // duration buckets appear in someone's history). Albums mode paginates
+  // alongside artists (isPaginatedMode) since album counts run into the
+  // hundreds, the same scale pagination was built for.
+  const visible = isPaginatedMode ? totals.slice(0, limit) : totals;
 
   // Changing the range, scoring options, genre filter, rank filter, or mode
   // changes which rows qualify/exist at all - start back at the top rather
@@ -267,7 +304,9 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
 
   const expandedTracks = useMemo(() => {
     if (!activeExpanded) return [];
-    const tracks = isDurationMode
+    const tracks = isAlbumMode
+      ? tracksForAlbum(dataset, activeExpanded, person, genreOptions)
+      : isDurationMode
       ? tracksForDuration(dataset, activeExpanded, person, genreOptions)
       : isEraMode
       ? tracksForEra(dataset, eraGranularity, activeExpanded, person, genreOptions)
@@ -307,6 +346,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
     dataset,
     activeExpanded,
     person,
+    isAlbumMode,
     isDurationMode,
     isEraMode,
     eraGranularity,
@@ -346,9 +386,11 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
         ? "year"
         : isDurationMode
           ? "duration"
-          : isGenreMode
-            ? "genre"
-            : "artist";
+          : isAlbumMode
+            ? "album"
+            : isGenreMode
+              ? "genre"
+              : "artist";
 
   return (
     <div className={styles.wrap}>
@@ -358,7 +400,17 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
         <div>
           <h2 className={styles.heading}>{isDurationMode ? "Songs per duration" : `Songs per ${noun}`}</h2>
           <p className={styles.sub}>
-            {isDurationMode ? (
+            {isAlbumMode ? (
+              <>
+                {totals.length} albums &middot;
+                {scoringOptions.includeDuplicates === false && " repeat songs counted once"}
+                {maxRank !== 25 && ` · only counting #1-${maxRank} each month`}
+                {weightByRank && " · weighted by placement"} &middot; click an album to see its
+                songs
+                {albumRows.some((r) => r.album === "Unknown") &&
+                  " · \"Unknown\" is songs with no catalogued album"}
+              </>
+            ) : isDurationMode ? (
               <>
                 {scoringOptions.includeDuplicates === false && " · repeat songs counted once"}
                 {maxRank !== 25 && ` · only counting #1-${maxRank} each month`}
@@ -403,6 +455,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
             { value: "years", label: "Years" },
             { value: "decades", label: "Decades" },
             { value: "duration", label: "Duration" },
+            { value: "albums", label: "Albums" },
           ]}
           onChange={switchMode}
           aria-label="Rank by"
@@ -527,7 +580,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
         })}
       </ol>
 
-      {isArtistMode && limit < totals.length && (
+      {isPaginatedMode && limit < totals.length && (
         <button type="button" className={styles.more} onClick={() => setLimit((n) => n + PAGE_SIZE)}>
           Show more ({totals.length - limit} remaining)
         </button>

@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Dataset } from "../data/types";
 import {
+  sharedSongAlbumTotals,
   sharedSongArtistTotals,
   sharedSongDurationTotals,
   sharedSongEraTotals,
   sharedSongGenreTotals,
+  sharedSongsForAlbum,
   sharedSongsForArtist,
   sharedSongsForDuration,
   sharedSongsForEra,
@@ -30,7 +32,7 @@ interface SharedProps {
   scoringOptions: StatsOptions;
 }
 
-type Mode = "artists" | "genres" | "years" | "decades" | "duration";
+type Mode = "artists" | "genres" | "years" | "decades" | "duration" | "albums";
 
 const PAGE_SIZE = 20;
 const SONG_PAGE_SIZE = 100;
@@ -77,7 +79,14 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
   const isGenreMode = mode === "genres";
   const isEraMode = mode === "years" || mode === "decades";
   const isDurationMode = mode === "duration";
+  const isAlbumMode = mode === "albums";
   const isArtistMode = mode === "artists";
+  // Albums (like artists, and unlike genre/era/duration's small fixed bucket
+  // counts) can number in the hundreds (918 unique albums in the real
+  // dataset) - so it joins artist mode's pagination rather than the "show
+  // everything" treatment genre/era/duration mode get here, same reasoning
+  // as Leaderboard's own isPaginatedMode.
+  const isPaginatedMode = isArtistMode || isAlbumMode;
   const eraGranularity: EraGranularity = mode === "decades" ? "decade" : "year";
   const noun =
     mode === "decades"
@@ -86,9 +95,11 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
         ? "year"
         : isDurationMode
           ? "duration"
-          : isGenreMode
-            ? "genre"
-            : "artist";
+          : isAlbumMode
+            ? "album"
+            : isGenreMode
+              ? "genre"
+              : "artist";
 
   // Which songs qualify changes with the per-person required/any/excluded
   // buttons (songsByPresence), but never with the identity toggles (that's
@@ -136,13 +147,19 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
     () => sharedSongDurationTotals(dataset, genreOptions, presenceMap),
     [dataset, genreOptions, presenceMap]
   );
-  const totals: Array<{ name: string; total: number }> = isDurationMode
-    ? durationRows.map((r) => ({ name: r.bucket, total: r.total }))
-    : isEraMode
-      ? eraRows.map((r) => ({ name: r.era, total: r.total }))
-      : isGenreMode
-        ? genreRows.map((r) => ({ name: r.genre, total: r.total }))
-        : artistRows.map((r) => ({ name: r.artist, total: r.total }));
+  const albumRows = useMemo(
+    () => sharedSongAlbumTotals(dataset, genreOptions, presenceMap),
+    [dataset, genreOptions, presenceMap]
+  );
+  const totals: Array<{ name: string; total: number }> = isAlbumMode
+    ? albumRows.map((r) => ({ name: r.album, total: r.total }))
+    : isDurationMode
+      ? durationRows.map((r) => ({ name: r.bucket, total: r.total }))
+      : isEraMode
+        ? eraRows.map((r) => ({ name: r.era, total: r.total }))
+        : isGenreMode
+          ? genreRows.map((r) => ({ name: r.genre, total: r.total }))
+          : artistRows.map((r) => ({ name: r.artist, total: r.total }));
 
   // Color follows the ARTIST/GENRE/ERA, not its current rank under the
   // active genre filter - built from the unfiltered ordering (identity
@@ -165,10 +182,16 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
     () => sharedSongDurationTotals(dataset, scoringOptions, presenceMap).map((t) => t.bucket),
     [dataset, scoringOptions, presenceMap]
   );
+  const stableAlbumOrder = useMemo(
+    () => sharedSongAlbumTotals(dataset, scoringOptions, presenceMap).map((t) => t.album),
+    [dataset, scoringOptions, presenceMap]
+  );
   const colorMap = useMemo(
     () =>
       buildArtistColorMap(
-        isDurationMode
+        isAlbumMode
+          ? stableAlbumOrder
+          : isDurationMode
           ? stableDurationOrder
           : isEraMode
             ? stableEraOrder
@@ -176,12 +199,24 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
               ? stableGenreOrder
               : stableArtistOrder
       ),
-    [isDurationMode, isEraMode, isGenreMode, stableDurationOrder, stableEraOrder, stableGenreOrder, stableArtistOrder]
+    [
+      isAlbumMode,
+      isDurationMode,
+      isEraMode,
+      isGenreMode,
+      stableAlbumOrder,
+      stableDurationOrder,
+      stableEraOrder,
+      stableGenreOrder,
+      stableArtistOrder,
+    ]
   );
   const maxTotal = totals[0]?.total ?? 1;
-  // No pagination in genre/era mode - only a handful of buckets total, same
-  // as Leaderboard's own precedent.
-  const visibleTotals = isArtistMode ? totals.slice(0, artistLimit) : totals;
+  // No pagination in genre/era/duration mode - only a handful of buckets
+  // total, same as Leaderboard's own precedent. Albums joins artist mode's
+  // pagination instead (isPaginatedMode) since its count runs into the
+  // hundreds.
+  const visibleTotals = isPaginatedMode ? totals.slice(0, artistLimit) : totals;
 
   // Changing the mode, genre filter, presence buttons, or any identity
   // toggle changes which rows qualify at all (or reshuffles their ranking) -
@@ -198,7 +233,9 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
 
   const expandedSongs = useMemo(() => {
     if (!activeExpandedRow) return [];
-    const result = isDurationMode
+    const result = isAlbumMode
+      ? sharedSongsForAlbum(dataset, activeExpandedRow, genreOptions, presenceMap)
+      : isDurationMode
       ? sharedSongsForDuration(dataset, activeExpandedRow, genreOptions, presenceMap)
       : isEraMode
         ? sharedSongsForEra(dataset, eraGranularity, activeExpandedRow, genreOptions, presenceMap)
@@ -223,6 +260,7 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
   }, [
     dataset,
     activeExpandedRow,
+    isAlbumMode,
     isDurationMode,
     isEraMode,
     eraGranularity,
@@ -311,6 +349,9 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
             {isDurationMode &&
               durationRows.some((r) => r.bucket === "Unknown") &&
               " · \"Unknown\" is songs with no catalogued duration"}
+            {isAlbumMode &&
+              albumRows.some((r) => r.album === "Unknown") &&
+              " · \"Unknown\" is songs with no catalogued album"}
           </p>
         </div>
         <ModeSwitch
@@ -321,6 +362,7 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
             { value: "years", label: "Years" },
             { value: "decades", label: "Decades" },
             { value: "duration", label: "Duration" },
+            { value: "albums", label: "Albums" },
           ]}
           onChange={switchMode}
           aria-label="Rank by"
@@ -430,7 +472,7 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
         })}
       </ol>
 
-      {isArtistMode && artistLimit < totals.length && (
+      {isPaginatedMode && artistLimit < totals.length && (
         <button
           type="button"
           className={leaderboardStyles.more}

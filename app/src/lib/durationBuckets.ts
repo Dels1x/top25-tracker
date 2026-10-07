@@ -17,10 +17,12 @@ export const UNKNOWN_DURATION = "Unknown";
  * order rather than alphabetically. Per the project owner's own spec: 1
  * minute wide from 1 to 6 minutes (where most songs fall, so finer
  * granularity is useful there - "3-4 min" means 3:00-3:59, not 3:00-4:59),
- * then 2-minute-wide for 6-7/8-9 (i.e. "6-7 min" is 6:00-7:59), then the wide
- * tail bands (10-20/20-30/30+) for the rare long-form track (podcasts,
- * suites, DJ mixes) where minute-by-minute buckets would just produce a long
- * tail of empty rows.
+ * then 2-minute-wide for the next two bands - labeled "6-8 min"/"8-10 min"
+ * (not "6-7 min"/"8-9 min", which would misleadingly read as 1-minute-wide
+ * like every band before them) to make the actual 2-minute boundary explicit
+ * in the label itself - then the wide tail bands (10-20/20-30/30+) for the
+ * rare long-form track (podcasts, suites, DJ mixes) where minute-by-minute
+ * buckets would just produce a long tail of empty rows.
  */
 export const DURATION_BUCKETS: string[] = [
   "Under 1 min",
@@ -29,8 +31,8 @@ export const DURATION_BUCKETS: string[] = [
   "3-4 min",
   "4-5 min",
   "5-6 min",
-  "6-7 min",
-  "8-9 min",
+  "6-8 min",
+  "8-10 min",
   "10-20 min",
   "20-30 min",
   "Over 30 min",
@@ -46,8 +48,8 @@ export function durationBucketForTrack(durationMs: number | null): string {
   if (minutes < 4) return "3-4 min";
   if (minutes < 5) return "4-5 min";
   if (minutes < 6) return "5-6 min";
-  if (minutes < 8) return "6-7 min";
-  if (minutes < 10) return "8-9 min";
+  if (minutes < 8) return "6-8 min";
+  if (minutes < 10) return "8-10 min";
   if (minutes < 20) return "10-20 min";
   if (minutes < 30) return "20-30 min";
   return "Over 30 min";
