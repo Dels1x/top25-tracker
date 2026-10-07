@@ -277,7 +277,14 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
     ]
   );
 
-  const max = totals[0]?.total ?? 1;
+  // Every mode except Duration sorts `totals` descending by total, so
+  // `totals[0]` is normally the max - but Duration sorts by BUCKET ORDER
+  // instead (shortest to longest, see durationTotals' own doc comment), so
+  // its first row is rarely the largest. Taking the actual max over every
+  // row (instead of assuming row 0 is it) keeps bar widths correct in every
+  // mode, Duration included - relying on `totals[0]` there was a real bug:
+  // bars for a bucket bigger than "Under 1 min" clipped at/overflowed 100%.
+  const max = totals.reduce((m, t) => Math.max(m, t.total), 1);
   // No pagination in genre/era/duration mode - only a handful of buckets
   // total (~19 genres, or however many distinct release years/decades/
   // duration buckets appear in someone's history). Albums mode paginates

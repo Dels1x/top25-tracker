@@ -211,7 +211,14 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
       stableArtistOrder,
     ]
   );
-  const maxTotal = totals[0]?.total ?? 1;
+  // Every mode except Duration sorts `totals` descending by total, so
+  // `totals[0]` is normally the max - but Duration sorts by BUCKET ORDER
+  // instead (see sharedSongDurationTotals' own doc comment), so its first
+  // row is rarely the largest. Taking the actual max over every row (rather
+  // than assuming row 0 is it) keeps bar widths correct in every mode,
+  // Duration included - relying on `totals[0]` there was a real bug: bars
+  // for a bucket bigger than "Under 1 min" clipped at/overflowed 100%.
+  const maxTotal = totals.reduce((m, t) => Math.max(m, t.total), 1);
   // No pagination in genre/era/duration mode - only a handful of buckets
   // total, same as Leaderboard's own precedent. Albums joins artist mode's
   // pagination instead (isPaginatedMode) since its count runs into the
