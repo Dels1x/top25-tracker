@@ -107,6 +107,8 @@ export const GENRES = [
     "Drumless",
     "Alternative Trap",
     "Progressive Metal",
+    "Noise Rock",
+    "Post-Hardcore",
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -194,6 +196,8 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Drumless": ["Hip-Hop"],
   "Alternative Trap": ["Alternative Hip-Hop", "Trap"],
   "Progressive Metal": ["Metal"],
+  "Post-Hardcore": ["Rock"],
+  "Noise Rock": ["Alternative Rock"],
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -646,6 +650,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Red House Painters": ["Slowcore", "Post-Rock"],
   "Have A Nice Life": ["Shoegaze", "Post-Rock", "Post-Punk", "Gothic Rock"],
   Slint: ["Post-Rock", "Math Rock"],
+  "Unwound": ["Post-Rock", "Indie Rock", "Post-Hardcore", "Noise Rock"],
   "Godspeed You Black Emperor!": ["Post-Rock", "Ambient"],
   "Natural Snow Buildings": ["Ambient", "Folk"],
   "Sweet Trip": ["Dream Pop", "Electronic"],
