@@ -105,7 +105,8 @@ export const GENRES = [
     "Alternative Hip-Hop",
     "Lo-Fi Hip-Hop",
     "Drumless",
-    "Alternative Trap"
+    "Alternative Trap",
+    "Progressive Metal",
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -191,7 +192,8 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Alternative Hip-Hop": ["Hip-Hop"],
   "Lo-Fi Hip-Hop": ["Alternative Hip-Hop"],
   "Drumless": ["Hip-Hop"],
-  "Alternative Trap": ["Alternative Hip-Hop", "Trap"]
+  "Alternative Trap": ["Alternative Hip-Hop", "Trap"],
+  "Progressive Metal": ["Metal"],
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -601,6 +603,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Bee Gees": ["Disco", "Pop", "Soft Rock"],
 
   // ===== Rock =====
+  "Bark Psychosis": ["Post-Rock", "Art Rock"],
   "Queens of the Stone Age": ["Art Rock", "Alternative Rock", "Stoner Rock", "Hard Rock"],
   "Radiohead": ["Alternative Rock", "Art Rock"],
   Failure: ["Grunge"],
@@ -619,9 +622,11 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Ichiko Aoba": ["Folk", "Chamber Folk", "Singer-Songwriter"],
   "Taeko Onuki": ["Pop"],
   "Queen": ["Hard Rock", "Pop Rock"],
+  "Carissa's Wierd": ["Slowcore", "Indie Folk"],
 
   // ===== Metal =====
   "Black Sabbath": ["Metal", "Rock", "Heavy Metal"],
+  "TOOL": ["Alternative Metal", "Progressive Metal"],
   Deftones: ["Metal", "Shoegaze", "Alternative Metal"],
   "Loathe": ["Metal", "Shoegaze", "Alternative Metal"],
   "Team Sleep": ["Metal", "Shoegaze"],
