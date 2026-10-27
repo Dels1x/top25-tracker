@@ -31,12 +31,17 @@
  * different name the artist actually used - they're just how Spotify's
  * catalog happened to credit the track, and should be invisible once fixed.
  * Found so far: "Kill Bill the Rapper" (missing colon/wrong case, vs. the
- * correct "Kill Bill: The Rapper" used elsewhere in the catalog), "RAP
- * FERRERIA" (typo'd/all-caps vs. "R.A.P. Ferreira"), and "KA" (all-caps vs.
- * the dominant "Ka" spelling used on the vast majority of his tracks).
+ * correct "Kill Bill: The Rapper" used elsewhere in the catalog), "Kill
+ * Bill: the Rapper" (a second, different malformation of the same name -
+ * has the colon this time but lowercase "the" - found on delsix's Oct 2026
+ * "Pork [Remix]" credit, which otherwise silently failed to count toward
+ * Kill Bill: The Rapper's totals), "RAP FERRERIA" (typo'd/all-caps vs.
+ * "R.A.P. Ferreira"), and "KA" (all-caps vs. the dominant "Ka" spelling used
+ * on the vast majority of his tracks).
  */
 export const SPOTIFY_MISSPELLINGS: Record<string, string> = {
   "Kill Bill the Rapper": "Kill Bill: The Rapper",
+  "Kill Bill: the Rapper": "Kill Bill: The Rapper",
   "RAP FERRERIA": "R.A.P. Ferreira",
   "Roc Marci": "Roc Marciano",
   "Roc Mariano": "Roc Marciano",
