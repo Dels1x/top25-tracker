@@ -109,6 +109,7 @@ export const GENRES = [
     "Progressive Metal",
     "Noise Rock",
     "Post-Hardcore",
+    "Avant-Folk",
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -198,6 +199,7 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Progressive Metal": ["Metal"],
   "Post-Hardcore": ["Rock"],
   "Noise Rock": ["Alternative Rock"],
+  "Avant-Folk": ["Folk"],
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -640,9 +642,9 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "bôa": ["Alternative Rock", "Indie Rock"],
 
   // ===== Shoegaze / Slowcore / Post-Rock / Ambient family =====
-  "The Microphones": ["Folk", "Rock"],
-  "Mount Eerie": ["Folk", "Rock"],
-  "Phil Elverum": ["Folk", "Rock", "Indie Folk", "Psychedelic Folk", "Slacker Rock", "Singer-Songwriter"],
+  "The Microphones": ["Indie Folk", "Psychedelic Folk", "Slacker Rock", "Singer-Songwriter", "Avant-Folk", "Post-Rock"],
+  "Mount Eerie": ["Indie Folk", "Slacker Rock", "Singer-Songwriter", "Avant-Folk", "Post-Rock"],
+  "Phil Elverum": ["Indie Folk", "Psychedelic Folk", "Slacker Rock", "Singer-Songwriter", "Avant-Folk", "Post-Rock"],
   Slowdive: ["Shoegaze", "Dream Pop"],
   "my bloody valentine": ["Shoegaze", "Noise Pop"],
   "Beach House": ["Dream Pop", "Indie Pop", "Neo-Psychedelia"],
