@@ -256,6 +256,25 @@
   font-variant-numeric: tabular-nums;
 }
 
+.cardGenres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+
+.genreChip {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  padding: 2px 8px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
 /* Click-to-load Spotify preview: a plain text-style button rather than the
    bold .playButton treatment (there are up to 25 of these on screen at
    once, one per card - a loud button per card would be visual noise) that
@@ -287,6 +306,94 @@
   margin-top: 8px;
   min-width: 0;
   border-radius: 12px;
+}
+
+/* The "fun stats" panel: 5 small breakdowns (Artists/Genres/Decades/Years/
+   Length) of the currently displayed month's 25 tracks, below the card
+   grid. A compact reflow grid (not a fixed column count like .grid above) -
+   unlike the song cards, which all need the same prominence, these blocks
+   are secondary context and naturally vary in row count (Artists can have
+   up to 25 rows if every song is a different artist's only pick that month,
+   Decades rarely more than 4-5), so letting them wrap at whatever width
+   fits reads better than forcing a uniform 2-column split. */
+.statsPanel {
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.statsPanelHeading {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 14px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.statBlock {
+  min-width: 0;
+}
+
+.statTitle {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.statList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  /* This month's breakdown only, not an all-time leaderboard - capped
+     height with a scroll rather than a "Show more" button, since the
+     point is a quick glance, not another paginated list to manage. */
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.statRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(40px, 30%) 20px;
+  align-items: center;
+  gap: 8px;
+}
+
+.statName {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.statBarTrack {
+  height: 6px;
+  background: var(--gridline);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.statBar {
+  height: 100%;
+  border-radius: 3px;
+}
+
+.statValue {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 @media (max-width: 560px) {

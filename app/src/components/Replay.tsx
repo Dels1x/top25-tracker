@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import type { Dataset } from "../data/types";
+import type { Dataset, Track } from "../data/types";
 import { listsForPerson } from "../lib/stats";
 import { sliderTickIndices } from "../lib/sliderTicks";
+import { directGenresForArtists, UNTAGGED_GENRE } from "../lib/artistGenres";
+import { decadeBucketForTrack, yearBucketForTrack } from "../lib/releaseEra";
+import { DURATION_BUCKETS, durationBucketForTrack, formatDuration } from "../lib/durationBuckets";
+import { buildArtistColorMap } from "../lib/colors";
 import styles from "./Replay.module.css";
 
 interface ReplayProps {
@@ -75,6 +79,122 @@ function formatTick(month: string): string {
   // "Jul 2022" label collided with its "2023" neighbor at narrow widths
   // when every tick wasn't the same short length.
   return month.split("-")[0];
+}
+
+/** One row (bucket name + count) in a MonthStatList breakdown, already sorted for display. */
+interface MonthStatRow {
+  name: string;
+  count: number;
+}
+
+/**
+ * One month's top 25, broken down 5 ways for the "fun stats" panel under the
+ * card grid - Artists/Genres/Decades/Years/Duration, the same dimensions
+ * Leaderboard/Timeline/Shared/Compare's own mode switch already covers, but
+ * scoped to just the 25 tracks in the currently displayed month rather than
+ * a person's whole history. Deliberately buckets by each track's literal
+ * creditedArtists, never scoringArtists - Replay has never looked at the
+ * artist-identity toggles (see NO_TOGGLES_VIEWS in App.tsx) and always shows
+ * the literal per-track credit, so these breakdowns stay consistent with
+ * that: "who does the card actually say", not a scored/resolved view.
+ * Genre/era/duration bucketing itself is artist-identity-independent either
+ * way (directGenresForArtists/decadeBucketForTrack/durationBucketForTrack
+ * don't care whether a name came from creditedArtists or scoringArtists).
+ *
+ * Every dimension here sorts by count descending EXCEPT duration, which
+ * sorts by DURATION_BUCKETS' own fixed short-to-long order - the exact same
+ * exception durationTotals/sharedSongDurationTotals in stats.ts make, for
+ * the same reason (a duration histogram reads naturally short-to-long, not
+ * ranked by which band happens to have the most songs this month).
+ */
+function buildMonthStats(tracks: Track[]): Record<
+  "artists" | "genres" | "decades" | "years" | "duration",
+  MonthStatRow[]
+> {
+  const artists = new Map<string, number>();
+  const genres = new Map<string, number>();
+  const decades = new Map<string, number>();
+  const years = new Map<string, number>();
+  const duration = new Map<string, number>();
+
+  for (const track of tracks) {
+    for (const artist of track.creditedArtists) {
+      artists.set(artist, (artists.get(artist) ?? 0) + 1);
+    }
+    for (const genre of directGenresForArtists(track.creditedArtists)) {
+      if (genre === UNTAGGED_GENRE) continue; // same "too noisy to show" call as the card chips
+      genres.set(genre, (genres.get(genre) ?? 0) + 1);
+    }
+    const decade = decadeBucketForTrack(track.releaseDate);
+    decades.set(decade, (decades.get(decade) ?? 0) + 1);
+    const year = yearBucketForTrack(track.releaseDate);
+    years.set(year, (years.get(year) ?? 0) + 1);
+    const bucket = durationBucketForTrack(track.durationMs);
+    duration.set(bucket, (duration.get(bucket) ?? 0) + 1);
+  }
+
+  const byCountDesc = (m: Map<string, number>): MonthStatRow[] =>
+    Array.from(m.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count);
+
+  return {
+    artists: byCountDesc(artists),
+    genres: byCountDesc(genres),
+    decades: byCountDesc(decades),
+    years: byCountDesc(years),
+    duration: Array.from(duration.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => DURATION_BUCKETS.indexOf(a.name) - DURATION_BUCKETS.indexOf(b.name)),
+  };
+}
+
+/**
+ * One breakdown's bar list - a compact version of Leaderboard's own
+ * rank/bar/value row (same visual language, smaller) rather than a new mark
+ * type, since this is a secondary "fun stats" panel, not the page's primary
+ * chart. `colorMap` is optional (only the Artists panel gets one, built from
+ * this month's own artists - see the color-stability note on MonthStats
+ * below for why this is a deliberately different stability rule than every
+ * other `stableOrder` in the codebase) - every other dimension's bars render
+ * in a single flat muted tone, since there's no cross-month entity for a
+ * genre/decade/year/duration bucket's color to need to stay stable against.
+ */
+function MonthStatList({
+  title,
+  rows,
+  colorMap,
+}: {
+  title: string;
+  rows: MonthStatRow[];
+  colorMap?: Map<string, string>;
+}) {
+  if (rows.length === 0) return null;
+  const max = rows.reduce((m, r) => Math.max(m, r.count), 1);
+  return (
+    <div className={styles.statBlock}>
+      <h4 className={styles.statTitle}>{title}</h4>
+      <ol className={styles.statList}>
+        {rows.map((row) => (
+          <li key={row.name} className={styles.statRow}>
+            <span className={styles.statName} title={row.name}>
+              {row.name}
+            </span>
+            <div className={styles.statBarTrack}>
+              <div
+                className={styles.statBar}
+                style={{
+                  width: `${(row.count / max) * 100}%`,
+                  background: colorMap?.get(row.name) ?? "var(--series-1)",
+                }}
+              />
+            </div>
+            <span className={styles.statValue}>{row.count}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
 }
 
 export function Replay({ dataset, person }: ReplayProps) {
@@ -172,6 +292,15 @@ export function Replay({ dataset, person }: ReplayProps) {
   const current = months[index];
   const max = Math.max(months.length - 1, 0);
   const progressPct = (index / max) * 100;
+  const monthStats = buildMonthStats(current.tracks);
+  // Colors here deliberately do NOT follow the codebase's usual
+  // "stableOrder built from all-time totals" rule (see colors.ts) - this
+  // panel is scoped to a single month and swaps its entire row set out
+  // every time the scrubber moves, so there's no cross-month "same artist,
+  // same color" property worth preserving; keying straight off this month's
+  // own by-count order is enough to make the bars visually distinct from
+  // each other within the one chart they're drawn on.
+  const monthArtistColors = buildArtistColorMap(monthStats.artists.map((r) => r.name));
 
   return (
     <div className={styles.wrap}>
@@ -250,13 +379,35 @@ export function Replay({ dataset, person }: ReplayProps) {
                   <span className={styles.cardArtist} title={track.creditedArtists.join(", ")}>
                     {track.creditedArtists.join(", ")}
                   </span>
-                  {(track.album || track.releaseDate) && (
+                  {(track.album || track.releaseDate || track.durationMs) && (
                     <span className={styles.cardMeta} title={track.album}>
-                      {track.album}
-                      {track.album && formatReleaseDate(track.releaseDate) && " · "}
-                      {formatReleaseDate(track.releaseDate)}
+                      {[track.album, formatReleaseDate(track.releaseDate), formatDuration(track.durationMs)]
+                        .filter(Boolean)
+                        .join(" · ")}
                     </span>
                   )}
+                  {(() => {
+                    // Untagged songs are common (many artists in this
+                    // dataset aren't in ARTIST_GENRES yet) - showing an
+                    // "Unknown/Untagged" chip on most of 25 cards per month
+                    // would be noise, not information, so that sentinel is
+                    // suppressed here specifically (unlike the Leaderboard's
+                    // genre filter, which needs it as a real, selectable
+                    // bucket).
+                    const genres = directGenresForArtists(track.creditedArtists).filter(
+                      (g) => g !== UNTAGGED_GENRE
+                    );
+                    if (genres.length === 0) return null;
+                    return (
+                      <span className={styles.cardGenres}>
+                        {genres.map((genre) => (
+                          <span key={genre} className={styles.genreChip}>
+                            {genre}
+                          </span>
+                        ))}
+                      </span>
+                    );
+                  })()}
                   {track.spotifyId &&
                     (isOpen ? (
                       <SpotifyEmbed spotifyId={track.spotifyId} />
@@ -275,6 +426,17 @@ export function Replay({ dataset, person }: ReplayProps) {
           })}
         </AnimatePresence>
       </ol>
+
+      <div className={styles.statsPanel}>
+        <h3 className={styles.statsPanelHeading}>This month at a glance</h3>
+        <div className={styles.statsGrid}>
+          <MonthStatList title="Artists" rows={monthStats.artists} colorMap={monthArtistColors} />
+          <MonthStatList title="Genres" rows={monthStats.genres} />
+          <MonthStatList title="Decades" rows={monthStats.decades} />
+          <MonthStatList title="Years" rows={monthStats.years} />
+          <MonthStatList title="Length" rows={monthStats.duration} />
+        </div>
+      </div>
     </div>
   );
 }

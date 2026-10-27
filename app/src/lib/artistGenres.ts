@@ -718,3 +718,24 @@ export function genresForArtists(scoringArtists: string[]): string[] {
   if (result.size === 0) return [UNTAGGED_GENRE];
   return Array.from(result);
 }
+
+/**
+ * Same artist->genre lookup as genresForArtists, but WITHOUT the ancestor
+ * walk - just the most-specific tag(s) ARTIST_GENRES actually lists for each
+ * artist (e.g. "Pop Punk" alone, not "Pop Punk"/"Punk"/"Rock"). Bucketing
+ * (genreTotals etc.) needs the full ancestor closure so a "Rock" filter
+ * catches a Pop Punk track too, but a per-track DISPLAY chip (Replay's own
+ * card) showing every ancestor alongside the specific tag would just be
+ * redundant noise - "Pop Punk" already implies "Rock" to anyone reading it.
+ * Returns [UNTAGGED_GENRE] under the same "nobody recognized" condition.
+ */
+export function directGenresForArtists(scoringArtists: string[]): string[] {
+  const result = new Set<string>();
+  for (const artist of scoringArtists) {
+    const genres = ARTIST_GENRES[artist];
+    if (!genres) continue;
+    for (const g of genres) result.add(g);
+  }
+  if (result.size === 0) return [UNTAGGED_GENRE];
+  return Array.from(result);
+}

@@ -647,6 +647,52 @@ There is no test runner configured yet.
   is open rather than stacking; switching person, scrubbing the position slider, or autoplay
   advancing to the next month all close whatever's open, since the card it belonged to is about to
   animate out or no longer matches the displayed month.
+  **Each card also shows its length and genre(s)** - `formatDuration` (`durationBuckets.ts`, built
+  alongside Duration mode but previously unused anywhere) folds into the existing `cardMeta` line
+  (now "Album · Mar 15, 2024 · 3:42", only the pieces that actually exist joined by " · ", same
+  omit-the-whole-line-if-nothing rule as before), and a new row of small genre chips renders below
+  it via a new `directGenresForArtists` (`artistGenres.ts`) - deliberately NOT the same
+  `genresForArtists` the Leaderboard's genre bucketing uses, which also walks every ancestor genre
+  transitively (so "Pop Punk" would show as "Pop Punk"/"Punk"/"Rock" all three, redundant noise on a
+  small per-card chip where "Pop Punk" already implies "Rock" to anyone reading it);
+  `directGenresForArtists` returns just the specific tag(s) `ARTIST_GENRES` actually lists, no
+  ancestor walk. The `UNTAGGED_GENRE` sentinel is filtered out of the chip row (and out of the
+  per-month Genres breakdown below) - most of this dataset's artists aren't in `ARTIST_GENRES` yet,
+  so showing "Unknown/Untagged" on most of 25 cards a month would be noise, not signal; unlike the
+  Leaderboard's genre filter, this is a pure display context with no "show me everyone, even
+  unclassified" use case to preserve. Both the length and genre additions read straight off
+  `track.creditedArtists`/`track.durationMs`/`track.releaseDate` already on the `Track` - no new
+  data-pipeline work needed.
+  **Below the card grid, a "This month at a glance" stats panel breaks the current month's 25 tracks
+  down 5 ways**: Artists, Genres, Decades, Years, and Length (duration) - the same 5 dimensions
+  Leaderboard/Timeline/Shared/Compare's own mode switch covers, but scoped to just the one currently
+  displayed month rather than a person's whole history, and shown side by side rather than toggled.
+  A new `buildMonthStats` in `Replay.tsx` (not `stats.ts` - these aren't reusable aggregate functions
+  the other components call, just a small per-call helper scoped to this one view) computes all 5 in
+  a single pass over `current.tracks`, deliberately bucketing by each track's literal
+  `creditedArtists` rather than `scoringArtists` - Replay has never looked at the artist-identity
+  toggles at all (see `NO_TOGGLES_VIEWS` in `App.tsx`; it always shows the literal per-track credit),
+  so these breakdowns stay consistent with that existing, deliberate design choice: "what does the
+  card actually say," not a scored/resolved view. Genre/decade/year/duration bucketing itself doesn't
+  care which artist-name source it's fed, so this is a one-line choice (pass `creditedArtists`), not
+  a divergence requiring new plumbing. Every dimension sorts by count descending EXCEPT Length, which
+  sorts by `DURATION_BUCKETS`' own fixed short-to-long order - the exact same exception
+  `durationTotals`/`sharedSongDurationTotals` make in `stats.ts`, for the same reason (a duration
+  breakdown reads naturally short-to-long, not ranked by whichever band happens to have the most
+  songs that month). Each breakdown renders via a new, small `MonthStatList` presentational
+  component - a compact version of Leaderboard's own rank/bar/value row (same visual language,
+  smaller text/bars) rather than inventing a new mark type, since this is secondary "fun stats"
+  context, not the page's primary chart; a capped-height scrollable list (`max-height` +
+  `overflow-y`) rather than Leaderboard's paginated "Show more" button, since the point here is a
+  quick glance at one month, not another list to manage. Only the Artists panel gets per-row
+  coloring (`buildArtistColorMap`, keyed off this month's own by-count order) - every other panel's
+  bars render in one flat muted tone, since a genre/decade/year/duration bucket has no cross-month
+  identity that color needs to stay stable against the way an artist's color does elsewhere in the
+  app (see the `colors.ts` entry above) - and even the Artists panel's own color map deliberately
+  does NOT follow that `stableOrder`-from-all-time-totals convention every other component uses,
+  since this whole panel's row set swaps out completely every time the scrubber moves to a different
+  month anyway, so there's no "same artist stays the same color across renders" property worth
+  preserving here the way there is for Leaderboard/Timeline's persistent per-artist colors.
 - **`app/src/components/PresenceFilter.tsx`** + **`app/src/lib/usePresenceFilter.ts`** — the Shared
   tab's 3 per-person required/any/excluded cycle buttons; see the `Shared` entry above for the full
   behavior. `usePresenceFilter(people)` owns the persisted `{ [person]: PresenceRequirement }` record
