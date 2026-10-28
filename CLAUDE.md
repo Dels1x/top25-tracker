@@ -717,6 +717,39 @@ There is no test runner configured yet.
   and exposes `requirementFor`/`cycle`/`presenceMap` (the last one is what gets passed straight into
   `songsByPresence`/`sharedSongArtistTotals`/`sharedSongsForArtist` in `stats.ts`) - `PresenceFilter.tsx`
   itself is presentational only, rendering one button per person and calling `onCycle(person)` on click.
+- **`app/src/components/Top25Fight.tsx`** — a 6th view, "Top 25 Fight": a head-to-head game, not a
+  stats view. Two sides (Side A / Side B), each independently set to any of `dataset.people` via a
+  plain `<select>` (can even both be the same person - not blocked, since nothing about the pairing
+  logic requires two different people), each draw one random track from that person's own pool
+  across their ENTIRE history (every month, not scoped to the active global person/date range the
+  rest of the app uses - this view intentionally ignores all of that, same spirit as Replay ignoring
+  the artist-identity toggles). **The pool for each side is filtered down to only tracks with a
+  `spotifyId`** before a single random pick is ever made ("if the song is not on spotify, the song
+  isnt displayed, only spotify songs can be in the game" - the project owner's own spec) - a
+  `spotify:local:...` row with no streaming match is excluded from the draw entirely, not
+  re-rolled-around per pick. Verified against the real dataset that every person still has hundreds
+  of Spotify-eligible tracks (1246/1287/561 of Kazimir UH2O/delsix/hryash's respective totals), so the
+  pool is never thin enough in practice to make the random draw feel repetitive. Each round renders
+  both tracks as side-by-side cards, each with the same real, playable Spotify `<iframe>` embed
+  Replay.tsx's own `SpotifyEmbed` uses (duplicated locally here rather than extracted into a shared
+  component - it's a small, stable 15-line wrapper and the two call sites have different enough
+  surrounding layout/behavior - e.g. Fight always renders both embeds eagerly since there are only
+  ever 2 on screen at once, unlike Replay's deliberate click-to-load gating for up to 25 cards a
+  month - that sharing it would be a premature abstraction for a wrapper this small). Clicking either
+  card's "This one wins" button awards that side 1 point and immediately draws a fresh random pair
+  for the next round; first side to reach `WIN_SCORE` (30, per the project owner's own spec) stops the
+  draw and shows a winner banner with the final score and a "Play again" button that resets both
+  scores to 0 and redraws. The whole match (`scoreA`/`scoreB`/`round`/the current pair) is persisted
+  via `usePersistedState` under `top25tracker:fight:state` (plus `top25tracker:fight:personA`/`personB`
+  for the two side selections) so a refresh mid-match doesn't lose progress, same convenience
+  reasoning as every other persisted UI preference in this app - not something that needs to survive
+  across browsers/devices, purely a per-browser convenience. Switching either side's person mid-match
+  does NOT auto-restart the match or redraw the current pair (editing a `<select>` shouldn't silently
+  discard an in-progress game) - instead a small inline hint appears prompting "Restart match" once a
+  side has actually been changed, tracked by a plain (unpersisted) `justSwitchedPeople` flag that
+  resets on an actual restart. This view is in `NO_TOGGLES_VIEWS` (`App.tsx`) alongside Replay - it
+  plays raw individual `Track`s head-to-head, never aggregates by `scoringArtists`, so the
+  unite/producers/duos/include-duplicates toggles have nothing to affect here either.
 - **`app/src/components/RankFilter.tsx`** + **`app/src/lib/useRankFilter.ts`** — the Leaderboard's
   Top 1/3/5/10/25 buttons: a segmented control (`role="radiogroup"`, styled like Compare's mode switch
   - one pill-shaped container, one filled/active button at a time) that acts as a true radio group,

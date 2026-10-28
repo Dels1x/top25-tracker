@@ -6,6 +6,7 @@ import { Timeline } from "./components/Timeline";
 import { Replay } from "./components/Replay";
 import { Shared } from "./components/Shared";
 import { Compare } from "./components/Compare";
+import { Top25Fight } from "./components/Top25Fight";
 import { ToggleCheckbox } from "./components/ToggleCheckbox";
 import { usePersistedState } from "./lib/usePersistedState";
 import type { StatsOptions } from "./lib/stats";
@@ -20,12 +21,22 @@ const dataset = rawData as Dataset;
 // Leaderboard/Timeline now always show the 3 identity toggles even in genre
 // mode, matching Compare's own precedent of leaving them visible as
 // harmless no-ops there rather than hiding them per-mode.
-type View = "leaderboard" | "timeline" | "replay" | "shared" | "compare";
-const VALID_VIEWS: View[] = ["leaderboard", "timeline", "replay", "shared", "compare"];
+type View = "leaderboard" | "timeline" | "replay" | "shared" | "compare" | "fight";
+const VALID_VIEWS: View[] = [
+  "leaderboard",
+  "timeline",
+  "replay",
+  "shared",
+  "compare",
+  "fight",
+];
 // Replay always shows literal creditedArtists, never scoringArtists, so the
 // identity toggles (and the dedup toggle) have nothing to affect there.
 // Shared DOES use scoringArtists (via sharedSongs) so it keeps the toggles.
-const NO_TOGGLES_VIEWS: View[] = ["replay"];
+// Fight doesn't use scoringArtists either - it plays raw, individual tracks
+// head-to-head, not an aggregated/attributed stat, so the toggles have
+// nothing to affect there either.
+const NO_TOGGLES_VIEWS: View[] = ["replay", "fight"];
 
 function App() {
   const [person, setPerson] = usePersistedState("top25tracker:person", dataset.people[0]);
@@ -97,6 +108,7 @@ function App() {
       {activeView === "replay" && <Replay dataset={dataset} person={activePerson} />}
       {activeView === "shared" && <Shared dataset={dataset} scoringOptions={scoringOptions} />}
       {activeView === "compare" && <Compare dataset={dataset} scoringOptions={scoringOptions} />}
+      {activeView === "fight" && <Top25Fight dataset={dataset} />}
     </Layout>
   );
 }
