@@ -111,7 +111,8 @@ export const GENRES = [
     "Post-Hardcore",
     "Avant-Folk",
     "IDM",
-    "Downtempo"
+    "Downtempo",
+    "Drone",
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -204,6 +205,7 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Avant-Folk": ["Folk"],
   "IDM": ["Electronic"],
   "Downtempo": ["Electronic"],
+  "Drone": ["Electronic"]
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -658,7 +660,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   Slint: ["Post-Rock", "Math Rock"],
   "Unwound": ["Post-Rock", "Indie Rock", "Post-Hardcore", "Noise Rock"],
   "Godspeed You Black Emperor!": ["Post-Rock", "Ambient"],
-  "Natural Snow Buildings": ["Ambient", "Folk"],
+  "Natural Snow Buildings": ["Ambient", "Folk", "Electronic", "Post-Rock", "Avant-Folk", "Drone", "Psychedelic Folk"],
   "Sweet Trip": ["Dream Pop", "Electronic"],
   "Della Zyr": ["Shoegaze", "Dream Pop"],
   Fishmans: ["Neo-Psychedelia", "Dream Pop", "Post-Rock"],
