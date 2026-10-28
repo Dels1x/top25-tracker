@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import type { Dataset, Track } from "../data/types";
-import { listsForPerson } from "../lib/stats";
+import { listsForPerson, sortedMonths } from "../lib/stats";
 import { usePersistedState } from "../lib/usePersistedState";
+import { useMonthRange } from "../lib/useMonthRange";
+import { RangePicker } from "./RangePicker";
 import styles from "./Top25Fight.module.css";
 
 interface Top25FightProps {
@@ -33,10 +35,21 @@ function defaultState(): FightState {
  * own doc comment in Replay.tsx) - "only spotify songs can be in the game"
  * per the project owner's own spec, so the pool is filtered down before a
  * single random pick ever happens, not filtered-and-retried per pick.
+ * `startMonth`/`endMonth` (both inclusive, undefined = no bound) restrict
+ * the draw to a time range, same "YYYY-MM" convention StatsOptions uses
+ * elsewhere - a month outside the range is dropped from the pool entirely,
+ * same as it being dropped for having no spotifyId.
  */
-function spotifyEligiblePool(dataset: Dataset, person: string): FightTrack[] {
+function spotifyEligiblePool(
+  dataset: Dataset,
+  person: string,
+  startMonth?: string,
+  endMonth?: string
+): FightTrack[] {
   const pool: FightTrack[] = [];
   for (const list of listsForPerson(dataset, person)) {
+    if (startMonth && list.month < startMonth) continue;
+    if (endMonth && list.month > endMonth) continue;
     for (const track of list.tracks) {
       if (track.spotifyId) pool.push({ track, person, month: list.month });
     }
@@ -122,16 +135,38 @@ export function Top25Fight({ dataset }: Top25FightProps) {
     ? personB
     : dataset.people[1] ?? dataset.people[0];
 
+  // Spans everyone, like Compare's own range picker (sortedMonths(dataset,
+  // undefined)) - Side A/B can be any two people, so the range has to cover
+  // whichever combination is picked, not just one side's own history.
+  const availableMonths = useMemo(() => sortedMonths(dataset, undefined), [dataset]);
+  const {
+    startIndex,
+    endIndex,
+    lastIndex,
+    rangeOptions,
+    availableYears,
+    handleSliderChange,
+    applyPreset,
+    applyYear,
+  } = useMonthRange(availableMonths, "fight");
+
   const poolA = useMemo(
-    () => spotifyEligiblePool(dataset, activePersonA),
-    [dataset, activePersonA]
+    () =>
+      spotifyEligiblePool(dataset, activePersonA, rangeOptions.startMonth, rangeOptions.endMonth),
+    [dataset, activePersonA, rangeOptions.startMonth, rangeOptions.endMonth]
   );
   const poolB = useMemo(
-    () => spotifyEligiblePool(dataset, activePersonB),
-    [dataset, activePersonB]
+    () =>
+      spotifyEligiblePool(dataset, activePersonB, rangeOptions.startMonth, rangeOptions.endMonth),
+    [dataset, activePersonB, rangeOptions.startMonth, rangeOptions.endMonth]
   );
 
-  const [justSwitchedPeople, setJustSwitchedPeople] = useState(false);
+  // Tracks "something about the matchup setup changed since the match
+  // started" (either side's person, or the time range) - a mid-match edit
+  // to any of these shouldn't silently discard progress, but the player
+  // should be nudged to restart rather than keep playing against a stale
+  // setup. Deliberately not persisted - it's just a one-session nudge.
+  const [configChanged, setConfigChanged] = useState(false);
 
   function drawRound(round: number): FightState {
     const a = randomFrom(poolA);
@@ -146,7 +181,7 @@ export function Top25Fight({ dataset }: Top25FightProps) {
 
   function startMatch() {
     setState(drawRound(1));
-    setJustSwitchedPeople(false);
+    setConfigChanged(false);
   }
 
   function nextRound() {
@@ -203,7 +238,7 @@ export function Top25Fight({ dataset }: Top25FightProps) {
             value={activePersonA}
             onChange={(e) => {
               setPersonA(e.target.value);
-              setJustSwitchedPeople(true);
+              setConfigChanged(true);
             }}
           >
             {dataset.people.map((p) => (
@@ -221,7 +256,7 @@ export function Top25Fight({ dataset }: Top25FightProps) {
             value={activePersonB}
             onChange={(e) => {
               setPersonB(e.target.value);
-              setJustSwitchedPeople(true);
+              setConfigChanged(true);
             }}
           >
             {dataset.people.map((p) => (
@@ -237,14 +272,37 @@ export function Top25Fight({ dataset }: Top25FightProps) {
         </button>
       </div>
 
+      <RangePicker
+        months={availableMonths}
+        startIndex={startIndex}
+        endIndex={endIndex}
+        lastIndex={lastIndex}
+        availableYears={availableYears}
+        onSliderChange={(a, b) => {
+          handleSliderChange(a, b);
+          setConfigChanged(true);
+        }}
+        onPreset={(months) => {
+          applyPreset(months);
+          setConfigChanged(true);
+        }}
+        onYear={(year) => {
+          applyYear(year);
+          setConfigChanged(true);
+        }}
+      />
+
       {noEligibleTracks && (
         <p className={styles.empty}>
-          One of these two has no songs with a Spotify match to play - pick someone else.
+          One of these two has no songs with a Spotify match in this time range to play - widen the
+          range or pick someone else.
         </p>
       )}
 
-      {!noEligibleTracks && justSwitchedPeople && matchStarted && (
-        <p className={styles.sub}>Changed a side - hit "Restart match" to start a fresh game.</p>
+      {!noEligibleTracks && configChanged && matchStarted && (
+        <p className={styles.sub}>
+          Changed the matchup - hit "Restart match" to start a fresh game with the new setup.
+        </p>
       )}
 
       {!noEligibleTracks && matchStarted && (

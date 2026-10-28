@@ -743,13 +743,26 @@ There is no test runner configured yet.
   via `usePersistedState` under `top25tracker:fight:state` (plus `top25tracker:fight:personA`/`personB`
   for the two side selections) so a refresh mid-match doesn't lose progress, same convenience
   reasoning as every other persisted UI preference in this app - not something that needs to survive
-  across browsers/devices, purely a per-browser convenience. Switching either side's person mid-match
-  does NOT auto-restart the match or redraw the current pair (editing a `<select>` shouldn't silently
-  discard an in-progress game) - instead a small inline hint appears prompting "Restart match" once a
-  side has actually been changed, tracked by a plain (unpersisted) `justSwitchedPeople` flag that
-  resets on an actual restart. This view is in `NO_TOGGLES_VIEWS` (`App.tsx`) alongside Replay - it
-  plays raw individual `Track`s head-to-head, never aggregates by `scoringArtists`, so the
-  unite/producers/duos/include-duplicates toggles have nothing to affect here either.
+  across browsers/devices, purely a per-browser convenience. Switching either side's person mid-match,
+  or changing the time range (see below), does NOT auto-restart the match or redraw the current pair
+  (editing a control shouldn't silently discard an in-progress game) - instead a small inline hint
+  appears prompting "Restart match" once anything about the setup has actually changed, tracked by a
+  plain (unpersisted) `configChanged` flag that resets on an actual restart. This view is in
+  `NO_TOGGLES_VIEWS` (`App.tsx`) alongside Replay - it plays raw individual `Track`s head-to-head,
+  never aggregates by `scoringArtists`, so the unite/producers/duos/include-duplicates toggles have
+  nothing to affect here either.
+  **Also has its own time-range picker**, reusing the same `useMonthRange`/`RangePicker` control
+  Leaderboard/Timeline/Compare already use, under its own `"fight"` persistence key. Since Side A/B
+  can each be any person, the range has to cover whichever combination is picked, not just one
+  side's own history - so it spans everyone the same way Compare's own range does
+  (`sortedMonths(dataset, undefined)`, the all-people union of months), not a single person's
+  `availableMonths` the way Leaderboard/Timeline's per-person range does. `spotifyEligiblePool` takes
+  an optional `startMonth`/`endMonth` (same inclusive "YYYY-MM" convention as `StatsOptions`) and
+  drops a month outside the range from the draw pool entirely, the same way it already drops a track
+  with no `spotifyId` - a narrowed range can legitimately leave one side with zero eligible tracks
+  (e.g. picking delsix vs. hryash and restricting to before Nov 2024, when hryash's data starts), which
+  surfaces as the pre-existing "no Spotify match to play" message rather than a crash, verified
+  directly against the real dataset's per-person start months.
 - **`app/src/components/RankFilter.tsx`** + **`app/src/lib/useRankFilter.ts`** — the Leaderboard's
   Top 1/3/5/10/25 buttons: a segmented control (`role="radiogroup"`, styled like Compare's mode switch
   - one pill-shaped container, one filled/active button at a time) that acts as a true radio group,
