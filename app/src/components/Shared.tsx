@@ -60,6 +60,26 @@ function earliestAppearance(song: SharedSong): string {
   );
 }
 
+/**
+ * The default sort for "The songs" list below: average, across every person
+ * who has this song, of that PERSON'S OWN best (lowest-numbered, since #1 is
+ * the best placement) rank among their own appearances of it - not a flat
+ * average over every appearance. A person who re-added the same song in two
+ * different months (e.g. #9 one month, #14 another) only contributes their
+ * #9 once, rather than #9 and #14 both pulling the average toward a worse
+ * number - repeatedly re-adding a song you already placed highly shouldn't
+ * make its average look worse than someone who only ever placed it once.
+ */
+function averagePlacement(song: SharedSong): number {
+  const bestByPerson = new Map<string, number>();
+  for (const a of song.appearances) {
+    const prev = bestByPerson.get(a.person);
+    if (prev === undefined || a.rank < prev) bestByPerson.set(a.person, a.rank);
+  }
+  const bests = Array.from(bestByPerson.values());
+  return bests.reduce((sum, r) => sum + r, 0) / bests.length;
+}
+
 export function Shared({ dataset, scoringOptions }: SharedProps) {
   const [mode, setMode] = usePersistedState<Mode>("top25tracker:sharedMode", "artists");
   const [query, setQuery] = useState("");
@@ -298,14 +318,25 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
     }
   }
 
+  // "The songs" list defaults to best-average-placement-first (see
+  // averagePlacement's own doc comment) rather than whatever incidental
+  // order songsByPresence/the underlying Map happened to produce - a song
+  // everyone ranked near #1 reads as more notable than one that only
+  // qualified by scraping in at #20-25 for each person, so this is a more
+  // meaningful default than an arbitrary one. This is a flat sort over the
+  // filtered set, not a user-selectable sort key the way the drill-down
+  // panel's Date/Song/Album buttons are - there's no secondary sort axis
+  // requested for this list.
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return songs;
-    return songs.filter(
-      (s) =>
-        s.title.toLowerCase().includes(q) ||
-        s.creditedArtists.some((a) => a.toLowerCase().includes(q))
-    );
+    const base = q
+      ? songs.filter(
+          (s) =>
+            s.title.toLowerCase().includes(q) ||
+            s.creditedArtists.some((a) => a.toLowerCase().includes(q))
+        )
+      : songs;
+    return [...base].sort((a, b) => averagePlacement(a) - averagePlacement(b));
   }, [songs, query]);
 
   // The full song list can run into the hundreds (e.g. every song anyone's
@@ -514,6 +545,9 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
               <div className={styles.songInfo}>
                 <span className={styles.title}>{song.title}</span>
                 <span className={styles.artists}>{song.creditedArtists.join(", ")}</span>
+                <span className={styles.avgPlacement}>
+                  Avg placement #{averagePlacement(song).toFixed(1).replace(/\.0$/, "")}
+                </span>
               </div>
               <ul className={styles.appearances}>
                 {song.appearances

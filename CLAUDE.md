@@ -292,6 +292,24 @@ There is no test runner configured yet.
   `filtered` itself changes - a new search query or a presence/genre/identity filter change - same
   reasoning as `artistLimit`'s own reset effect just above: an old scroll-depth from a *different*
   filtered set isn't meaningful once the set underneath it has changed.
+  **"The songs" list defaults to sorting by average placement, best first** (`averagePlacement` in
+  `Shared.tsx`) rather than whatever order `songsByPresence`'s underlying `Map` happened to produce -
+  a song everyone ranked near #1 reads as more notable than one that only ever scraped into the
+  #20-25 range, so this is a more meaningful default ordering than an arbitrary one. For each song,
+  `averagePlacement` takes, PER PERSON, that person's OWN BEST (lowest-numbered, since #1 is the best
+  placement) rank among their own appearances of it - not a flat average over every appearance - then
+  averages those per-person bests across everyone who has the song. This matters because a person can
+  re-add the same song in a different month at a different rank (`includeDuplicates` doesn't change
+  which songs exist, only how they're counted elsewhere - see that entry below); without the
+  per-person-best step first, a person who re-added a song they already ranked highly (say #1, then
+  later #22) would drag the average toward their worse #22 pick too, which isn't the right read of
+  "how well-ranked is this song" - verified directly against the real dataset ("Sandman," which
+  delsix has at #1, #7, and #22 across three re-adds, correctly contributes only #1 to the average,
+  not all three). This is a flat default sort over the whole filtered list, not a user-selectable
+  sort key the way the drill-down panel's Date/Song/Album buttons are (a different, nested list - see
+  below) - no secondary sort axis was requested here. Each song row also shows its own "Avg placement
+  #N" value (`.avgPlacement` in `Shared.module.css`) as small muted context under the title/artists,
+  since the row order is no longer self-evident the way "newest first" or "A-Z" would be.
   **The artist leaderboard above "The songs" grew the same Artists/Genres/Years/Decades `ModeSwitch`
   Leaderboard/Timeline/Compare already have** (`mode` state in `Shared.tsx`, persisted under
   `top25tracker:sharedMode`), so "which GENRE/release-YEAR/release-DECADE shows up on the most shared
