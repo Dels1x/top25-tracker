@@ -110,6 +110,8 @@ export const GENRES = [
     "Noise Rock",
     "Post-Hardcore",
     "Avant-Folk",
+    "IDM",
+    "Downtempo"
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -200,6 +202,8 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Post-Hardcore": ["Rock"],
   "Noise Rock": ["Alternative Rock"],
   "Avant-Folk": ["Folk"],
+  "IDM": ["Electronic"],
+  "Downtempo": ["Electronic"],
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -366,7 +370,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Lil Durk": ["Hip-Hop", "Trap", "Gangsta Rap"],
   "Teller Bank$": ["Experimental Hip-Hop", "Abstract Hip-Hop", "Jazz Rap"],
   "Kirk Knight": ["East Coast Hip-Hop"],
-  "Nightmargin": ["Ambient"],
+  "Nightmargin": ["Ambient", "IDM", "Downtempo"],
   "what is your name?": ["Shoegaze", "Post-Rock", "Indie Rock"],
   "Kamaal Williams": ["Nu Jazz"],
   "CJ Fly": ["East Coast Hip-Hop"],
@@ -377,7 +381,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Ashley Johnson": ["Folk"],
   "John michel": ["Jazz Rap", "Conscious Hip-Hop", "Chipmunk Soul"],
   "Aaron May": ["Jazz Rap"],
-  "Boards of Canada": ["Ambient"],
+  "Boards of Canada": ["Ambient", "IDM", "Downtempo"],
   "Joey Valence & Brae": ["Experimental Hip-Hop", "Boom Bap"],
   "Force Of Nature": ["Jazz Rap"],
   "Ghais Guevara": ["Abstract Hip-Hop", "Experimental Hip-Hop"],
