@@ -875,18 +875,44 @@ There is no test runner configured yet.
   toggle too, no separate list to update. Like the other runtime toggles, never touches
   `creditedArtists`.
 - **"Include duplicates" toggle** (`includeDuplicates` option throughout `src/lib/stats.ts`): when off,
-  a song that appears in more than one month's top 25 counts once overall per artist (toward its first
-  chronological appearance), not once per occurrence. "The same song" is matched via `trackKey`
-  (normalized title + credited-artist list), not raw title equality — Spotify/Exportify re-releases the
-  same recording under multiple catalog titles (e.g. `"X - Single Version"` vs `"X"`, `"X - 2005
-  Remaster"`), and those must still collapse together or the toggle undercounts. `normalizeTitle` in
-  `stats.ts` strips a known, narrow set of trailing release-tag words (version/edit/edition/remaster +
-  a descriptor like year/explicit/album/single/radio/extended/deluxe/tv/digital/mono/stereo) — it
-  deliberately does NOT strip "(Remix)", "- Live", or other suffixes that denote an actually different
-  recording someone chose on purpose, and never touches "(feat. ...)". If a future CSV introduces a new
-  re-release tag style that isn't collapsing correctly, extend the descriptor/noun word lists there
-  rather than loosening the match to something broader (a false merge of two genuinely different songs
-  is worse than missing an exotic tag).
+  a song that appears in more than one month's top 25 counts once overall per artist, toward its
+  BEST-RANKED occurrence (lowest rank number = best placement) - not its first chronological
+  occurrence, which is what an earlier version of this toggle incorrectly did. This matters for
+  `weightByRank`: a song first picked at #20 then re-added later at #2 should score like a #2 pick,
+  not a #20 - `dedupeToBestOccurrence` (the private helper `allTracks` calls) now keeps whichever
+  occurrence has the lower `rank`, not whichever sorts first by month. "The same song" is still
+  matched via `trackKey` (normalized title + credited-artist list), not raw title equality -
+  Spotify/Exportify re-releases the same recording under multiple catalog titles (e.g. `"X - Single
+  Version"` vs `"X"`, `"X - 2005 Remaster"`), and those must still collapse together or the toggle
+  undercounts. `normalizeTitle` in `stats.ts` strips a known, narrow set of trailing release-tag words
+  (version/edit/edition/remaster + a descriptor like year/explicit/album/single/radio/extended/
+  deluxe/tv/digital/mono/stereo) — it deliberately does NOT strip "(Remix)", "- Live", or other
+  suffixes that denote an actually different recording someone chose on purpose, and never touches
+  "(feat. ...)". If a future CSV introduces a new re-release tag style that isn't collapsing
+  correctly, extend the descriptor/noun word lists there rather than loosening the match to something
+  broader (a false merge of two genuinely different songs is worse than missing an exotic tag).
+  **The surviving track also carries an optional `firstMonth` field** - the song's TRUE earliest add
+  month, independent of which occurrence won on rank - present only when it differs from the
+  surviving track's own `month` (the best occurrence's month, kept as `month` so per-month aggregates
+  like `artistMonthCounts`/cumulative series still attribute the point to the month it was actually
+  scored in). Every `firstMonth`-computing person summary (`personArtistSummaries` and its genre/era/
+  duration/album siblings, which feed Compare's "since <month>" labels) reads `track.firstMonth ??
+  track.month` rather than `track.month` directly, specifically so "since" still reflects when a
+  person truly first got into something, even though the kept occurrence's `rank`/`points` reflect
+  their best-ever placement of it. `tracksForArtist`/`tracksForGenre`/`tracksForEra`/
+  `tracksForDuration`/`tracksForAlbum` (Leaderboard's "show me the songs" dropdown) pass this
+  `firstMonth` straight through too - the dropdown's Date column and sort key display/sort by
+  `track.firstMonth ?? track.month` (the true earliest add), while the # column keeps showing
+  `track.rank` (the best placement) - so with duplicates excluded, a re-added song's row correctly
+  shows BOTH its original add date and its best-ever rank side by side, rather than conflating the
+  two into one occurrence's values. Verified against the real dataset: delsix's "The Ringer" (first
+  added 2022-07 at #20, re-added 2022-09 at #10 and 2022-10 at #14) now surfaces as `rank: 10`,
+  `month: "2022-09"`, `firstMonth: "2022-07"` with duplicates excluded - the Date column shows Jul
+  2022, the # column shows #10, and `personArtistSummaries`' "since" for Eminem still reads Jul 2022,
+  not Sep 2022. Shared's own song list (`SharedSong.appearances`) is a completely separate data path
+  (built in `songsByPresence`, not via `allTracks`) and was never affected by this - `includeDuplicates`
+  has always been inert there, since a shared song already appears exactly once regardless (see that
+  entry above).
 - **`app/src/lib/trackDisambiguation.ts`** — the inverse problem from the above: a hand-maintained
   exception list for the rare case where two GENUINELY DIFFERENT recordings happen to share both a
   title and a credited-artist list, which `trackKey` would otherwise incorrectly treat as "the same

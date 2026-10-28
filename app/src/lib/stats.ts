@@ -202,21 +202,53 @@ function inRange(month: string, options?: StatsOptions): boolean {
 }
 
 /**
- * Given a person's (or everyone's) tracks in chronological order, returns the
- * subset to count when duplicates are excluded: the first occurrence of each
- * distinct song (by trackKey), dropping later repeats entirely.
+ * Given a person's (or everyone's) tracks, returns the subset to count when
+ * duplicates are excluded: the BEST-RANKED occurrence of each distinct song
+ * (by trackKey, lowest rank number = best placement), dropping every other
+ * repeat entirely - not the first chronological occurrence. This matters for
+ * two things downstream: `weightByRank` needs the kept occurrence's own
+ * `rank`/`points` to reflect the person's best-ever placement of the song,
+ * not whichever repeat happened to come first chronologically (a song first
+ * picked at #20 then re-added later at #2 should score like a #2, not a
+ * #20); and any UI that displays the kept track's rank (e.g. Shared's
+ * song-list drill-down, Leaderboard's per-artist song dropdown) should show
+ * the person's best pick, not an arbitrary earlier one.
+ *
+ * The surviving track's own `month` is still the best occurrence's month
+ * (needed for per-month aggregates like artistMonthCounts/cumulative series
+ * to attribute the point to the right month), but a separate `firstMonth`
+ * is attached too - the TRUE earliest month this song was ever picked,
+ * regardless of which occurrence won on rank. This is what every
+ * `firstMonth`-computing summary (personArtistSummaries and its genre/era/
+ * duration/album siblings) should read for a "since <month>" label instead
+ * of `track.month` - a song picked at #20 in January then re-added at #2 in
+ * June should still read "since January" for when the person first got
+ * into it, even though it now scores like a #2. `firstMonth` is omitted
+ * (left undefined) when it equals `month` - i.e. the best occurrence IS the
+ * earliest one, the common case - so callers can treat `track.firstMonth ??
+ * track.month` as "the date to show" without re-deriving anything.
+ *
+ * Ties (the same song at the same best rank more than once, across
+ * different months) keep whichever sorts first chronologically, so the
+ * result is deterministic either way.
  */
-function dedupeFirstOccurrence<T extends Track & { month: string }>(tracks: T[]): T[] {
+function dedupeToBestOccurrence<T extends Track & { month: string }>(
+  tracks: T[]
+): Array<T & { firstMonth?: string }> {
   const sorted = [...tracks].sort((a, b) => a.month.localeCompare(b.month));
-  const seen = new Set<string>();
-  const kept: T[] = [];
+  const bestByKey = new Map<string, T>();
+  const earliestByKey = new Map<string, string>();
   for (const track of sorted) {
     const key = trackKey(track);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    kept.push(track);
+    const prevBest = bestByKey.get(key);
+    if (!prevBest || track.rank < prevBest.rank) bestByKey.set(key, track);
+    const prevEarliest = earliestByKey.get(key);
+    if (!prevEarliest || track.month < prevEarliest) earliestByKey.set(key, track.month);
   }
-  return kept;
+  return Array.from(bestByKey.entries()).map(([key, track]) => {
+    const earliest = earliestByKey.get(key)!;
+    return earliest === track.month ? track : { ...track, firstMonth: earliest };
+  });
 }
 
 /** Sort key helper: "YYYY-MM" strings sort correctly as plain strings already. */
@@ -234,12 +266,18 @@ export function listsForPerson(dataset: Dataset, person: string): MonthlyList[] 
   return dataset.lists.filter((l) => l.person === person);
 }
 
-/** Flatten a person's (or everyone's) tracks into a single array, each tagged with its month. */
+/**
+ * Flatten a person's (or everyone's) tracks into a single array, each tagged
+ * with its month. With `includeDuplicates: false`, each returned track may
+ * also carry `firstMonth` - see dedupeToBestOccurrence's own doc comment -
+ * the true earliest month this song was ever picked, present only when it
+ * differs from `month` (the best-ranked occurrence's own month).
+ */
 export function allTracks(
   dataset: Dataset,
   person?: string,
   options?: StatsOptions
-): Array<Track & { month: string; person: string; points: number }> {
+): Array<Track & { month: string; person: string; points: number; firstMonth?: string }> {
   const groupNames = options?.showDuos ? null : new Set(dataset.groupNames);
 
   const out: Array<Track & { month: string; person: string; points: number }> = [];
@@ -275,7 +313,7 @@ export function allTracks(
     }
   }
   if (options?.includeDuplicates === false) {
-    return dedupeFirstOccurrence(out);
+    return dedupeToBestOccurrence(out);
   }
   return out;
 }
@@ -328,7 +366,7 @@ export function tracksForArtist(
   artist: string,
   person?: string,
   options?: StatsOptions
-): Array<Track & { month: string; person: string }> {
+): Array<Track & { month: string; person: string; firstMonth?: string }> {
   return allTracks(dataset, person, options)
     .filter((track) => track.scoringArtists.includes(artist))
     .sort((a, b) => b.month.localeCompare(a.month));
@@ -423,7 +461,7 @@ export function tracksForGenre(
   genre: string,
   person?: string,
   options?: StatsOptions
-): Array<Track & { month: string; person: string }> {
+): Array<Track & { month: string; person: string; firstMonth?: string }> {
   return allTracks(dataset, person, options)
     .filter((track) => genreBucketsForTrack(track).includes(genre))
     .sort((a, b) => b.month.localeCompare(a.month));
@@ -536,7 +574,7 @@ export function tracksForEra(
   era: string,
   person?: string,
   options?: StatsOptions
-): Array<Track & { month: string; person: string }> {
+): Array<Track & { month: string; person: string; firstMonth?: string }> {
   return allTracks(dataset, person, options)
     .filter((track) => eraBucketForTrack(track, granularity) === era)
     .sort((a, b) => b.month.localeCompare(a.month));
@@ -643,7 +681,7 @@ export function tracksForDuration(
   bucket: string,
   person?: string,
   options?: StatsOptions
-): Array<Track & { month: string; person: string }> {
+): Array<Track & { month: string; person: string; firstMonth?: string }> {
   return allTracks(dataset, person, options)
     .filter((track) => durationBucketForTrack(track.durationMs) === bucket)
     .sort((a, b) => b.month.localeCompare(a.month));
@@ -748,7 +786,7 @@ export function tracksForAlbum(
   album: string,
   person?: string,
   options?: StatsOptions
-): Array<Track & { month: string; person: string }> {
+): Array<Track & { month: string; person: string; firstMonth?: string }> {
   return allTracks(dataset, person, options)
     .filter((track) => albumBucketForTrack(track.album) === album)
     .sort((a, b) => b.month.localeCompare(a.month));
@@ -812,7 +850,12 @@ export function personArtistSummaries(
       const matches = track.scoringArtists.filter((a) => artistSet.has(a)).length;
       if (matches === 0) continue;
       total += matches;
-      if (firstMonth === null || track.month < firstMonth) firstMonth = track.month;
+      // track.firstMonth (set only when includeDuplicates: false collapsed
+      // a repeated song onto its best-ranked occurrence) is the TRUE
+      // earliest month, not track.month's best-occurrence month - see
+      // dedupeToBestOccurrence's doc comment for why these can differ.
+      const trackMonth = track.firstMonth ?? track.month;
+      if (firstMonth === null || trackMonth < firstMonth) firstMonth = trackMonth;
     }
     return { person, total, firstMonth };
   });
@@ -978,7 +1021,12 @@ export function personGenreSummaries(
       const matches = genreBucketsForTrack(track).filter((g) => genreSet.has(g)).length;
       if (matches === 0) continue;
       total += matches;
-      if (firstMonth === null || track.month < firstMonth) firstMonth = track.month;
+      // track.firstMonth (set only when includeDuplicates: false collapsed
+      // a repeated song onto its best-ranked occurrence) is the TRUE
+      // earliest month, not track.month's best-occurrence month - see
+      // dedupeToBestOccurrence's doc comment for why these can differ.
+      const trackMonth = track.firstMonth ?? track.month;
+      if (firstMonth === null || trackMonth < firstMonth) firstMonth = trackMonth;
     }
     return { person, total, firstMonth };
   });
@@ -1053,7 +1101,12 @@ export function personEraSummaries(
     for (const track of allTracks(dataset, person, options)) {
       if (!eraSet.has(eraBucketForTrack(track, granularity))) continue;
       total += 1;
-      if (firstMonth === null || track.month < firstMonth) firstMonth = track.month;
+      // track.firstMonth (set only when includeDuplicates: false collapsed
+      // a repeated song onto its best-ranked occurrence) is the TRUE
+      // earliest month, not track.month's best-occurrence month - see
+      // dedupeToBestOccurrence's doc comment for why these can differ.
+      const trackMonth = track.firstMonth ?? track.month;
+      if (firstMonth === null || trackMonth < firstMonth) firstMonth = trackMonth;
     }
     return { person, total, firstMonth };
   });
@@ -1126,7 +1179,12 @@ export function personDurationSummaries(
     for (const track of allTracks(dataset, person, options)) {
       if (!bucketSet.has(durationBucketForTrack(track.durationMs))) continue;
       total += 1;
-      if (firstMonth === null || track.month < firstMonth) firstMonth = track.month;
+      // track.firstMonth (set only when includeDuplicates: false collapsed
+      // a repeated song onto its best-ranked occurrence) is the TRUE
+      // earliest month, not track.month's best-occurrence month - see
+      // dedupeToBestOccurrence's doc comment for why these can differ.
+      const trackMonth = track.firstMonth ?? track.month;
+      if (firstMonth === null || trackMonth < firstMonth) firstMonth = trackMonth;
     }
     return { person, total, firstMonth };
   });
@@ -1197,7 +1255,12 @@ export function personAlbumSummaries(
     for (const track of allTracks(dataset, person, options)) {
       if (!albumSet.has(albumBucketForTrack(track.album))) continue;
       total += 1;
-      if (firstMonth === null || track.month < firstMonth) firstMonth = track.month;
+      // track.firstMonth (set only when includeDuplicates: false collapsed
+      // a repeated song onto its best-ranked occurrence) is the TRUE
+      // earliest month, not track.month's best-occurrence month - see
+      // dedupeToBestOccurrence's doc comment for why these can differ.
+      const trackMonth = track.firstMonth ?? track.month;
+      if (firstMonth === null || trackMonth < firstMonth) firstMonth = trackMonth;
     }
     return { person, total, firstMonth };
   });

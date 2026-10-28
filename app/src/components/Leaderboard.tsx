@@ -335,7 +335,13 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
       let cmp: number;
       switch (sortKey) {
         case "date":
-          cmp = a.month.localeCompare(b.month);
+          // firstMonth (only present when includeDuplicates: false
+          // collapsed a repeat onto its best-ranked occurrence) is the
+          // song's TRUE earliest add date - a.month/b.month here is the
+          // best OCCURRENCE's month, which can be a later re-add. "Date"
+          // should sort/display by when it was first ever added, same
+          // info the Date column itself now shows.
+          cmp = (a.firstMonth ?? a.month).localeCompare(b.firstMonth ?? b.month);
           break;
         case "rank":
           cmp = a.rank - b.rank;
@@ -565,7 +571,9 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
                     <ul className={styles.songList}>
                       {expandedTracks.map((track, i) => (
                         <li key={`${track.month}-${track.rank}-${i}`} className={styles.songRow}>
-                          <span className={styles.songMonth}>{formatMonth(track.month)}</span>
+                          <span className={styles.songMonth}>
+                            {formatMonth(track.firstMonth ?? track.month)}
+                          </span>
                           <span className={styles.songRank}>#{track.rank}</span>
                           <span className={styles.songTitle} title={track.title}>
                             {track.title}
