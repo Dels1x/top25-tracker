@@ -292,6 +292,11 @@
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+  /* Dragging a text selection across the song list (to copy the top 25) is
+     a real use case - this button's own label shouldn't get swept into
+     that selection or end up in the clipboard alongside the song text. */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .previewButton:hover {
