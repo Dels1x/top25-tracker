@@ -135,9 +135,18 @@ function pointsForRemaining(remainingMs: number): number {
 
 /** Same official Spotify track embed Replay.tsx/Top25Fight.tsx use, but
  * clipped to a short height via an overflow-hidden wrapper so only the
- * (tiny) play/scrub control area is visible - Spotify's embed UI always
- * shows cover art/title/artist itself and there's no param to suppress
- * that, so hiding it is done in CSS, not via the embed's own options. */
+ * scrub-bar strip is visible - Spotify's embed UI always shows cover
+ * art/title/artist and there's no param to suppress that, so hiding it is
+ * done in CSS, not via the embed's own options.
+ * Tried `autoplay=1` (plus the iframe's `allow="autoplay"`) to start
+ * playback automatically - verified via a headless Playwright check (both
+ * with and without the browser's autoplay restrictions disabled entirely)
+ * that Spotify's track embed does not actually honor that param, so real
+ * autoplay isn't achievable here; the fix instead is making the real play
+ * button fully clickable - see .playHitArea below, which overlays a
+ * full-width invisible button aligned to the embed's own play button so the
+ * whole clipped strip is clickable, not just the 1px sliver of the real
+ * button that peeks into the crop. */
 function HiddenSpotifyEmbed({ spotifyId }: { spotifyId: string }) {
   return (
     <div className={styles.embedClip}>

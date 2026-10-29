@@ -120,28 +120,34 @@
 /* Spotify's embed always shows its own cover art/title/artist row above the
    scrub bar - there's no embed param to suppress that, so it's clipped out
    here: a short, overflow-hidden wrapper that only lets the bottom
-   play/scrub control area show through. Height tuned to the real Spotify
-   embed's internal layout (iframe rendered at its usual 152px, wrapper
-   clips to just the control strip). */
+   play/scrub control area show through. Measured directly against the real
+   rendered embed at the app's own card width (~590px) via a headless
+   screenshot + element bounding boxes, not guessed from the markup: the
+   real play button sits at y:108-140 (32px tall) within the 152px-tall
+   iframe, in the "..."/play control row at the very bottom. The window
+   here (62px) keeps that whole row in view with a few px of margin on each
+   side, instead of the earlier guess that only exposed its bottom ~2px
+   (the exact "1 pixel of the button" bug this was tuned to fix). */
 .embedClip {
   position: relative;
-  height: 48px;
+  height: 62px;
   overflow: hidden;
   border-radius: 8px;
   background: var(--surface-1);
   border: 1px solid var(--border);
 }
 
-/* Spotify's 152px-tall compact embed is laid out as ~80px of cover
-   art/title/artist/"Save" row on top, then the scrub bar + play button in
-   the bottom ~48-56px strip. Shifting the iframe up by that top portion's
-   height exposes just the bottom playback strip in the clipped window -
-   verified against a real rendered embed via a headless screenshot, not
-   guessed from the markup alone. */
+/* The cover art column runs the iframe's full height on the left (~100px
+   wide at this card width), so cropping only vertically still leaves a
+   sliver of it (plus the "Save on Spotify" row) peeking in on the left
+   edge - shifted left too, and the iframe widened past 100% to compensate,
+   so the right-aligned play/scrub control row still lands inside the
+   visible window with room to spare. */
 .spotifyEmbed {
   position: absolute;
-  top: -138px;
-  left: 0;
+  top: -90px;
+  left: -110px;
+  width: calc(100% + 110px);
   border-radius: 8px;
 }
 
