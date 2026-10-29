@@ -1,0 +1,214 @@
+.wrap {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--card-radius);
+  padding: 20px 24px 24px;
+}
+
+.headRow {
+  margin-bottom: 16px;
+}
+
+.heading {
+  font-size: 16px;
+}
+
+.sub {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 16px 0;
+}
+
+.startRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 16px 0 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.startButton {
+  border: 1px solid var(--border);
+  background: var(--series-1);
+  color: white;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.startButton:hover {
+  opacity: 0.9;
+}
+
+.scoreDisplay {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.winnerBanner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 32px 0;
+}
+
+.winnerText {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.finalScore {
+  font-size: 15px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.game {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.timerRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.timerTrack {
+  flex: 1;
+  height: 8px;
+  background: var(--gridline);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.timerFill {
+  height: 100%;
+  background: var(--series-1);
+  border-radius: 4px;
+  transition: width 0.1s linear;
+}
+
+.timerFill[data-urgent="true"] {
+  background: var(--series-3, #e05252);
+}
+
+.timerLabel {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  width: 32px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* Spotify's embed always shows its own cover art/title/artist row above the
+   scrub bar - there's no embed param to suppress that, so it's clipped out
+   here: a short, overflow-hidden wrapper that only lets the bottom
+   play/scrub control area show through. Height tuned to the real Spotify
+   embed's internal layout (iframe rendered at its usual 152px, wrapper
+   clips to just the control strip). */
+.embedClip {
+  position: relative;
+  height: 48px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+}
+
+/* Spotify's 152px-tall compact embed is laid out as ~80px of cover
+   art/title/artist/"Save" row on top, then the scrub bar + play button in
+   the bottom ~48-56px strip. Shifting the iframe up by that top portion's
+   height exposes just the bottom playback strip in the clipped window -
+   verified against a real rendered embed via a headless screenshot, not
+   guessed from the markup alone. */
+.spotifyEmbed {
+  position: absolute;
+  top: -138px;
+  left: 0;
+  border-radius: 8px;
+}
+
+.optionsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.optionButton {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+  background: var(--surface-1);
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+}
+
+.optionButton:hover:not(:disabled) {
+  border-color: var(--series-1);
+}
+
+.optionButton:disabled {
+  cursor: default;
+}
+
+.optionButton[data-correct="true"] {
+  border-color: #3fae5c;
+  background: color-mix(in srgb, #3fae5c 14%, var(--surface-1));
+}
+
+.optionButton[data-wrong="true"] {
+  border-color: #e05252;
+  background: color-mix(in srgb, #e05252 14%, var(--surface-1));
+}
+
+.optionTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.optionArtists {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.feedback {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.roundLabel {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .optionsGrid {
+    grid-template-columns: 1fr;
+  }
+}

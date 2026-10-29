@@ -7,6 +7,7 @@ import { Replay } from "./components/Replay";
 import { Shared } from "./components/Shared";
 import { Compare } from "./components/Compare";
 import { Top25Fight } from "./components/Top25Fight";
+import { GuessTheSong } from "./components/GuessTheSong";
 import { ToggleCheckbox } from "./components/ToggleCheckbox";
 import { usePersistedState } from "./lib/usePersistedState";
 import type { StatsOptions } from "./lib/stats";
@@ -21,7 +22,14 @@ const dataset = rawData as Dataset;
 // Leaderboard/Timeline now always show the 3 identity toggles even in genre
 // mode, matching Compare's own precedent of leaving them visible as
 // harmless no-ops there rather than hiding them per-mode.
-type View = "leaderboard" | "timeline" | "replay" | "shared" | "compare" | "fight";
+type View =
+  | "leaderboard"
+  | "timeline"
+  | "replay"
+  | "shared"
+  | "compare"
+  | "fight"
+  | "guess";
 const VALID_VIEWS: View[] = [
   "leaderboard",
   "timeline",
@@ -29,14 +37,15 @@ const VALID_VIEWS: View[] = [
   "shared",
   "compare",
   "fight",
+  "guess",
 ];
 // Replay always shows literal creditedArtists, never scoringArtists, so the
 // identity toggles (and the dedup toggle) have nothing to affect there.
 // Shared DOES use scoringArtists (via sharedSongs) so it keeps the toggles.
-// Fight doesn't use scoringArtists either - it plays raw, individual tracks
-// head-to-head, not an aggregated/attributed stat, so the toggles have
-// nothing to affect there either.
-const NO_TOGGLES_VIEWS: View[] = ["replay", "fight"];
+// Fight/Guess don't use scoringArtists either - they play raw, individual
+// tracks (head-to-head or as multiple-choice quiz rounds), not an
+// aggregated/attributed stat, so the toggles have nothing to affect there.
+const NO_TOGGLES_VIEWS: View[] = ["replay", "fight", "guess"];
 
 function App() {
   const [person, setPerson] = usePersistedState("top25tracker:person", dataset.people[0]);
@@ -109,6 +118,7 @@ function App() {
       {activeView === "shared" && <Shared dataset={dataset} scoringOptions={scoringOptions} />}
       {activeView === "compare" && <Compare dataset={dataset} scoringOptions={scoringOptions} />}
       {activeView === "fight" && <Top25Fight dataset={dataset} />}
+      {activeView === "guess" && <GuessTheSong dataset={dataset} />}
     </Layout>
   );
 }
