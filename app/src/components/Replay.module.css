@@ -49,6 +49,24 @@
   font-variant-numeric: tabular-nums;
 }
 
+.copyButton {
+  margin-left: auto;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-secondary);
+  padding: 7px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.copyButton:hover {
+  color: var(--text-primary);
+  border-color: var(--series-1);
+}
+
 /* The scrubber: a single-handle range input over a track, with a filled
    "progress" fill behind the thumb and a row of year/half-year tick marks
    underneath - same calendar-boundary tick logic MonthRangeSlider uses

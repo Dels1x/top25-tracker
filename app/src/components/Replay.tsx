@@ -69,6 +69,35 @@ function formatReleaseDate(releaseDate: string | null): string | null {
     : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
+/**
+ * Formats one month's top 25 as plain text for the clipboard, matching the
+ * project owner's own spec: a "Top 25 of <Month> <Year>" header line, then
+ * one line per track as "<rank>. <artist> - <title> (<album>) [<duration>]
+ * [<genres>] [<release date>]" - mirroring the same per-track fields already
+ * shown on each Replay card (album/release date/duration via
+ * formatReleaseDate/formatDuration, genres via directGenresForArtists with
+ * UNTAGGED_GENRE dropped, same "too noisy to show" call the cards already
+ * make) rather than inventing a different field set just for the copy
+ * output. A bracketed field is omitted entirely when its value is missing
+ * (no album, no release date, no genres) rather than printing empty brackets.
+ */
+function formatMonthForCopy(month: string, tracks: Track[]): string {
+  const header = `Top 25 of ${formatMonthLong(month)}`;
+  const lines = tracks.map((track) => {
+    const artists = track.creditedArtists.join(", ");
+    const genres = directGenresForArtists(track.creditedArtists).filter((g) => g !== UNTAGGED_GENRE);
+    const parts = [`${track.rank}. ${artists} - ${track.title}`];
+    if (track.album) parts.push(`(${track.album})`);
+    const duration = formatDuration(track.durationMs);
+    if (duration) parts.push(`[${duration}]`);
+    if (genres.length > 0) parts.push(`[${genres.join(", ")}]`);
+    const releaseDate = formatReleaseDate(track.releaseDate);
+    if (releaseDate) parts.push(`[${releaseDate}]`);
+    return parts.join(" ");
+  });
+  return [header, ...lines].join("\n");
+}
+
 function formatTick(month: string): string {
   // Always just the year ("2024"), even for a half-yearly fallback tick
   // (July - only used when there's under ~2 years of data, see
@@ -256,6 +285,12 @@ export function Replay({ dataset, person }: ReplayProps) {
   // card's "Preview" button swaps which one is open rather than stacking.
   const [openPreview, setOpenPreview] = useState<string | null>(null);
 
+  // Brief "Copied!" feedback on the copy button after a successful clipboard
+  // write - cleared on a timer rather than left permanent, same transient-
+  // feedback pattern as GuessTheSong's own round feedback text.
+  const [copied, setCopied] = useState(false);
+  const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Reset position when switching person.
   const [lastPerson, setLastPerson] = useState(person);
   if (lastPerson !== person) {
@@ -322,6 +357,20 @@ export function Replay({ dataset, person }: ReplayProps) {
         </button>
 
         <span className={styles.monthLabel}>{formatMonthLong(current.month)}</span>
+
+        <button
+          type="button"
+          className={styles.copyButton}
+          onClick={async () => {
+            const text = formatMonthForCopy(current.month, current.tracks);
+            await navigator.clipboard.writeText(text);
+            setCopied(true);
+            if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
+            copiedTimeoutRef.current = setTimeout(() => setCopied(false), 1800);
+          }}
+        >
+          {copied ? "Copied!" : "Copy top 25"}
+        </button>
       </div>
 
       <div className={styles.scrubberWrap}>
