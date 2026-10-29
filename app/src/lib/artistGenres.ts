@@ -268,6 +268,24 @@ export const GENRE_HIERARCHY: GenreNode[] = (() => {
   return [...topLevel, buildNode(UNTAGGED_GENRE)];
 })();
 
+/**
+ * The genre names the Leaderboard's "Hide subgenres" toggle keeps visible -
+ * every genre with no parent in PARENT_GENRE (i.e. GENRE_HIERARCHY's own
+ * top-level set) plus UNTAGGED_GENRE, PLUS "Metal" as a deliberate, explicit
+ * exception: technically a Rock subgenre per PARENT_GENRE (Black Sabbath/
+ * TOOL/Deftones's metal output should still roll up into "Rock" totals), but
+ * big enough on its own in this dataset that collapsing it away under "Hide
+ * subgenres" would hide a genre people actually want to see at a glance - a
+ * product call, not a correction to PARENT_GENRE's own scoring hierarchy
+ * (genresForArtists/PARENT_GENRE are untouched; this set only controls which
+ * rows the Leaderboard displays when the toggle is on).
+ */
+export const MAIN_GENRES: Set<string> = (() => {
+  const isSubgenre = new Set(Object.keys(PARENT_GENRE));
+  const topLevel = GENRES.filter((g) => !isSubgenre.has(g));
+  return new Set<string>([...topLevel, UNTAGGED_GENRE, "Metal"]);
+})();
+
 export const ARTIST_GENRES: Record<string, Genre[]> = {
   // ===== Hip-Hop (general / production-forward, no strong regional lean) =====
   "The Alchemist": ["Hip-Hop"],

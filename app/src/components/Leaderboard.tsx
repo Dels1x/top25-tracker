@@ -17,6 +17,7 @@ import {
   type StatsOptions,
 } from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
+import { MAIN_GENRES } from "../lib/artistGenres";
 import { usePersistedState } from "../lib/usePersistedState";
 import { useMonthRange } from "../lib/useMonthRange";
 import { useGenreFilter } from "../lib/useGenreFilter";
@@ -142,6 +143,17 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
   } = useGenreFilter(person);
   const [maxRank, setMaxRank] = useRankFilter(person);
   const [weightByRank, setWeightByRank] = useWeightByRank(person);
+  // Genre-mode-only display filter - collapses subgenre rows (e.g. "Pop
+  // Punk", "Jazz Rap") out of the row list, keeping only top-level genres
+  // (plus "Metal", a deliberate exception - see MAIN_GENRES' own doc
+  // comment). Purely a row-display filter: it doesn't touch genresForArtists
+  // or genreTotals' own point totals, so a Rock total still includes every
+  // Metal/Punk/etc. track underneath it exactly as before - this only
+  // decides which already-computed rows get rendered.
+  const [hideSubgenres, setHideSubgenres] = usePersistedState(
+    `top25tracker:hideSubgenres:${person}`,
+    false
+  );
 
   // includeDuplicates/startMonth/endMonth plus the now-shared
   // genreFilter/maxRank/weightByRank are all meaningful for genres and
@@ -203,7 +215,9 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
     : isEraMode
       ? eraRows.map((r) => ({ name: r.era, total: r.total, count: r.count }))
       : isGenreMode
-        ? genreRows.map((r) => ({ name: r.genre, total: r.total, count: r.count }))
+        ? genreRows
+            .filter((r) => !hideSubgenres || MAIN_GENRES.has(r.genre))
+            .map((r) => ({ name: r.genre, total: r.total, count: r.count }))
         : artistRows.map((r) => ({ name: r.artist, total: r.total, count: r.count }));
 
   // Color must follow the ARTIST/GENRE/ERA, never its current rank in this
@@ -494,6 +508,16 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
           label="Weight by placement (#1 worth more than #25)"
         />
       </div>
+
+      {isGenreMode && (
+        <div className={styles.filterRow}>
+          <ToggleCheckbox
+            checked={hideSubgenres}
+            onChange={setHideSubgenres}
+            label="Hide subgenres (main genres only)"
+          />
+        </div>
+      )}
 
       <GenreFilter
         selected={selectedGenres}
