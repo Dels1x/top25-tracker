@@ -680,7 +680,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   Panchiko: ["Shoegaze", "Indie Rock"],
   "Red House Painters": ["Slowcore", "Post-Rock"],
   "Have A Nice Life": ["Shoegaze", "Post-Rock", "Post-Punk", "Gothic Rock"],
-  Slint: ["Post-Rock", "Math Rock"],
+  Slint: ["Post-Rock", "Math Rock", "Post-Hardcore"],
   "Unwound": ["Post-Rock", "Indie Rock", "Post-Hardcore", "Noise Rock"],
   "Godspeed You Black Emperor!": ["Post-Rock", "Ambient"],
   "Natural Snow Buildings": ["Ambient", "Folk", "Electronic", "Post-Rock", "Avant-Folk", "Drone", "Psychedelic Folk"],
