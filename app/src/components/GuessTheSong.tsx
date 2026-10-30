@@ -3,6 +3,7 @@ import type { Dataset, Track } from "../data/types";
 import { sortedMonths } from "../lib/stats";
 import { directGenresForArtists } from "../lib/artistGenres";
 import { useMonthRange } from "../lib/useMonthRange";
+import { usePersistedSetState } from "../lib/usePersistedState";
 import { RangePicker } from "./RangePicker";
 import styles from "./GuessTheSong.module.css";
 
@@ -178,9 +179,32 @@ export function GuessTheSong({ dataset }: GuessTheSongProps) {
     applyYear,
   } = useMonthRange(availableMonths, "guess");
 
+  // Which people's own picks are eligible to be drawn as the mystery track
+  // (or used as a same-artist/same-genre fake option) - a plain checkmark
+  // per person, defaulting to everyone selected, same
+  // "everyone on by default" convention the genre filter uses. Unlike
+  // Shared's 3-state PresenceFilter (which asks "did this person have this
+  // SONG"), this is a simpler yes/no "is this person's pool in play at
+  // all" - there's no meaningful "excluded" vs "any" distinction here, so a
+  // plain checkbox set fits better than reusing the 3-state cycle control.
+  const [includedPeople, setIncludedPeople] = usePersistedSetState(
+    "top25tracker:guessIncludedPeople",
+    () => dataset.people
+  );
+
+  function togglePerson(person: string) {
+    setIncludedPeople((prev) => {
+      const next = new Set(prev);
+      if (next.has(person)) next.delete(person);
+      else next.add(person);
+      return next;
+    });
+  }
+
   const pool = useMemo(() => {
     const items: PoolTrack[] = [];
     for (const list of dataset.lists) {
+      if (!includedPeople.has(list.person)) continue;
       if (rangeOptions.startMonth && list.month < rangeOptions.startMonth) continue;
       if (rangeOptions.endMonth && list.month > rangeOptions.endMonth) continue;
       for (const track of list.tracks) {
@@ -188,7 +212,7 @@ export function GuessTheSong({ dataset }: GuessTheSongProps) {
       }
     }
     return items;
-  }, [dataset, rangeOptions.startMonth, rangeOptions.endMonth]);
+  }, [dataset, includedPeople, rangeOptions.startMonth, rangeOptions.endMonth]);
 
   const [score, setScore] = useState(0);
   const [roundNum, setRoundNum] = useState(0);
@@ -300,9 +324,23 @@ export function GuessTheSong({ dataset }: GuessTheSongProps) {
         onYear={applyYear}
       />
 
+      <div className={styles.peopleRow} role="group" aria-label="Filter by whose songs are eligible">
+        {dataset.people.map((person) => (
+          <label key={person} className={styles.personCheckbox}>
+            <input
+              type="checkbox"
+              checked={includedPeople.has(person)}
+              onChange={() => togglePerson(person)}
+            />
+            {person}
+          </label>
+        ))}
+      </div>
+
       {pool.length < OPTION_COUNT ? (
         <p className={styles.empty}>
-          Not enough Spotify-matched songs in this time range to play - widen the range.
+          Not enough Spotify-matched songs in this time range to play - widen the range or
+          include more people above.
         </p>
       ) : (
         <div className={styles.startRow}>

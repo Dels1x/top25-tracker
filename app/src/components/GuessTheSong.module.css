@@ -25,6 +25,27 @@
   padding: 16px 0;
 }
 
+.peopleRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 12px 0 4px;
+}
+
+.personCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.personCheckbox input {
+  cursor: pointer;
+}
+
 .startRow {
   display: flex;
   align-items: center;
