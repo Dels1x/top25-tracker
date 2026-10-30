@@ -113,6 +113,7 @@ export const GENRES = [
     "IDM",
     "Downtempo",
     "Drone",
+    "Plugg",
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -206,7 +207,8 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Avant-Folk": ["Folk"],
   "IDM": ["Electronic"],
   "Downtempo": ["Electronic"],
-  "Drone": ["Electronic"]
+  "Drone": ["Electronic"],
+  "Plugg": ["Trap"]
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -360,6 +362,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Method Man": ["East Coast Hip-Hop"],
   Redman: ["East Coast Hip-Hop"],
   EPMD: ["East Coast Hip-Hop"],
+  "Da$H": ["East Coast Hip-Hop", "Gangsta Rap", "Cloud Rap", "Jazz Rap"],
   "Mobb Deep": ["East Coast Hip-Hop", "Boom Bap"],
   Prodigy: ["East Coast Hip-Hop", "Boom Bap"],
   Havoc: ["East Coast Hip-Hop", "Boom Bap"],
@@ -550,6 +553,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   // ===== Rap/metal/rock crossover acts (own entry, not major-genre inferred) =====
   "JID": ["Southern Hip-Hop", "Alternative Trap"],
   "Joyner Lucas": ["Hip-Hop"],
+  "LUCKI": ["Cloud Rap", "Trap", "Plugg"],
   "Eminem": ["East Coast Hip-Hop", "Pop Rap"],
   "Bad Meets Evil": ["East Coast Hip-Hop"],
   "Royce Da 5'9\"": ["Hip-Hop", "East Coast Hip-Hop"],
