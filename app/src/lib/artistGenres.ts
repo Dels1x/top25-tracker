@@ -115,6 +115,7 @@ export const GENRES = [
     "Drone",
     "Plugg",
     "Chopped and Screwed",
+    "Instrumental Hip-Hop"
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -211,6 +212,7 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Drone": ["Electronic"],
   "Plugg": ["Trap"],
   "Chopped and Screwed": ["Hip-Hop"],
+  "Instrumental Hip-Hop": ["Hip-Hop"],
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -298,7 +300,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Kill Bill: The Rapper": ["Hip-Hop", "Jazz Rap", "Abstract Hip-Hop", "Lo-Fi Hip-Hop"],
   "Nicholas Craven": ["Hip-Hop"],
   "Kenny Segal": ["Abstract Hip-Hop"],
-  Nujabes: ["Jazz Rap"],
+  Nujabes: ["Instrumental Hip-Hop", "Jazz Rap"],
   "MF DOOM": ["Abstract Hip-Hop", "Experimental Hip-Hop", "East Coast Hip-Hop"],
   Madvillain: ["Abstract Hip-Hop"],
   Quasimoto: ["Abstract Hip-Hop"],
@@ -613,7 +615,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Ryo Fukui": ["Jazz"],
   "Thundercat": ["Jazz", "R&B/Soul", "Electronic"],
   "Shabaka Hutchings": ["Jazz"],
-  "Uyama Hiroto": ["Jazz Rap", "Nu Jazz"],
+  "Uyama Hiroto": ["Jazz Rap", "Nu Jazz", "Instrumental Hip-Hop"],
   "Sterling Toles": ["Jazz Rap", "Abstract Hip-Hop"],
   "Oliver Crosby": ["Nu Jazz"],
   "Takero Ogata": ["Nu Jazz"],
