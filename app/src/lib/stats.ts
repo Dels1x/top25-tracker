@@ -3,7 +3,7 @@ import { uniteRelatedProject } from "./relatedProjects";
 import { isKnownProducer } from "./knownProducers";
 import { genresForArtists } from "./artistGenres";
 import { isDistinctRecording } from "./trackDisambiguation";
-import { decadeBucketForTrack, yearBucketForTrack } from "./releaseEra";
+import { decadeBucketForTrack, halfDecadeBucketForTrack, yearBucketForTrack } from "./releaseEra";
 import { DURATION_BUCKETS, durationBucketForTrack } from "./durationBuckets";
 import { albumBucketForTrack } from "./albumBuckets";
 
@@ -499,7 +499,7 @@ export function cumulativeGenreSeries(
   return series;
 }
 
-export type EraGranularity = "year" | "decade";
+export type EraGranularity = "year" | "decade" | "half-decade";
 
 export interface EraTotal {
   era: string;
@@ -520,9 +520,9 @@ export interface EraMonthCount {
  * genreBucketsForTrack this is always exactly one bucket, never a union.
  */
 function eraBucketForTrack(track: Pick<Track, "releaseDate">, granularity: EraGranularity): string {
-  return granularity === "decade"
-    ? decadeBucketForTrack(track.releaseDate)
-    : yearBucketForTrack(track.releaseDate);
+  if (granularity === "decade") return decadeBucketForTrack(track.releaseDate);
+  if (granularity === "half-decade") return halfDecadeBucketForTrack(track.releaseDate);
+  return yearBucketForTrack(track.releaseDate);
 }
 
 /** Total tracks per release year/decade across all months (optionally for one person). */

@@ -24,6 +24,7 @@ import { usePresenceFilter } from "../lib/usePresenceFilter";
 import { GenreFilter } from "./GenreFilter";
 import { ModeSwitch } from "./ModeSwitch";
 import { PresenceFilter } from "./PresenceFilter";
+import { ToggleCheckbox } from "./ToggleCheckbox";
 import leaderboardStyles from "./Leaderboard.module.css";
 import styles from "./Shared.module.css";
 
@@ -107,10 +108,21 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
   // everything" treatment genre/era/duration mode get here, same reasoning
   // as Leaderboard's own isPaginatedMode.
   const isPaginatedMode = isArtistMode || isAlbumMode;
-  const eraGranularity: EraGranularity = mode === "decades" ? "decade" : "year";
+  // Decades mode's own split - see the identical checkbox/comment in
+  // Leaderboard.tsx. Shared isn't person-scoped (spans everyone), so this
+  // persists under a flat key, same precedent useGenreFilter("shared") and
+  // usePresenceFilter already set for this component's own filters.
+  const [showHalfDecades, setShowHalfDecades] = usePersistedState(
+    "top25tracker:showHalfDecades:shared",
+    false
+  );
+  const eraGranularity: EraGranularity =
+    mode === "decades" ? (showHalfDecades ? "half-decade" : "decade") : "year";
   const noun =
     mode === "decades"
-      ? "decade"
+      ? showHalfDecades
+        ? "half-decade"
+        : "decade"
       : mode === "years"
         ? "year"
         : isDurationMode
@@ -406,6 +418,16 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
           aria-label="Rank by"
         />
       </div>
+
+      {mode === "decades" && (
+        <div className={leaderboardStyles.filterRow}>
+          <ToggleCheckbox
+            checked={showHalfDecades}
+            onChange={setShowHalfDecades}
+            label="Split decades in half (e.g. 1990-1994 / 1995-1999)"
+          />
+        </div>
+      )}
 
       <GenreFilter
         selected={selectedGenres}

@@ -29,6 +29,14 @@
   flex-shrink: 0;
 }
 
+.filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
 .bulkButton {
   border: 1px solid var(--border);
   background: var(--surface-1);

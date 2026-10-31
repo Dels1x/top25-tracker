@@ -32,6 +32,7 @@ import { useGenreFilter } from "../lib/useGenreFilter";
 import { RangePicker } from "./RangePicker";
 import { GenreFilter } from "./GenreFilter";
 import { ModeSwitch } from "./ModeSwitch";
+import { ToggleCheckbox } from "./ToggleCheckbox";
 import styles from "./Timeline.module.css";
 
 interface TimelineProps {
@@ -87,7 +88,19 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
   const isPlacementsMode = mode === "placements";
   const isDurationMode = mode === "duration";
   const isAlbumMode = mode === "albums";
-  const eraGranularity: EraGranularity = mode === "decades" ? "decade" : "year";
+  // Decades mode's own split - see the identical checkbox/comment in
+  // Leaderboard.tsx. Folding this into eraGranularity (rather than a
+  // separate flag) means the persisted shown-set below, keyed by
+  // eraGranularity, automatically gets its own independent set for
+  // half-decade mode too - the same "Years and Decades never carry over a
+  // stale selection from each other" precedent the existing
+  // eraTimelineShown key already follows.
+  const [showHalfDecades, setShowHalfDecades] = usePersistedState(
+    `top25tracker:showHalfDecades:${person}`,
+    false
+  );
+  const eraGranularity: EraGranularity =
+    mode === "decades" ? (showHalfDecades ? "half-decade" : "decade") : "year";
 
   const availableMonths = useMemo(() => sortedMonths(dataset, person), [dataset, person]);
 
@@ -243,6 +256,13 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
     `top25tracker:genreTimelineShown:${person}`,
     () => allGenres
   );
+  // Switching eraGranularity (via the mode switch, or the "Split decades in
+  // half" checkbox) changes this key's string - usePersistedSetState itself
+  // handles re-reading that key's own saved set (or falling back to
+  // "everything shown") whenever the key changes, so no separate reset
+  // effect is needed here; see that hook's own doc comment for why a naive
+  // useState-based implementation would otherwise leak one granularity's
+  // shown set into another's storage slot.
   const [shownEras, setShownEras] = usePersistedSetState(
     `top25tracker:eraTimelineShown:${eraGranularity}:${person}`,
     () => allEras
@@ -354,7 +374,9 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
   const visibleNames = allNames.filter((n) => shown.has(n));
   const noun =
     mode === "decades"
-      ? "decade"
+      ? showHalfDecades
+        ? "half-decade"
+        : "decade"
       : mode === "years"
         ? "year"
         : isDurationMode
@@ -424,6 +446,16 @@ export function Timeline({ dataset, person, scoringOptions }: TimelineProps) {
         onPreset={applyPreset}
         onYear={applyYear}
       />
+
+      {mode === "decades" && (
+        <div className={styles.filterRow}>
+          <ToggleCheckbox
+            checked={showHalfDecades}
+            onChange={setShowHalfDecades}
+            label="Split decades in half (e.g. 1990-1994 / 1995-1999)"
+          />
+        </div>
+      )}
 
       <GenreFilter
         selected={selectedGenres}

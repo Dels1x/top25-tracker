@@ -35,6 +35,7 @@ import { usePersistedSetState, usePersistedState } from "../lib/usePersistedStat
 import { useMonthRange } from "../lib/useMonthRange";
 import { RangePicker } from "./RangePicker";
 import { ModeSwitch } from "./ModeSwitch";
+import { ToggleCheckbox } from "./ToggleCheckbox";
 import styles from "./Compare.module.css";
 
 interface CompareProps {
@@ -111,7 +112,17 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
   const isPlacementsMode = mode === "placements";
   const isDurationMode = mode === "duration";
   const isAlbumMode = mode === "albums";
-  const eraGranularity: EraGranularity = mode === "decades" ? "decade" : "year";
+  // Decades mode's own split - see the identical checkbox/comment in
+  // Leaderboard.tsx. Folded into eraGranularity so its own selection set
+  // below (selectedHalfDecadeSet) stays independent of selectedDecadeSet,
+  // same "disjoint name space, own persisted set" precedent
+  // compareYears/compareDecades already established for years vs. decades.
+  const [showHalfDecades, setShowHalfDecades] = usePersistedState(
+    "top25tracker:showHalfDecades:compare",
+    false
+  );
+  const eraGranularity: EraGranularity =
+    mode === "decades" ? (showHalfDecades ? "half-decade" : "decade") : "year";
 
   // Combined (all-people) totals, descending - what the picker lists, so
   // the most relevant names surface first without needing to search.
@@ -173,6 +184,10 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
     "top25tracker:compareDecades",
     () => (eraGranularity === "decade" ? allEraNames.slice(0, 1) : [])
   );
+  const [selectedHalfDecadeSet, setSelectedHalfDecadeSet] = usePersistedSetState(
+    "top25tracker:compareHalfDecades",
+    () => (eraGranularity === "half-decade" ? allEraNames.slice(0, 1) : [])
+  );
   const [selectedDurationSet, setSelectedDurationSet] = usePersistedSetState(
     "top25tracker:compareDurations",
     () => allDurationNames.slice(0, 1)
@@ -196,9 +211,11 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
     : isDurationMode
       ? selectedDurationSet
       : isEraMode
-        ? eraGranularity === "decade"
-          ? selectedDecadeSet
-          : selectedYearSet
+        ? eraGranularity === "half-decade"
+          ? selectedHalfDecadeSet
+          : eraGranularity === "decade"
+            ? selectedDecadeSet
+            : selectedYearSet
         : isGenreMode
           ? selectedGenreSet
           : selectedArtistSet;
@@ -207,9 +224,11 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
     : isDurationMode
       ? setSelectedDurationSet
       : isEraMode
-        ? eraGranularity === "decade"
-          ? setSelectedDecadeSet
-          : setSelectedYearSet
+        ? eraGranularity === "half-decade"
+          ? setSelectedHalfDecadeSet
+          : eraGranularity === "decade"
+            ? setSelectedDecadeSet
+            : setSelectedYearSet
         : isGenreMode
           ? setSelectedGenreSet
           : setSelectedArtistSet;
@@ -312,7 +331,9 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
 
   const noun =
     mode === "decades"
-      ? "decade"
+      ? showHalfDecades
+        ? "half-decade"
+        : "decade"
       : mode === "years"
         ? "year"
         : isDurationMode
@@ -437,6 +458,16 @@ export function Compare({ dataset, scoringOptions }: CompareProps) {
         onPreset={applyPreset}
         onYear={applyYear}
       />
+
+      {mode === "decades" && (
+        <div className={styles.filterRow}>
+          <ToggleCheckbox
+            checked={showHalfDecades}
+            onChange={setShowHalfDecades}
+            label="Split decades in half (e.g. 1990-1994 / 1995-1999)"
+          />
+        </div>
+      )}
 
       {selectedNames.length === 0 ? (
         <p className={styles.empty}>Select at least one {noun} above to compare.</p>

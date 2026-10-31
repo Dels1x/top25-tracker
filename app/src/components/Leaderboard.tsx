@@ -104,7 +104,18 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
   const isEraMode = mode === "years" || mode === "decades";
   const isDurationMode = mode === "duration";
   const isAlbumMode = mode === "albums";
-  const eraGranularity: EraGranularity = mode === "decades" ? "decade" : "year";
+  // Decades mode's own split: off (default) buckets by whole decade
+  // ("1990s"), on splits each decade into its two 5-year halves
+  // ("1990-1994"/"1995-1999") - a finer-grained view of the same release-date
+  // data, not a different data source. Purely picks which EraGranularity
+  // eraBucketForTrack uses; every other decades-mode control (GenreFilter,
+  // RankFilter, weight by placement) composes with it unchanged.
+  const [showHalfDecades, setShowHalfDecades] = usePersistedState(
+    `top25tracker:showHalfDecades:${person}`,
+    false
+  );
+  const eraGranularity: EraGranularity =
+    mode === "decades" ? (showHalfDecades ? "half-decade" : "decade") : "year";
   const isArtistMode = mode === "artists";
   // Albums can number in the hundreds (918 unique albums in the real
   // dataset - same order of magnitude as the "potentially hundreds of
@@ -408,7 +419,9 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
 
   const noun =
     mode === "decades"
-      ? "decade"
+      ? showHalfDecades
+        ? "half-decade"
+        : "decade"
       : mode === "years"
         ? "year"
         : isDurationMode
@@ -515,6 +528,24 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
             checked={hideSubgenres}
             onChange={setHideSubgenres}
             label="Hide subgenres (main genres only)"
+          />
+        </div>
+      )}
+
+      {mode === "decades" && (
+        <div className={styles.filterRow}>
+          <ToggleCheckbox
+            checked={showHalfDecades}
+            onChange={(value) => {
+              setShowHalfDecades(value);
+              // A decade row expanded before the switch (e.g. "1990s") no
+              // longer matches any bucket name under the new granularity -
+              // same reset switchMode already does when the MODE itself
+              // changes, applied here since this toggle changes the bucket
+              // name space without changing mode.
+              setExpanded(null);
+            }}
+            label="Split decades in half (e.g. 1990-1994 / 1995-1999)"
           />
         </div>
       )}

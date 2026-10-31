@@ -34,6 +34,20 @@ export function releaseDecade(year: number): string {
 }
 
 /**
+ * "1994" -> "1990-1994", "1997" -> "1995-1999" - the decade split into its
+ * two halves, per the project owner's own spec. Labeled as an explicit
+ * "YYYY-YYYY" range rather than something like "1990s (early)" so the bucket
+ * boundary is unambiguous at a glance, same reasoning durationBuckets.ts's
+ * "6-8 min" (not "6-7 min") label gives for making a non-uniform boundary
+ * explicit in the label itself.
+ */
+export function releaseHalfDecade(year: number): string {
+  const decadeStart = Math.floor(year / 10) * 10;
+  const halfStart = year - decadeStart < 5 ? decadeStart : decadeStart + 5;
+  return `${halfStart}-${halfStart + 4}`;
+}
+
+/**
  * The year/decade bucket label(s) a track counts toward - a 1-element array
  * (or empty for UNTAGGED, mirroring genreBucketsForTrack's "no recognized
  * artist" case) so callers can reuse the same "flatMap over bucket list"
@@ -48,4 +62,9 @@ export function yearBucketForTrack(releaseDate: string | null): string {
 export function decadeBucketForTrack(releaseDate: string | null): string {
   const year = releaseYear(releaseDate);
   return year === null ? UNKNOWN_ERA : releaseDecade(year);
+}
+
+export function halfDecadeBucketForTrack(releaseDate: string | null): string {
+  const year = releaseYear(releaseDate);
+  return year === null ? UNKNOWN_ERA : releaseHalfDecade(year);
 }
