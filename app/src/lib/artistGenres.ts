@@ -615,7 +615,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Ryo Fukui": ["Jazz"],
   "Thundercat": ["Jazz", "R&B/Soul", "Electronic"],
   "Shabaka Hutchings": ["Jazz"],
-  "Uyama Hiroto": ["Jazz Rap", "Nu Jazz", "Instrumental Hip-Hop"],
+  "Uyama Hiroto": ["Jazz Rap", "Instrumental Hip-Hop"],
   "Sterling Toles": ["Jazz Rap", "Abstract Hip-Hop"],
   "Oliver Crosby": ["Nu Jazz"],
   "Takero Ogata": ["Nu Jazz"],
