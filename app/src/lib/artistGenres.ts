@@ -114,6 +114,7 @@ export const GENRES = [
     "Downtempo",
     "Drone",
     "Plugg",
+    "Chopped and Screwed",
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -208,7 +209,8 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "IDM": ["Electronic"],
   "Downtempo": ["Electronic"],
   "Drone": ["Electronic"],
-  "Plugg": ["Trap"]
+  "Plugg": ["Trap"],
+  "Chopped and Screwed": ["Hip-Hop"],
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -592,6 +594,8 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Nickelus F": ["Boom Bap", "Abstract Hip-Hop"],
   "jev.": ["East Coast Hip-Hop", "Boom Bap"],
   "BabyTron": ["Trap"],
+  "SpaceGhostPurrp": ["Cloud Rap", "Southern Hip-Hop", "Trap", "Chopped and Screwed"],
+  "Black Kray": ["Cloud Rap", "Southern Hip-Hop", "Trap", "Experimental Hip-Hop"],
   "Jane Remover": [
     "Experimental Hip-Hop",
     "Noise Pop",

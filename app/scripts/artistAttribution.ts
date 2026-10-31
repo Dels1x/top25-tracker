@@ -43,6 +43,7 @@ export const SPOTIFY_MISSPELLINGS: Record<string, string> = {
   "Kill Bill the Rapper": "Kill Bill: The Rapper",
   "Kill Bill: the Rapper": "Kill Bill: The Rapper",
   "RAP FERRERIA": "R.A.P. Ferreira",
+  "Sickboyrari": "Black Kray",
   "Roc Marci": "Roc Marciano",
   "Roc Mariano": "Roc Marciano",
   "Stove God Cook$": "Stove God Cooks",
