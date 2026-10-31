@@ -280,7 +280,43 @@ export function Replay({ dataset, person }: ReplayProps) {
     return shown;
   }, [tickIndices, months, tickMax]);
 
-  const [index, setIndex] = useState(0);
+  // The scrubber position survives a page refresh, persisted as the actual
+  // month STRING (not the raw index) under a per-person localStorage key -
+  // same robustness reasoning useMonthRange's own startMonth/endMonth
+  // persistence uses: an index alone would point at the wrong month if a
+  // future data rebuild changes how many months exist before it. Read
+  // directly from localStorage here (rather than via usePersistedState)
+  // since the key itself is per-PERSON and this component instance stays
+  // mounted across a person switch (see the lastPerson block below) -
+  // usePersistedState only reads storage on first mount, so swapping its
+  // key prop on a later render wouldn't re-read the new person's saved
+  // month the way this plain helper does on every switch.
+  function readSavedIndex(forPerson: string, monthList: typeof months): number {
+    try {
+      const saved = localStorage.getItem(`top25tracker:replayMonth:${forPerson}`);
+      if (saved) {
+        const i = monthList.findIndex((m) => m.month === saved);
+        if (i !== -1) return i;
+      }
+    } catch {
+      // ignore (private browsing etc.) - fall through to default
+    }
+    return 0;
+  }
+
+  const [index, setIndexRaw] = useState(() => readSavedIndex(person, months));
+  const setIndex = (updater: number | ((prev: number) => number)) => {
+    setIndexRaw((prev) => {
+      const next = typeof updater === "function" ? updater(prev) : updater;
+      try {
+        const m = months[next];
+        if (m) localStorage.setItem(`top25tracker:replayMonth:${person}`, m.month);
+      } catch {
+        // ignore (private browsing etc.)
+      }
+      return next;
+    });
+  };
   const [playing, setPlaying] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -299,11 +335,13 @@ export function Replay({ dataset, person }: ReplayProps) {
   const [copied, setCopied] = useState(false);
   const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Reset position when switching person.
+  // Reset position when switching person - restores that person's OWN saved
+  // month (if any) rather than always jumping to 0, same persistence this
+  // view now has for a plain page refresh.
   const [lastPerson, setLastPerson] = useState(person);
   if (lastPerson !== person) {
     setLastPerson(person);
-    setIndex(0);
+    setIndexRaw(readSavedIndex(person, months));
     setPlaying(false);
     setOpenPreview(null);
   }
@@ -326,7 +364,11 @@ export function Replay({ dataset, person }: ReplayProps) {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [playing, months.length]);
+    // person is included so the interval's setIndex closure (which persists
+    // to a per-person localStorage key) never writes a stale person's key
+    // after a switch that happens to leave months.length unchanged.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [playing, months.length, person]);
 
   if (months.length === 0) {
     return <p>No data for this person yet.</p>;
