@@ -685,7 +685,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Red House Painters": ["Slowcore", "Post-Rock"],
   "Have A Nice Life": ["Shoegaze", "Post-Rock", "Post-Punk", "Gothic Rock"],
   Slint: ["Post-Rock", "Math Rock", "Post-Hardcore"],
-  "Unwound": ["Post-Rock", "Indie Rock", "Post-Hardcore", "Noise Rock"],
+  "Unwound": ["Post-Rock", "Indie Rock", "Post-Hardcore", "Noise Rock", "Emo"],
   "Godspeed You Black Emperor!": ["Post-Rock", "Ambient"],
   "Natural Snow Buildings": ["Ambient", "Folk", "Electronic", "Post-Rock", "Avant-Folk", "Drone", "Psychedelic Folk"],
   "Sweet Trip": ["Dream Pop", "Electronic"],
