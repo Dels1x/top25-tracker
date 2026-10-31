@@ -85,7 +85,12 @@ function formatMonthForCopy(month: string, tracks: Track[]): string {
   const header = `Top 25 of ${formatMonthLong(month)}`;
   const lines = tracks.map((track) => {
     const artists = track.creditedArtists.join(", ");
-    const genres = directGenresForArtists(track.creditedArtists).filter((g) => g !== UNTAGGED_GENRE);
+    // scoringArtists (not creditedArtists) for the genre lookup specifically -
+    // ARTIST_GENRES is keyed by canonical name, so a track credited under a
+    // misspelling/alias (e.g. "Sickboyrari", resolved to "Black Kray" at
+    // build time) still finds its genre tags this way, even though the
+    // artist name itself is still shown literally as credited.
+    const genres = directGenresForArtists(track.scoringArtists).filter((g) => g !== UNTAGGED_GENRE);
     const parts = [`${track.rank}. ${artists} - ${track.title}`];
     if (track.album) parts.push(`(${track.album})`);
     const duration = formatDuration(track.durationMs);
@@ -126,9 +131,12 @@ interface MonthStatRow {
  * artist-identity toggles (see NO_TOGGLES_VIEWS in App.tsx) and always shows
  * the literal per-track credit, so these breakdowns stay consistent with
  * that: "who does the card actually say", not a scored/resolved view.
- * Genre/era/duration bucketing itself is artist-identity-independent either
- * way (directGenresForArtists/decadeBucketForTrack/durationBucketForTrack
- * don't care whether a name came from creditedArtists or scoringArtists).
+ * Genre lookup specifically uses scoringArtists, not creditedArtists, so a
+ * misspelled/aliased credit (e.g. "Sickboyrari" -> "Black Kray") still finds
+ * its ARTIST_GENRES entry, which is keyed by canonical name - the Artists
+ * breakdown itself still buckets by literal creditedArtists, unaffected.
+ * Era/duration bucketing is artist-identity-independent either way
+ * (decadeBucketForTrack/durationBucketForTrack don't look at artist names).
  *
  * Every dimension here sorts by count descending EXCEPT duration, which
  * sorts by DURATION_BUCKETS' own fixed short-to-long order - the exact same
@@ -150,7 +158,7 @@ function buildMonthStats(tracks: Track[]): Record<
     for (const artist of track.creditedArtists) {
       artists.set(artist, (artists.get(artist) ?? 0) + 1);
     }
-    for (const genre of directGenresForArtists(track.creditedArtists)) {
+    for (const genre of directGenresForArtists(track.scoringArtists)) {
       if (genre === UNTAGGED_GENRE) continue; // same "too noisy to show" call as the card chips
       genres.set(genre, (genres.get(genre) ?? 0) + 1);
     }
@@ -442,8 +450,10 @@ export function Replay({ dataset, person }: ReplayProps) {
                     // would be noise, not information, so that sentinel is
                     // suppressed here specifically (unlike the Leaderboard's
                     // genre filter, which needs it as a real, selectable
-                    // bucket).
-                    const genres = directGenresForArtists(track.creditedArtists).filter(
+                    // bucket). scoringArtists (not creditedArtists) so a
+                    // misspelled/aliased credit (e.g. "Sickboyrari") still
+                    // resolves to its canonical name's ARTIST_GENRES entry.
+                    const genres = directGenresForArtists(track.scoringArtists).filter(
                       (g) => g !== UNTAGGED_GENRE
                     );
                     if (genres.length === 0) return null;
