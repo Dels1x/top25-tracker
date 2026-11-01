@@ -167,6 +167,33 @@ export interface StatsOptions {
    * `total + 1` per track now does `total + track.points`.
    */
   weightByRank?: boolean;
+  /**
+   * When true (default false - "Weight by length" checkbox), every count
+   * this file produces is a sum of each track's own `durationMs` instead of a
+   * flat 1 per occurrence (or rankPoints(rank) under weightByRank) - so a
+   * leaderboard ranks by total LISTENING TIME (displayed as H:MM:SS via
+   * formatTotalDuration) rather than song count or placement. Mutually
+   * exclusive with weightByRank in the UI (both checkboxes toggle each other
+   * off - "who ranks highest" and "who has the most listening time" don't
+   * have a meaningful combined reading), but if both were somehow set,
+   * weightByRank wins in `allTracks` since it's checked first - an arbitrary
+   * but harmless tiebreak that should never actually be reachable from the
+   * UI. A track with no durationMs (missing/zero, same `UNKNOWN_DURATION`
+   * case durationBuckets.ts already handles) contributes 0 rather than being
+   * dropped - it still counts as a qualifying occurrence (ArtistTotal.count
+   * still increments) but adds no time to the total, same spirit as a
+   * missing release date not excluding a track from era bucketing.
+   *
+   * Unlike weightByRank (deliberately NOT wired into Shared/Compare because
+   * a shared song has no single per-person rank), weightByLength applies
+   * cleanly to the Shared tab's leaderboards too - a song's length is a
+   * property of the song itself, unambiguous regardless of who picked it or
+   * when, so sharedSongArtistTotals/sharedSongGenreTotals/sharedSongEraTotals/
+   * sharedSongDurationTotals/sharedSongAlbumTotals all honor it too (summing
+   * `song.durationMs` instead of a flat 1 when it's on), unlike their
+   * permanent "never weights by placement" behavior.
+   */
+  weightByLength?: boolean;
 }
 
 /**
@@ -308,7 +335,11 @@ export function allTracks(
       // Hip-Hop is unchecked and should vanish, not show up with an empty
       // artist list.
       if (scoringArtists.length === 0) continue;
-      const points = options?.weightByRank ? rankPoints(track.rank) : 1;
+      const points = options?.weightByRank
+        ? rankPoints(track.rank)
+        : options?.weightByLength
+          ? track.durationMs ?? 0
+          : 1;
       out.push({ ...track, scoringArtists, month: list.month, person: list.person, points });
     }
   }
@@ -1472,6 +1503,17 @@ function genreFilteredScoringArtists(song: SharedSong, options?: StatsOptions): 
   return song.scoringArtists.filter((a) => genresForArtists([a]).some((g) => filter.has(g)));
 }
 
+/**
+ * A shared song's own contribution to a sharedSong*Totals sum - a flat 1
+ * normally, or the song's own durationMs under weightByLength (see that
+ * option's own doc comment for why length, unlike placement, generalizes
+ * cleanly to Shared's songs: it's a property of the song itself, not of who
+ * picked it or when). Missing duration contributes 0, same as allTracks.
+ */
+function sharedSongPoints(song: SharedSong, options?: StatsOptions): number {
+  return options?.weightByLength ? song.durationMs ?? 0 : 1;
+}
+
 export function sharedSongArtistTotals(
   dataset: Dataset,
   options?: StatsOptions,
@@ -1479,19 +1521,21 @@ export function sharedSongArtistTotals(
 ): ArtistTotal[] {
   const songs = presence ? songsByPresence(dataset, presence, options) : sharedSongs(dataset, options);
   const totals = new Map<string, number>();
+  const counts = new Map<string, number>();
   for (const song of songs) {
     // Same per-artist genre filter allTracks applies - a shared song that's
     // a Kendrick Lamar/Kali Uchis collab, say, still drops Kendrick alone
     // when Hip-Hop is unchecked, rather than hiding the whole song.
     for (const artist of genreFilteredScoringArtists(song, options)) {
-      totals.set(artist, (totals.get(artist) ?? 0) + 1);
+      totals.set(artist, (totals.get(artist) ?? 0) + sharedSongPoints(song, options));
+      counts.set(artist, (counts.get(artist) ?? 0) + 1);
     }
   }
   // Shared never weights by placement (see the stats.ts module doc on
-  // weightByRank), so total is already a plain count here - count mirrors
-  // it exactly, just to satisfy ArtistTotal's shape consistently.
+  // weightByRank) - total only diverges from count under weightByLength,
+  // which sums durationMs instead of a flat 1 per occurrence.
   return Array.from(totals.entries())
-    .map(([artist, total]) => ({ artist, total, count: total }))
+    .map(([artist, total]) => ({ artist, total, count: counts.get(artist) ?? 0 }))
     .sort((a, b) => b.total - a.total);
 }
 
@@ -1531,17 +1575,19 @@ export function sharedSongGenreTotals(
 ): GenreTotal[] {
   const songs = presence ? songsByPresence(dataset, presence, options) : sharedSongs(dataset, options);
   const totals = new Map<string, number>();
+  const counts = new Map<string, number>();
   for (const song of songs) {
     const scoringArtists = genreFilteredScoringArtists(song, options);
     if (scoringArtists.length === 0) continue;
     for (const genre of genresForArtists(scoringArtists)) {
-      totals.set(genre, (totals.get(genre) ?? 0) + 1);
+      totals.set(genre, (totals.get(genre) ?? 0) + sharedSongPoints(song, options));
+      counts.set(genre, (counts.get(genre) ?? 0) + 1);
     }
   }
-  // Shared never weights by placement, so count mirrors total exactly, same
-  // as sharedSongArtistTotals.
+  // Shared never weights by placement - total only diverges from count under
+  // weightByLength, same as sharedSongArtistTotals.
   return Array.from(totals.entries())
-    .map(([genre, total]) => ({ genre, total, count: total }))
+    .map(([genre, total]) => ({ genre, total, count: counts.get(genre) ?? 0 }))
     .sort((a, b) => b.total - a.total);
 }
 
@@ -1580,13 +1626,15 @@ export function sharedSongEraTotals(
 ): EraTotal[] {
   const songs = presence ? songsByPresence(dataset, presence, options) : sharedSongs(dataset, options);
   const totals = new Map<string, number>();
+  const counts = new Map<string, number>();
   for (const song of songs) {
     if (genreFilteredScoringArtists(song, options).length === 0) continue;
     const era = eraBucketForTrack(song, granularity);
-    totals.set(era, (totals.get(era) ?? 0) + 1);
+    totals.set(era, (totals.get(era) ?? 0) + sharedSongPoints(song, options));
+    counts.set(era, (counts.get(era) ?? 0) + 1);
   }
   return Array.from(totals.entries())
-    .map(([era, total]) => ({ era, total, count: total }))
+    .map(([era, total]) => ({ era, total, count: counts.get(era) ?? 0 }))
     .sort((a, b) => b.total - a.total);
 }
 
@@ -1626,7 +1674,7 @@ export function sharedSongDurationTotals(
   for (const song of songs) {
     if (genreFilteredScoringArtists(song, options).length === 0) continue;
     const bucket = durationBucketForTrack(song.durationMs);
-    totals.set(bucket, (totals.get(bucket) ?? 0) + 1);
+    totals.set(bucket, (totals.get(bucket) ?? 0) + sharedSongPoints(song, options));
     counts.set(bucket, (counts.get(bucket) ?? 0) + 1);
   }
   return Array.from(totals.entries())
@@ -1670,7 +1718,7 @@ export function sharedSongAlbumTotals(
   for (const song of songs) {
     if (genreFilteredScoringArtists(song, options).length === 0) continue;
     const album = albumBucketForTrack(song.album);
-    totals.set(album, (totals.get(album) ?? 0) + 1);
+    totals.set(album, (totals.get(album) ?? 0) + sharedSongPoints(song, options));
     counts.set(album, (counts.get(album) ?? 0) + 1);
   }
   return Array.from(totals.entries())

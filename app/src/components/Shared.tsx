@@ -19,10 +19,11 @@ import {
 } from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
 import { formatReleaseDate } from "../lib/releaseEra";
-import { formatDuration } from "../lib/durationBuckets";
+import { formatDuration, formatTotalDuration } from "../lib/durationBuckets";
 import { useGenreFilter } from "../lib/useGenreFilter";
 import { usePersistedState } from "../lib/usePersistedState";
 import { usePresenceFilter } from "../lib/usePresenceFilter";
+import { useWeightByLength } from "../lib/useWeightByLength";
 import { GenreFilter } from "./GenreFilter";
 import { ModeSwitch } from "./ModeSwitch";
 import { PresenceFilter } from "./PresenceFilter";
@@ -101,6 +102,13 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
     selectNone: selectNoneGenres,
   } = useGenreFilter("shared");
   const { requirementFor, cycle: cyclePresence, presenceMap } = usePresenceFilter(dataset.people);
+  // "shared" key, same flat (non-per-person) persistence convention
+  // useGenreFilter("shared")/showHalfDecades:shared already use for this
+  // component - weightByLength (unlike weightByRank, never wired in here -
+  // see StatsOptions.weightByLength's own doc comment for why length
+  // generalizes to Shared's songs but placement doesn't) is otherwise
+  // identical in spirit to Leaderboard's own weight checkbox.
+  const [weightByLength, setWeightByLength] = useWeightByLength("shared");
 
   const isGenreMode = mode === "genres";
   const isEraMode = mode === "years" || mode === "decades";
@@ -165,8 +173,8 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
   // artist mode, so a shared Armand Hammer song credits billy woods and
   // E L U C I D individually too.
   const genreOptions: StatsOptions = useMemo(
-    () => ({ ...scoringOptions, genreFilter: selectedGenres }),
-    [scoringOptions, selectedGenres]
+    () => ({ ...scoringOptions, genreFilter: selectedGenres, weightByLength }),
+    [scoringOptions, selectedGenres, weightByLength]
   );
   const artistRows = useMemo(
     () => sharedSongArtistTotals(dataset, genreOptions, presenceMap),
@@ -188,15 +196,15 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
     () => sharedSongAlbumTotals(dataset, genreOptions, presenceMap),
     [dataset, genreOptions, presenceMap]
   );
-  const totals: Array<{ name: string; total: number }> = isAlbumMode
-    ? albumRows.map((r) => ({ name: r.album, total: r.total }))
+  const totals: Array<{ name: string; total: number; count: number }> = isAlbumMode
+    ? albumRows.map((r) => ({ name: r.album, total: r.total, count: r.count }))
     : isDurationMode
-      ? durationRows.map((r) => ({ name: r.bucket, total: r.total }))
+      ? durationRows.map((r) => ({ name: r.bucket, total: r.total, count: r.count }))
       : isEraMode
-        ? eraRows.map((r) => ({ name: r.era, total: r.total }))
+        ? eraRows.map((r) => ({ name: r.era, total: r.total, count: r.count }))
         : isGenreMode
-          ? genreRows.map((r) => ({ name: r.genre, total: r.total }))
-          : artistRows.map((r) => ({ name: r.artist, total: r.total }));
+          ? genreRows.map((r) => ({ name: r.genre, total: r.total, count: r.count }))
+          : artistRows.map((r) => ({ name: r.artist, total: r.total, count: r.count }));
 
   // Color follows the ARTIST/GENRE/ERA, not its current rank under the
   // active genre filter - built from the unfiltered ordering (identity
@@ -267,7 +275,10 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
   // start back at the top rather than keep a "show more" depth from a
   // different filtered view (same as Leaderboard does for its own filters).
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => setArtistLimit(PAGE_SIZE), [mode, selectedGenres, scoringOptions, presenceMap]);
+  useEffect(
+    () => setArtistLimit(PAGE_SIZE),
+    [mode, selectedGenres, scoringOptions, presenceMap, weightByLength]
+  );
 
   const isExpandedStillPresent = useMemo(
     () => expandedRow !== null && totals.some((t) => t.name === expandedRow),
@@ -421,6 +432,7 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
             {isArtistMode
               ? `${totals.length} artists · counts include feature credits and group/member attribution`
               : `${totals.length} ${noun}s`} &middot; click a {noun} to see its shared songs
+            {weightByLength && " · weighted by length"}
             {isEraMode &&
               eraRows.some((r) => r.era === "Unknown") &&
               " · \"Unknown\" is songs with no catalogued release date"}
@@ -444,6 +456,14 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
           ]}
           onChange={switchMode}
           aria-label="Rank by"
+        />
+      </div>
+
+      <div className={leaderboardStyles.filterRow}>
+        <ToggleCheckbox
+          checked={weightByLength}
+          onChange={setWeightByLength}
+          label="Weight by length (total listening time)"
         />
       </div>
 
@@ -490,7 +510,9 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
                     transition={{ duration: 0.5, ease: "easeOut", delay: index * 0.015 }}
                   />
                 </div>
-                <span className={leaderboardStyles.value}>{row.total}</span>
+                <span className={leaderboardStyles.value}>
+                  {weightByLength ? `${formatTotalDuration(row.total)} (${row.count})` : row.total}
+                </span>
                 <span className={leaderboardStyles.chevron} data-open={isOpen} aria-hidden="true">
                   ▾
                 </span>

@@ -63,3 +63,21 @@ export function formatDuration(durationMs: number | null): string | null {
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
+
+/**
+ * "H:MM:SS" (or "M:SS" once under an hour) formatting for a SUMMED duration -
+ * used by "weight by length" totals, which can run into many hours unlike a
+ * single track's own length (formatDuration above). Always zero-pads minutes
+ * once an hour component is shown, same convention as formatDuration zero-
+ * pads seconds - "1:05:09", not "1:5:9".
+ */
+export function formatTotalDuration(totalMs: number): string {
+  const totalSeconds = Math.round(totalMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}

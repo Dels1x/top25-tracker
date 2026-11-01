@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { Dataset } from "../data/types";
 import { allTracks, artistTotals, sortedMonths, type StatsOptions } from "../lib/stats";
+import { formatTotalDuration } from "../lib/durationBuckets";
 import { StatTile } from "./StatTile";
 import styles from "./StatsRow.module.css";
 
@@ -47,7 +48,9 @@ export function StatsRow({ dataset, person, options }: StatsRowProps) {
           stats.topArtist
             ? options.weightByRank
               ? `${Math.round(stats.topArtist.total)} pts (${stats.topArtist.count})`
-              : `${stats.topArtist.total} songs`
+              : options.weightByLength
+                ? `${formatTotalDuration(stats.topArtist.total)} (${stats.topArtist.count})`
+                : `${stats.topArtist.total} songs`
             : undefined
         }
       />

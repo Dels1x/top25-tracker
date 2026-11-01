@@ -19,12 +19,13 @@ import {
 import { buildArtistColorMap } from "../lib/colors";
 import { MAIN_GENRES } from "../lib/artistGenres";
 import { formatReleaseDate } from "../lib/releaseEra";
-import { formatDuration } from "../lib/durationBuckets";
+import { formatDuration, formatTotalDuration } from "../lib/durationBuckets";
 import { usePersistedState } from "../lib/usePersistedState";
 import { useMonthRange } from "../lib/useMonthRange";
 import { useGenreFilter } from "../lib/useGenreFilter";
 import { useRankFilter } from "../lib/useRankFilter";
 import { useWeightByRank } from "../lib/useWeightByRank";
+import { useWeightByLength } from "../lib/useWeightByLength";
 import { RangePicker } from "./RangePicker";
 import { GenreFilter } from "./GenreFilter";
 import { RankFilter } from "./RankFilter";
@@ -158,7 +159,20 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
     selectNone: selectNoneGenres,
   } = useGenreFilter(person);
   const [maxRank, setMaxRank] = useRankFilter(person);
-  const [weightByRank, setWeightByRank] = useWeightByRank(person);
+  const [weightByRank, setWeightByRankRaw] = useWeightByRank(person);
+  const [weightByLength, setWeightByLengthRaw] = useWeightByLength(person);
+  // Mutually exclusive - "who ranks highest" and "who has the most
+  // listening time" don't have a meaningful combined reading (see
+  // StatsOptions.weightByLength's own doc comment), so checking one turns
+  // the other off rather than letting both stack.
+  function setWeightByRank(value: boolean) {
+    setWeightByRankRaw(value);
+    if (value) setWeightByLengthRaw(false);
+  }
+  function setWeightByLength(value: boolean) {
+    setWeightByLengthRaw(value);
+    if (value) setWeightByRankRaw(false);
+  }
   // Genre-mode-only display filter - collapses subgenre rows (e.g. "Pop
   // Punk", "Jazz Rap") out of the row list, keeping only top-level genres
   // (plus "Metal", a deliberate exception - see MAIN_GENRES' own doc
@@ -184,8 +198,9 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
       genreFilter: selectedGenres,
       maxRank: maxRank === 25 ? undefined : maxRank,
       weightByRank,
+      weightByLength,
     }),
-    [scoringOptions.includeDuplicates, rangeOptions, selectedGenres, maxRank, weightByRank]
+    [scoringOptions.includeDuplicates, rangeOptions, selectedGenres, maxRank, weightByRank, weightByLength]
   );
 
   // Combined options for the leaderboard list itself and the StatsRow tiles
@@ -200,8 +215,9 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
       genreFilter: selectedGenres,
       maxRank: maxRank === 25 ? undefined : maxRank,
       weightByRank,
+      weightByLength,
     }),
-    [scoringOptions, rangeOptions, selectedGenres, maxRank, weightByRank]
+    [scoringOptions, rangeOptions, selectedGenres, maxRank, weightByRank, weightByLength]
   );
 
   const artistRows = useMemo(
@@ -328,7 +344,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(
     () => setLimit(PAGE_SIZE),
-    [mode, person, scoringOptions, rangeOptions, selectedGenres, maxRank, weightByRank]
+    [mode, person, scoringOptions, rangeOptions, selectedGenres, maxRank, weightByRank, weightByLength]
   );
 
   // If the range/mode changes and the expanded row drops out entirely, close
@@ -451,6 +467,12 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
     setExpanded(null);
   }
 
+  const weightSuffix = weightByRank
+    ? " · weighted by placement"
+    : weightByLength
+      ? " · weighted by length"
+      : "";
+
   const noun =
     mode === "decades"
       ? showHalfDecades
@@ -479,7 +501,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
                 {totals.length} albums &middot;
                 {scoringOptions.includeDuplicates === false && " repeat songs counted once"}
                 {maxRank !== 25 && ` · only counting #1-${maxRank} each month`}
-                {weightByRank && " · weighted by placement"} &middot; click an album to see its
+                {weightSuffix} &middot; click an album to see its
                 songs
                 {albumRows.some((r) => r.album === "Unknown") &&
                   " · \"Unknown\" is songs with no catalogued album"}
@@ -488,7 +510,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
               <>
                 {scoringOptions.includeDuplicates === false && " · repeat songs counted once"}
                 {maxRank !== 25 && ` · only counting #1-${maxRank} each month`}
-                {weightByRank && " · weighted by placement"} &middot; click a bucket to see its
+                {weightSuffix} &middot; click a bucket to see its
                 songs
                 {durationRows.some((r) => r.bucket === "Unknown") &&
                   " · \"Unknown\" is songs with no catalogued duration"}
@@ -497,7 +519,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
               <>
                 {scoringOptions.includeDuplicates === false && " · repeat songs counted once"}
                 {maxRank !== 25 && ` · only counting #1-${maxRank} each month`}
-                {weightByRank && " · weighted by placement"} &middot; click a {noun} to see its
+                {weightSuffix} &middot; click a {noun} to see its
                 songs
                 {eraRows.some((r) => r.era === "Unknown") &&
                   " · \"Unknown\" is songs with no catalogued release date"}
@@ -506,7 +528,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
               <>
                 {scoringOptions.includeDuplicates === false && " · repeat songs counted once"}
                 {maxRank !== 25 && ` · only counting #1-${maxRank} each month`}
-                {weightByRank && " · weighted by placement"} &middot; click a genre to see its
+                {weightSuffix} &middot; click a genre to see its
                 songs
               </>
             ) : (
@@ -515,7 +537,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
                 attribution{scoringOptions.includeDuplicates === false &&
                   " · repeat songs counted once"}
                 {maxRank !== 25 && ` · only counting #1-${maxRank} each month`}
-                {weightByRank && " · weighted by placement"} &middot; click an artist to see their
+                {weightSuffix} &middot; click an artist to see their
                 songs
               </>
             )}
@@ -553,6 +575,11 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
           checked={weightByRank}
           onChange={setWeightByRank}
           label="Weight by placement (#1 worth more than #25)"
+        />
+        <ToggleCheckbox
+          checked={weightByLength}
+          onChange={setWeightByLength}
+          label="Weight by length (total listening time)"
         />
       </div>
 
@@ -618,7 +645,11 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
                   />
                 </div>
                 <span className={styles.value}>
-                  {weightByRank ? `${Math.round(row.total)}pts (${row.count})` : row.total}
+                  {weightByRank
+                    ? `${Math.round(row.total)}pts (${row.count})`
+                    : weightByLength
+                      ? `${formatTotalDuration(row.total)} (${row.count})`
+                      : row.total}
                 </span>
                 <span className={styles.chevron} data-open={isOpen} aria-hidden="true">
                   ▾
