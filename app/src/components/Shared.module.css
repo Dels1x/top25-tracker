@@ -67,7 +67,7 @@
 
 .artistSongHeaderRow {
   display: grid;
-  grid-template-columns: 76px 1fr 1fr 1fr;
+  grid-template-columns: 76px 1fr 1fr 1fr 72px 56px;
   gap: 10px;
   padding: 0 8px 4px;
 }
@@ -100,14 +100,6 @@
   font-size: 11px;
 }
 
-.artistSongHeaderStatic {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--text-muted);
-}
-
 .artistSongList {
   list-style: none;
   margin: 0;
@@ -119,7 +111,7 @@
 
 .artistSongRow {
   display: grid;
-  grid-template-columns: 76px 1fr 1fr 1fr;
+  grid-template-columns: 76px 1fr 1fr 1fr 72px 56px;
   align-items: baseline;
   gap: 10px;
   padding: 5px 8px;
@@ -158,6 +150,18 @@
   white-space: nowrap;
 }
 
+.artistSongReleaseDate {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.artistSongDuration {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
 @media (max-width: 560px) {
   .artistSongHeaderRow,
   .artistSongRow {
@@ -166,7 +170,6 @@
 
   .artistSongAlbum,
   .artistSongArtists,
-  .artistSongHeaderStatic,
   .hideOnMobile {
     display: none;
   }

@@ -68,3 +68,23 @@ export function halfDecadeBucketForTrack(releaseDate: string | null): string {
   const year = releaseYear(releaseDate);
   return year === null ? UNKNOWN_ERA : releaseHalfDecade(year);
 }
+
+/**
+ * Formats a track's raw Spotify releaseDate for display - handles the three
+ * precisions Spotify's API actually returns (full "YYYY-MM-DD", "YYYY-MM",
+ * or just "YYYY" for an older/less-precisely-catalogued release) rather than
+ * assuming full precision always parses cleanly - a bare "YYYY" passed to
+ * `new Date()` would otherwise get misread as UTC midnight and can print the
+ * wrong year in a timezone behind UTC. null (no release date in the source
+ * row) renders nothing rather than "Invalid Date".
+ */
+export function formatReleaseDate(releaseDate: string | null): string | null {
+  if (!releaseDate) return null;
+  const parts = releaseDate.split("-");
+  if (parts.length === 1) return parts[0]; // year-only precision
+  const [year, month, day] = parts.map(Number);
+  const date = new Date(year, month - 1, day || 1);
+  return parts.length === 2
+    ? date.toLocaleDateString(undefined, { month: "short", year: "numeric" })
+    : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}

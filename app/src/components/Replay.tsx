@@ -4,7 +4,7 @@ import type { Dataset, Track } from "../data/types";
 import { listsForPerson } from "../lib/stats";
 import { sliderTickIndices } from "../lib/sliderTicks";
 import { directGenresForArtists, UNTAGGED_GENRE } from "../lib/artistGenres";
-import { decadeBucketForTrack, yearBucketForTrack } from "../lib/releaseEra";
+import { decadeBucketForTrack, formatReleaseDate, yearBucketForTrack } from "../lib/releaseEra";
 import { DURATION_BUCKETS, durationBucketForTrack, formatDuration } from "../lib/durationBuckets";
 import { buildArtistColorMap } from "../lib/colors";
 import styles from "./Replay.module.css";
@@ -47,26 +47,6 @@ function formatMonthLong(month: string): string {
   const [year, m] = month.split("-");
   const date = new Date(Number(year), Number(m) - 1, 1);
   return date.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-}
-
-/**
- * Formats a track's raw Spotify releaseDate for display - handles the three
- * precisions Spotify's API actually returns (full "YYYY-MM-DD", "YYYY-MM",
- * or just "YYYY" for an older/less-precisely-catalogued release) rather than
- * assuming full precision always parses cleanly - a bare "YYYY" passed to
- * `new Date()` would otherwise get misread as UTC midnight and can print the
- * wrong year in a timezone behind UTC. null (no release date in the source
- * row) renders nothing rather than "Invalid Date".
- */
-function formatReleaseDate(releaseDate: string | null): string | null {
-  if (!releaseDate) return null;
-  const parts = releaseDate.split("-");
-  if (parts.length === 1) return parts[0]; // year-only precision
-  const [year, month, day] = parts.map(Number);
-  const date = new Date(year, month - 1, day || 1);
-  return parts.length === 2
-    ? date.toLocaleDateString(undefined, { month: "short", year: "numeric" })
-    : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 /**

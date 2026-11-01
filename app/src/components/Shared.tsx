@@ -18,6 +18,8 @@ import {
   type StatsOptions,
 } from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
+import { formatReleaseDate } from "../lib/releaseEra";
+import { formatDuration } from "../lib/durationBuckets";
 import { useGenreFilter } from "../lib/useGenreFilter";
 import { usePersistedState } from "../lib/usePersistedState";
 import { usePresenceFilter } from "../lib/usePresenceFilter";
@@ -38,13 +40,16 @@ type Mode = "artists" | "genres" | "years" | "decades" | "duration" | "albums";
 const PAGE_SIZE = 20;
 const SONG_PAGE_SIZE = 100;
 
-type SongSortKey = "date" | "title" | "album";
+type SongSortKey = "date" | "title" | "album" | "artists" | "releaseDate" | "duration";
 type SortDirection = "asc" | "desc";
 
-const SONG_SORT_COLUMNS: Array<{ key: SongSortKey; label: string }> = [
+const SONG_SORT_COLUMNS: Array<{ key: SongSortKey; label: string; mobileHidden?: boolean }> = [
   { key: "date", label: "Date" },
   { key: "title", label: "Song" },
-  { key: "album", label: "Album" },
+  { key: "album", label: "Album", mobileHidden: true },
+  { key: "artists", label: "Artist(s)" },
+  { key: "releaseDate", label: "Released", mobileHidden: true },
+  { key: "duration", label: "Length", mobileHidden: true },
 ];
 
 function formatMonth(month: string): string {
@@ -293,6 +298,26 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
         case "album":
           cmp = a.album.localeCompare(b.album);
           break;
+        case "artists":
+          cmp = a.creditedArtists.join(", ").localeCompare(b.creditedArtists.join(", "));
+          break;
+        case "releaseDate":
+          if (a.releaseDate === null && b.releaseDate === null) cmp = 0;
+          else if (a.releaseDate === null) cmp = 1;
+          else if (b.releaseDate === null) cmp = -1;
+          else cmp = a.releaseDate.localeCompare(b.releaseDate);
+          break;
+        case "duration":
+          if (a.durationMs === null && b.durationMs === null) cmp = 0;
+          else if (a.durationMs === null) cmp = 1;
+          else if (b.durationMs === null) cmp = -1;
+          else cmp = a.durationMs - b.durationMs;
+          break;
+      }
+      if (sortKey === "releaseDate" || sortKey === "duration") {
+        const aMissing = sortKey === "releaseDate" ? a.releaseDate === null : a.durationMs === null;
+        const bMissing = sortKey === "releaseDate" ? b.releaseDate === null : b.durationMs === null;
+        if (aMissing || bMissing) return cmp;
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
@@ -324,9 +349,12 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(key);
-      // Date reads most naturally starting from newest; title/album read
-      // most naturally starting A-first - same convention Leaderboard uses.
-      setSortDir(key === "date" ? "desc" : "asc");
+      // Date/releaseDate/duration read most naturally starting from
+      // newest/longest; title/album/artists read most naturally starting
+      // A-first - same convention Leaderboard uses.
+      setSortDir(
+        key === "date" || key === "releaseDate" || key === "duration" ? "desc" : "asc"
+      );
     }
   }
 
@@ -483,7 +511,7 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
                           key={col.key}
                           type="button"
                           className={
-                            col.key === "album"
+                            col.mobileHidden
                               ? `${styles.artistSongHeaderButton} ${styles.hideOnMobile}`
                               : styles.artistSongHeaderButton
                           }
@@ -498,7 +526,6 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
                           )}
                         </button>
                       ))}
-                      <span className={styles.artistSongHeaderStatic}>Artist(s)</span>
                     </div>
                     <ul className={styles.artistSongList}>
                       {expandedSongs.map((song) => (
@@ -520,6 +547,12 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
                             title={song.creditedArtists.join(", ")}
                           >
                             {song.creditedArtists.join(", ")}
+                          </span>
+                          <span className={`${styles.artistSongReleaseDate} ${styles.hideOnMobile}`}>
+                            {formatReleaseDate(song.releaseDate) ?? "—"}
+                          </span>
+                          <span className={`${styles.artistSongDuration} ${styles.hideOnMobile}`}>
+                            {formatDuration(song.durationMs) ?? "—"}
                           </span>
                         </li>
                       ))}

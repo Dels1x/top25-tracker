@@ -18,6 +18,8 @@ import {
 } from "../lib/stats";
 import { buildArtistColorMap } from "../lib/colors";
 import { MAIN_GENRES } from "../lib/artistGenres";
+import { formatReleaseDate } from "../lib/releaseEra";
+import { formatDuration } from "../lib/durationBuckets";
 import { usePersistedState } from "../lib/usePersistedState";
 import { useMonthRange } from "../lib/useMonthRange";
 import { useGenreFilter } from "../lib/useGenreFilter";
@@ -41,14 +43,17 @@ type Mode = "artists" | "genres" | "years" | "decades" | "duration" | "albums";
 
 const PAGE_SIZE = 20;
 
-type SongSortKey = "date" | "rank" | "title" | "album";
+type SongSortKey = "date" | "rank" | "title" | "album" | "artists" | "releaseDate" | "duration";
 type SortDirection = "asc" | "desc";
 
-const SONG_SORT_COLUMNS: Array<{ key: SongSortKey; label: string }> = [
+const SONG_SORT_COLUMNS: Array<{ key: SongSortKey; label: string; mobileHidden?: boolean }> = [
   { key: "date", label: "Date" },
   { key: "rank", label: "#" },
   { key: "title", label: "Song" },
-  { key: "album", label: "Album" },
+  { key: "album", label: "Album", mobileHidden: true },
+  { key: "artists", label: "Artist(s)" },
+  { key: "releaseDate", label: "Released", mobileHidden: true },
+  { key: "duration", label: "Length", mobileHidden: true },
 ];
 
 function formatMonth(month: string): string {
@@ -377,6 +382,30 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
         case "album":
           cmp = a.album.localeCompare(b.album);
           break;
+        case "artists":
+          cmp = a.creditedArtists.join(", ").localeCompare(b.creditedArtists.join(", "));
+          break;
+        case "releaseDate":
+          // Missing release dates sort last regardless of direction - "no
+          // date" isn't meaningfully earlier or later than a real one.
+          if (a.releaseDate === null && b.releaseDate === null) cmp = 0;
+          else if (a.releaseDate === null) cmp = 1;
+          else if (b.releaseDate === null) cmp = -1;
+          else cmp = a.releaseDate.localeCompare(b.releaseDate);
+          break;
+        case "duration":
+          if (a.durationMs === null && b.durationMs === null) cmp = 0;
+          else if (a.durationMs === null) cmp = 1;
+          else if (b.durationMs === null) cmp = -1;
+          else cmp = a.durationMs - b.durationMs;
+          break;
+      }
+      if (sortKey === "releaseDate" || sortKey === "duration") {
+        // Missing values already sorted last above - don't let a "desc"
+        // click flip them back to the top.
+        const aMissing = sortKey === "releaseDate" ? a.releaseDate === null : a.durationMs === null;
+        const bMissing = sortKey === "releaseDate" ? b.releaseDate === null : b.durationMs === null;
+        if (aMissing || bMissing) return cmp;
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
@@ -406,9 +435,14 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
       setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     } else {
       setSortKey(key);
-      // Date/rank read most naturally starting from newest/best; title/album
-      // read most naturally starting A-first.
-      setSortDir(key === "date" || key === "rank" ? "desc" : "asc");
+      // Date/rank/releaseDate/duration read most naturally starting from
+      // newest/best/longest; title/album/artists read most naturally
+      // starting A-first.
+      setSortDir(
+        key === "date" || key === "rank" || key === "releaseDate" || key === "duration"
+          ? "desc"
+          : "asc"
+      );
     }
   }
 
@@ -606,7 +640,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
                           key={col.key}
                           type="button"
                           className={
-                            col.key === "album"
+                            col.mobileHidden
                               ? `${styles.songHeaderButton} ${styles.hideOnMobile}`
                               : styles.songHeaderButton
                           }
@@ -621,7 +655,6 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
                           )}
                         </button>
                       ))}
-                      <span className={styles.songHeaderStatic}>Artist(s)</span>
                     </div>
                     <ul className={styles.songList}>
                       {expandedTracks.map((track, i) => (
@@ -633,11 +666,17 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
                           <span className={styles.songTitle} title={track.title}>
                             {track.title}
                           </span>
-                          <span className={styles.songAlbum} title={track.album}>
+                          <span className={`${styles.songAlbum} ${styles.hideOnMobile}`} title={track.album}>
                             {track.album}
                           </span>
                           <span className={styles.songArtists} title={track.creditedArtists.join(", ")}>
                             {track.creditedArtists.join(", ")}
+                          </span>
+                          <span className={`${styles.songReleaseDate} ${styles.hideOnMobile}`}>
+                            {formatReleaseDate(track.releaseDate) ?? "—"}
+                          </span>
+                          <span className={`${styles.songDuration} ${styles.hideOnMobile}`}>
+                            {formatDuration(track.durationMs) ?? "—"}
                           </span>
                         </li>
                       ))}
