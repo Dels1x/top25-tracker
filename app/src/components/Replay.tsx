@@ -7,6 +7,7 @@ import { directGenresForArtists, UNTAGGED_GENRE } from "../lib/artistGenres";
 import { decadeBucketForTrack, formatReleaseDate, yearBucketForTrack } from "../lib/releaseEra";
 import { DURATION_BUCKETS, durationBucketForTrack, formatDuration } from "../lib/durationBuckets";
 import { buildArtistColorMap } from "../lib/colors";
+import { AlbumArt } from "./AlbumArt";
 import styles from "./Replay.module.css";
 
 interface ReplayProps {
@@ -451,6 +452,11 @@ export function Replay({ dataset, person }: ReplayProps) {
                 transition={{ duration: 0.3, delay: (25 - track.rank) * 0.01 }}
               >
                 <span className={styles.rank}>#{track.rank}</span>
+                <AlbumArt
+                  spotifyId={track.spotifyId}
+                  alt={track.album || track.title}
+                  className={styles.cardArt}
+                />
                 <div className={styles.cardBody}>
                   <span className={styles.cardTitle} title={track.title}>
                     {track.title}

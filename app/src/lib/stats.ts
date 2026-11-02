@@ -1365,6 +1365,13 @@ export interface SharedSong {
    * sharedSongDurationTotals/sharedSongsForDuration's Duration mode.
    */
   durationMs: number | null;
+  /**
+   * Straight from the underlying Track, same reasoning as releaseDate/
+   * durationMs above (unambiguous regardless of who picked the song or
+   * when) - backs the AlbumArt thumbnail on Shared's song list/drill-downs,
+   * same oEmbed-by-spotifyId lookup used everywhere else art is shown.
+   */
+  spotifyId: string | null;
   /** Every month (across every person) this song appeared, for display/sorting. */
   appearances: Array<{ person: string; month: string; rank: number }>;
 }
@@ -1437,6 +1444,7 @@ export function songsByPresence(
           scoringArtists,
           releaseDate: track.releaseDate,
           durationMs: track.durationMs,
+          spotifyId: track.spotifyId,
           appearances: [],
         };
         byKey.set(key, entry);

@@ -28,6 +28,7 @@ import { GenreFilter } from "./GenreFilter";
 import { ModeSwitch } from "./ModeSwitch";
 import { PresenceFilter } from "./PresenceFilter";
 import { ToggleCheckbox } from "./ToggleCheckbox";
+import { AlbumArt } from "./AlbumArt";
 import leaderboardStyles from "./Leaderboard.module.css";
 import styles from "./Shared.module.css";
 
@@ -528,6 +529,7 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
                     transition={{ duration: 0.22, ease: "easeOut" }}
                   >
                     <div className={styles.artistSongHeaderRow}>
+                      <span aria-hidden="true" />
                       {SONG_SORT_COLUMNS.map((col) => (
                         <button
                           key={col.key}
@@ -552,6 +554,11 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
                     <ul className={styles.artistSongList}>
                       {expandedSongs.map((song) => (
                         <li key={song.trackKey} className={styles.artistSongRow}>
+                          <AlbumArt
+                            spotifyId={song.spotifyId}
+                            alt={song.album || song.title}
+                            className={styles.artistSongArt}
+                          />
                           <span className={styles.artistSongDate}>
                             {formatMonth(earliestAppearance(song))}
                           </span>
@@ -619,6 +626,11 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.25, delay: Math.min(index * 0.02, 0.4) }}
             >
+              <AlbumArt
+                spotifyId={song.spotifyId}
+                alt={song.album || song.title}
+                className={styles.songListArt}
+              />
               <div className={styles.songInfo}>
                 <span className={styles.title}>{song.title}</span>
                 <span className={styles.artists}>{song.creditedArtists.join(", ")}</span>

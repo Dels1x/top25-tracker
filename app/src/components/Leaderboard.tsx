@@ -32,6 +32,7 @@ import { RankFilter } from "./RankFilter";
 import { ToggleCheckbox } from "./ToggleCheckbox";
 import { ModeSwitch } from "./ModeSwitch";
 import { StatsRow } from "./StatsRow";
+import { AlbumArt } from "./AlbumArt";
 import styles from "./Leaderboard.module.css";
 
 interface LeaderboardProps {
@@ -666,6 +667,7 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
                     transition={{ duration: 0.22, ease: "easeOut" }}
                   >
                     <div className={styles.songHeaderRow}>
+                      <span aria-hidden="true" />
                       {SONG_SORT_COLUMNS.map((col) => (
                         <button
                           key={col.key}
@@ -690,6 +692,11 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
                     <ul className={styles.songList}>
                       {expandedTracks.map((track, i) => (
                         <li key={`${track.month}-${track.rank}-${i}`} className={styles.songRow}>
+                          <AlbumArt
+                            spotifyId={track.spotifyId}
+                            alt={track.album || track.title}
+                            className={styles.songArt}
+                          />
                           <span className={styles.songMonth}>
                             {formatMonth(track.firstMonth ?? track.month)}
                           </span>

@@ -3,6 +3,7 @@
   border: 1px solid var(--border);
   border-radius: var(--card-radius);
   padding: 20px 24px 24px;
+  max-width: 920px;
 }
 
 .headRow {
@@ -136,7 +137,7 @@
 
 .songHeaderRow {
   display: grid;
-  grid-template-columns: 76px 32px 1fr 1fr 1fr 72px 56px;
+  grid-template-columns: 40px 76px 32px 1fr 1fr 1fr 72px 56px;
   gap: 10px;
   padding: 0 8px 4px;
 }
@@ -180,16 +181,23 @@
 
 .songRow {
   display: grid;
-  grid-template-columns: 76px 32px 1fr 1fr 1fr 72px 56px;
-  align-items: baseline;
+  grid-template-columns: 40px 76px 32px 1fr 1fr 1fr 72px 56px;
+  align-items: center;
   gap: 10px;
-  padding: 5px 8px;
+  padding: 6px 8px;
   border-radius: 6px;
   font-size: 12px;
 }
 
 .songRow:hover {
   background: var(--card-bg);
+}
+
+.songArt {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  object-fit: cover;
 }
 
 .songMonth {
@@ -251,7 +259,12 @@
 
   .songHeaderRow,
   .songRow {
-    grid-template-columns: 56px 24px 1fr;
+    grid-template-columns: 32px 56px 24px 1fr;
+  }
+
+  .songArt {
+    width: 32px;
+    height: 32px;
   }
 
   .songAlbum,

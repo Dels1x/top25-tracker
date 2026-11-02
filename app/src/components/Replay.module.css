@@ -235,6 +235,14 @@
   line-height: 1.2;
 }
 
+.cardArt {
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
 .cardBody {
   display: flex;
   flex-direction: column;
@@ -444,5 +452,10 @@
   .rank {
     font-size: 17px;
     width: 36px;
+  }
+
+  .cardArt {
+    width: 44px;
+    height: 44px;
   }
 }
