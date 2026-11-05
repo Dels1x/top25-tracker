@@ -11,6 +11,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import Papa from "papaparse";
 import { expandCreditedArtists, GROUP_MEMBERS } from "./artistAttribution.ts";
+import { correctedReleaseDate } from "./releaseDateCorrections.ts";
 import type { Dataset, MonthlyList, Track } from "../src/data/types.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -90,13 +91,18 @@ function parseMonthFile(person: string, filename: string, csvText: string): Mont
     .filter((row) => row["Track Name"] && row["Artist Name(s)"])
     .map((row, index) => {
       const creditedArtists = splitArtists(row["Artist Name(s)"]);
+      const album = (row["Album Name"] ?? "").trim();
       return {
         rank: index + 1,
         title: row["Track Name"].trim(),
         creditedArtists,
         scoringArtists: expandCreditedArtists(creditedArtists),
-        album: (row["Album Name"] ?? "").trim(),
-        releaseDate: row["Release Date"]?.trim() || null,
+        album,
+        releaseDate: correctedReleaseDate(
+          creditedArtists[0] ?? "",
+          album,
+          row["Release Date"]?.trim() || null
+        ),
         durationMs: row["Duration (ms)"]?.trim() ? Number(row["Duration (ms)"]) || null : null,
         spotifyId: row["Track URI"]?.startsWith("spotify:track:")
           ? row["Track URI"].slice("spotify:track:".length)

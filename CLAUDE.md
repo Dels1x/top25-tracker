@@ -978,6 +978,19 @@ There is no test runner configured yet.
   artist, not a re-release of one song; verified against the real dataset that both now count under
   "include duplicates off" (previously the 2024-07 one was silently dropped as if it were a repeat of
   the 2023-07 pick).
+- **`app/scripts/releaseDateCorrections.ts`** — same class of problem as `SPOTIFY_MISSPELLINGS`
+  (`artistAttribution.ts`), but for a track's `Release Date` instead of artist name: Spotify's catalog
+  is occasionally just wrong about when an album actually came out (e.g. crediting a later reissue
+  date instead of the original release). `RELEASE_DATE_CORRECTIONS` is keyed by artist + ALBUM title
+  (not per-track) since a release date is a property of the whole album - one entry corrects every
+  track Spotify credits to that artist/album combo. Applied in `buildData.ts` at parse time (before
+  `scoringArtists` resolution, so it's keyed on the raw first `creditedArtists` entry, same convention
+  as `SPOTIFY_MISSPELLINGS`), baked into `data.json` like every other build-time correction table here
+  - every consumer (Leaderboard/Timeline/Replay's Years/Decades mode, Replay's release-date card meta
+  line, etc.) sees the corrected date automatically, with no runtime-side awareness needed. Only grows
+  when a real case is confirmed wrong, same discipline as the other hand-maintained tables in this
+  file. Current case: Bark Psychosis's "Codename: Dustsucker" - Spotify lists 2005-04-19 (a later/wider
+  reissue date), corrected here to the album's true 2004-09-01 release date.
 
 ## Data layout
 
