@@ -989,8 +989,13 @@ There is no test runner configured yet.
   - every consumer (Leaderboard/Timeline/Replay's Years/Decades mode, Replay's release-date card meta
   line, etc.) sees the corrected date automatically, with no runtime-side awareness needed. Only grows
   when a real case is confirmed wrong, same discipline as the other hand-maintained tables in this
-  file. Current case: Bark Psychosis's "Codename: Dustsucker" - Spotify lists 2005-04-19 (a later/wider
-  reissue date), corrected here to the album's true 2004-09-01 release date.
+  file. Current cases: Bark Psychosis's "Codename: Dustsucker" - Spotify lists 2005-04-19 (a
+  later/wider reissue date), corrected here to the album's true 2004-09-01 release date; Natural Snow
+  Buildings' "The Winter Ray" - Spotify lists 2024-06-04 (a streaming-upload date, decades off),
+  corrected to "2004-12" - month-only precision (no day), since the exact release day isn't known.
+  `formatReleaseDate`/`releaseYear` (`releaseEra.ts`) both already handle a `"YYYY-MM"` value with no
+  day (same lower-precision convention Spotify's own catalog uses for some releases), so this needed
+  no further code changes - "Dec 2004" renders correctly and it still buckets into the "2000s" decade.
 
 ## Data layout
 

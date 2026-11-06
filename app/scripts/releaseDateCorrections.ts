@@ -17,13 +17,26 @@
  * DISTINCT_RECORDING_ISRCS, not a general reconciliation against some other
  * source of truth.
  *
- * Current case: Bark Psychosis's "Codename: Dustsucker" - Spotify's catalog
- * lists 2005-04-19 (its later/wider reissue date), but the album actually
- * released 2004-09-01.
+ * Current cases:
+ * - Bark Psychosis's "Codename: Dustsucker" - Spotify's catalog lists
+ *   2005-04-19 (its later/wider reissue date), but the album actually
+ *   released 2004-09-01.
+ * - Natural Snow Buildings' "The Winter Ray" - Spotify's catalog lists
+ *   2024-06-04 (a streaming-upload date, decades off), but the album
+ *   actually released around December 2004. The exact day isn't known, so
+ *   this uses month-only precision ("YYYY-MM", no day) - the same lower-
+ *   precision format Spotify's own catalog already uses for some
+ *   less-precisely-known releases (see formatReleaseDate in releaseEra.ts,
+ *   which already handles this). Keyed on "NSB Archive" (the raw credited
+ *   spelling in the CSV, matching this function's own doc comment below
+ *   about keying pre-attribution-resolution) rather than the canonical
+ *   "Natural Snow Buildings" SPOTIFY_MISSPELLINGS resolves it to.
  */
 const RELEASE_DATE_CORRECTIONS: Record<string, string> = {
   "Bark Psychosis\u0000Codename: Dustsucker": "2004-09-01",
-  // Add more here as "artist\u0000album" -> "YYYY-MM-DD", e.g.:
+  "NSB Archive\u0000The Winter Ray": "2004-12",
+  // Add more here as "artist\u0000album" -> "YYYY-MM-DD" (or "YYYY-MM" when
+  // only the month is known), e.g.:
   // "Some Artist\u0000Some Album": "1999-01-01",
 };
 
