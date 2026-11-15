@@ -112,6 +112,7 @@ export const GROUP_MEMBERS: Record<string, string[]> = {
   "Mobb Deep": ["Prodigy", "Havoc"],
   Outkast: ["Big Boi", "André 3000"],
   "Smif-N-Wessun": ["Tek", "Steele"],
+  "KIDS SEE GHOSTS": ["Kanye West", "Kid Cudi"],
   // Add more groups here as they show up.
 };
 

@@ -882,8 +882,8 @@ There is no test runner configured yet.
   and E L U C I D individually. Current entries in `GROUP_MEMBERS` (`artistAttribution.ts`): Armand
   Hammer, Run The Jewels, Bad Meets Evil, The Roots (only its MC Black Thought — it's had a large,
   shifting lineup over the years, unlike the clean duos), Clipse, Black Star, Gang Starr, Mobb Deep,
-  Outkast, Smif-N-Wessun. This mapping is not in the CSVs and needs manual upkeep as new
-  groups/duos show up.
+  Outkast, Smif-N-Wessun, KIDS SEE GHOSTS (Kanye West and Kid Cudi's duo project). This mapping is not
+  in the CSVs and needs manual upkeep as new groups/duos show up.
 - **"Unite similar artists/groups" toggle** (opt-in, runtime, default ON — `uniteRelatedProjects`
   option in `src/lib/stats.ts`, table in `src/lib/relatedProjects.ts`): for cases that are a reasonable
   judgment call rather than a certainty — a different PROJECT name for the same person (not just a
