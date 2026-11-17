@@ -2,6 +2,7 @@ import rawData from "./data/data.json";
 import type { Dataset } from "./data/types";
 import { Layout } from "./components/Layout";
 import { Leaderboard } from "./components/Leaderboard";
+import { AllSongs } from "./components/AllSongs";
 import { Timeline } from "./components/Timeline";
 import { Replay } from "./components/Replay";
 import { Shared } from "./components/Shared";
@@ -24,6 +25,7 @@ const dataset = rawData as Dataset;
 // harmless no-ops there rather than hiding them per-mode.
 type View =
   | "leaderboard"
+  | "allSongs"
   | "timeline"
   | "replay"
   | "shared"
@@ -32,6 +34,7 @@ type View =
   | "guess";
 const VALID_VIEWS: View[] = [
   "leaderboard",
+  "allSongs",
   "timeline",
   "replay",
   "shared",
@@ -110,6 +113,9 @@ function App() {
 
       {activeView === "leaderboard" && (
         <Leaderboard dataset={dataset} person={activePerson} scoringOptions={scoringOptions} />
+      )}
+      {activeView === "allSongs" && (
+        <AllSongs dataset={dataset} person={activePerson} scoringOptions={scoringOptions} />
       )}
       {activeView === "timeline" && (
         <Timeline dataset={dataset} person={activePerson} scoringOptions={scoringOptions} />

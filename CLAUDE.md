@@ -533,6 +533,34 @@ There is no test runner configured yet.
   unmounts out from under the click. Not persisted (`useState`, not `usePersistedState`) - unlike
   every other filter/toggle in this component, a search query is a momentary "find this one thing
   right now" action, not a standing preference worth surviving a refresh.
+- **`app/src/components/AllSongs.tsx`** — a 7th tab, "All Songs": a plain, person-scoped "every song
+  this person has ever picked" list, added because Leaderboard's own per-artist drill-down (see
+  above) only ever shows one artist's songs at a time, and the project owner wanted the equivalent
+  view for a person's ENTIRE history at once, in its own tab, rather than nested under a bar-chart
+  row. Reuses `Leaderboard.module.css`'s `songHeaderRow`/`songRow` grid styling directly (same
+  precedent `Shared.tsx`'s own drill-down already set for borrowing that grid rather than
+  duplicating it) and the exact same column set/sort behavior (Date/#/Song/Album/Artist(s)/
+  Released/Length, click a header to sort, click again to flip direction, `firstMonth ?? month` for
+  the Date column/sort key under "include duplicates off" - identical conventions to Leaderboard's
+  drill-down, not reinvented here). Built straight on `allTracks(dataset, person, scoringOptions)` -
+  there's no artist/genre/rank filter on this tab at all, so there was no need for
+  `tracksForArtist`-style filtering; it wants literally every track for the person. Scoped to the
+  globally selected person (same `Layout` person-switcher tabs every other per-person view already
+  uses), not a new person picker of its own.
+  **This tab's search box genuinely FILTERS the row list** (title/album/any credited artist,
+  case-insensitive), unlike Leaderboard's own jump-to search (see above) - this was a deliberate,
+  explicit distinction the project owner drew after seeing Leaderboard's jump-to behavior: "should be
+  a separate tab, with a search, and the one that actually filters this time." Matches Shared's own
+  "The songs" search box behavior/empty-state text ("No matches.") rather than Leaderboard's
+  autocomplete-dropdown-and-scroll pattern. Paginated the same way Shared's song list is
+  (`PAGE_SIZE = 100`/"Show more", not Leaderboard's smaller `PAGE_SIZE = 20` - these are plain song
+  rows, not artist bar-chart rows, so a bigger page reads fine) with the limit resetting whenever the
+  filtered set changes (search query, person switch, or the "include duplicates" toggle) - same
+  reasoning as every other paginated list's own reset effect in this app. `scoringOptions` is passed
+  through in full (not just `includeDuplicates`) for consistency with every other view, even though
+  unite/producers/duos are pure no-ops here - this list displays `creditedArtists` (the literal
+  credit, like every other song list in the app), never `scoringArtists`, and has no artist/genre
+  filter of its own for those three toggles to affect.
 - **`app/src/components/ModeSwitch.tsx`** — the pill-shaped "Artists / Genres" (or similar) mode
   switch, originally built standalone inside `Compare.tsx` and extracted into its own small generic
   component (`<T extends string>`, a `value`/`options`/`onChange` triplet plus an `aria-label`) once
