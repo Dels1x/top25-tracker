@@ -504,6 +504,35 @@ There is no test runner configured yet.
   (`allAlbums.slice(0, DEFAULT_SHOWN)`, same as artist mode's own default) rather than "show everything"
   - a hundreds-strong legend would be unusable otherwise. Compare didn't need any divergence here since
   its picker is already a search box over all names regardless of mode, not a fixed legend list.
+  **Leaderboard itself later gained a "jump to" search** (`query`/`suggestions`/`highlighted` state
+  plus a `rowRefs` map in `Leaderboard.tsx`, placed right below the `GenreFilter` panel and above the
+  row list) - deliberately NOT a filter the way Shared's own song-list search box is. An earlier
+  version of this feature DID filter the row list down to matches, the same role Shared's search box
+  plays - the project owner explicitly rejected that after seeing it ("the search is bad and not how
+  i envisioned it... it should just be a way[s] of quickly going to that artist in unfiltered
+  leaderboard"). What ships instead: typing surfaces up to 8 case-insensitive name matches (against
+  the row NAME - artist/genre/era/duration-bucket/album, whichever the active mode's rows are, in
+  their existing rank order, not a separate relevance sort) in an autocomplete dropdown
+  (`.suggestions`/`.suggestion`), and picking one (`jumpTo`) scrolls the UNFILTERED leaderboard to
+  that row's existing position and briefly flashes it (`.itemHighlighted`, a 1.6s `background`
+  animation keyed off `--series-1`) - it deliberately does NOT open that row's song-list panel
+  (confirmed directly: scroll + highlight only, same as a browser's "find in page" landing on a
+  match, not the same as clicking the row yourself). If the matched row sits beyond the current "Show
+  more" page in a paginated mode (artists/albums), `limit` is raised just enough to reveal it first,
+  rounded up to the next `PAGE_SIZE` boundary so it still lines up with where a manual "Show more"
+  click would have landed; `requestAnimationFrame` defers the actual scroll/highlight by one frame so
+  the just-raised `limit` has already re-rendered the row into existence before `rowRefs` is
+  consulted. The row list, bar widths/`max`, per-mode header counts, pagination, and the
+  expanded-row-still-present check all stay against the plain unfiltered `totals` - this search never
+  touches what's rendered in the main list AT ALL, only what's offered in the dropdown and where the
+  page scrolls to. `query` is NOT in the `setLimit(PAGE_SIZE)` reset effect's dependency list, on
+  purpose - typing in a jump-to search must never reset how far "Show more" has already paged, unlike
+  every genuine filter/toggle already in that list. `suggestionsOpen` closes on blur, but on a
+  120ms-deferred `setTimeout` rather than immediately - a suggestion button's own `onMouseDown`
+  (`e.preventDefault()` so the input never loses focus firing it) needs to run before the dropdown
+  unmounts out from under the click. Not persisted (`useState`, not `usePersistedState`) - unlike
+  every other filter/toggle in this component, a search query is a momentary "find this one thing
+  right now" action, not a standing preference worth surviving a refresh.
 - **`app/src/components/ModeSwitch.tsx`** — the pill-shaped "Artists / Genres" (or similar) mode
   switch, originally built standalone inside `Compare.tsx` and extracted into its own small generic
   component (`<T extends string>`, a `value`/`options`/`onChange` triplet plus an `aria-label`) once

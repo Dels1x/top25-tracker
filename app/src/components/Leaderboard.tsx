@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Dataset } from "../data/types";
 import {
@@ -104,6 +104,26 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
   const [mode, setMode] = usePersistedState<Mode>("top25tracker:leaderboardMode", "artists");
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [expanded, setExpanded] = useState<string | null>(null);
+  // A "jump to" search, NOT a filter - typing suggests matching row names
+  // (artist/genre/era/duration-bucket/album, whichever the active mode's
+  // rows are) from an autocomplete dropdown; picking one scrolls the
+  // unfiltered leaderboard to that row's existing position (expanding
+  // `limit` first if it's beyond the current page) and briefly highlights
+  // it, rather than narrowing the list down to matches. This mirrors how a
+  // real "find in list" control behaves (like Ctrl+F jumping to a match)
+  // rather than Shared's own song-list search box, which genuinely filters
+  // - the project owner explicitly wanted "a way of quickly going to that
+  // artist," not a shorter list. Not persisted - a search is a momentary
+  // action, not a standing preference.
+  const [query, setQuery] = useState("");
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  // The row name to scroll-to-and-flash once its DOM node exists (set on
+  // picking a suggestion, cleared once the flash animation finishes) -
+  // separate from `expanded`, since picking a suggestion deliberately does
+  // NOT open that row's song-list panel (confirmed with the project owner:
+  // scroll + highlight only, no auto-expand).
+  const [highlighted, setHighlighted] = useState<string | null>(null);
+  const rowRefs = useRef(new Map<string, HTMLLIElement>());
   const [sortKey, setSortKey] = useState<SongSortKey>("date");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
 
@@ -253,6 +273,24 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
             .map((r) => ({ name: r.genre, total: r.total, count: r.count }))
         : artistRows.map((r) => ({ name: r.artist, total: r.total, count: r.count }));
 
+  // Up to 8 case-insensitive name matches, in the SAME order `totals`
+  // already has them (current rank order) - this is an autocomplete
+  // dropdown for jumping to a row, not a ranked search result list of its
+  // own, so there's no separate relevance sort to invent.
+  const SUGGESTION_LIMIT = 8;
+  const suggestions = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    const matches: typeof totals = [];
+    for (const t of totals) {
+      if (t.name.toLowerCase().includes(q)) {
+        matches.push(t);
+        if (matches.length >= SUGGESTION_LIMIT) break;
+      }
+    }
+    return matches;
+  }, [totals, query]);
+
   // Color must follow the ARTIST/GENRE/ERA, never its current rank in this
   // filtered view - so the color map is built from a STABLE ordering
   // (all-time totals for this person, under the identity toggles only -
@@ -341,7 +379,10 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
 
   // Changing the range, scoring options, genre filter, rank filter, or mode
   // changes which rows qualify/exist at all - start back at the top rather
-  // than keep a "show more" depth from a different filtered view.
+  // than keep a "show more" depth from a different filtered view. The
+  // search query is deliberately NOT in this list - it's a jump-to lookup,
+  // not a filter, so typing in it must never reset how far "Show more" has
+  // already paged.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(
     () => setLimit(PAGE_SIZE),
@@ -445,6 +486,36 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
 
   function toggle(name: string) {
     setExpanded((prev) => (prev === name ? null : name));
+  }
+
+  // Picking a suggestion from the jump-to dropdown: scrolls the unfiltered
+  // leaderboard to that row's existing position and briefly flashes it -
+  // deliberately does NOT open its song-list panel (confirmed with the
+  // project owner: scroll + highlight only, same as a browser's "find in
+  // page" landing on a match, not the same as clicking the row yourself).
+  // If the row sits beyond the current "Show more" page (paginated modes
+  // only - genre/era/duration modes show every row already), `limit` is
+  // raised just enough to reveal it first.
+  function jumpTo(name: string) {
+    setQuery("");
+    setSuggestionsOpen(false);
+    if (isPaginatedMode) {
+      const index = totals.findIndex((t) => t.name === name);
+      if (index >= 0 && index >= limit) {
+        // Round up to the next PAGE_SIZE boundary so this still lines up
+        // with where a manual "Show more" click would have landed.
+        setLimit(Math.ceil((index + 1) / PAGE_SIZE) * PAGE_SIZE);
+      }
+    }
+    // Deferred to the next frame so a just-raised `limit` has re-rendered
+    // the row into existence before this looks it up in rowRefs.
+    requestAnimationFrame(() => {
+      const el = rowRefs.current.get(name);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHighlighted(name);
+      setTimeout(() => setHighlighted((prev) => (prev === name ? null : prev)), 1600);
+    });
   }
 
   function handleSort(key: SongSortKey) {
@@ -619,13 +690,62 @@ export function Leaderboard({ dataset, person, scoringOptions }: LeaderboardProp
         onSelectNone={selectNoneGenres}
       />
 
+      <div className={styles.jumpSearch}>
+        <input
+          type="text"
+          className={styles.search}
+          placeholder={`Jump to ${noun === "artist" || noun === "album" ? "an" : "a"} ${noun}...`}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setSuggestionsOpen(true);
+          }}
+          onFocus={() => setSuggestionsOpen(true)}
+          onBlur={() => {
+            // Defer so a suggestion's own onMouseDown (jumpTo) still fires
+            // before the dropdown unmounts - a plain onBlur-triggered close
+            // would otherwise beat the click.
+            setTimeout(() => setSuggestionsOpen(false), 120);
+          }}
+        />
+        {suggestionsOpen && suggestions.length > 0 && (
+          <ul className={styles.suggestions}>
+            {suggestions.map((s) => (
+              <li key={s.name}>
+                <button
+                  type="button"
+                  className={styles.suggestion}
+                  onMouseDown={(e) => {
+                    // mousedown (not click) fires before the input's onBlur
+                    // closes the dropdown.
+                    e.preventDefault();
+                    jumpTo(s.name);
+                  }}
+                >
+                  {s.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       <ol className={styles.list}>
         {visible.map((row, index) => {
           const pct = (row.total / max) * 100;
           const color = colorMap.get(row.name) ?? "var(--text-muted)";
           const isOpen = activeExpanded === row.name;
           return (
-            <li key={row.name} className={styles.item}>
+            <li
+              key={row.name}
+              ref={(el) => {
+                if (el) rowRefs.current.set(row.name, el);
+                else rowRefs.current.delete(row.name);
+              }}
+              className={
+                highlighted === row.name ? `${styles.item} ${styles.itemHighlighted}` : styles.item
+              }
+            >
               <button
                 type="button"
                 className={styles.row}
