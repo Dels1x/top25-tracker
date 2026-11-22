@@ -416,7 +416,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "John michel": ["Jazz Rap", "Conscious Hip-Hop", "Chipmunk Soul"],
   "Aaron May": ["Jazz Rap"],
   "Boards of Canada": ["Ambient", "IDM", "Downtempo"],
-  "Joey Valence & Brae": ["Experimental Hip-Hop", "Boom Bap"],
+  "Joey Valence & Brae": ["East Coast Hip-Hop"],
   "Force Of Nature": ["Jazz Rap"],
   "Ghais Guevara": ["Abstract Hip-Hop", "Experimental Hip-Hop"],
   "Roland Johnson": ["Hip-Hop"],
