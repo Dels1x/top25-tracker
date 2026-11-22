@@ -118,6 +118,7 @@ export const GENRES = [
     "Instrumental Hip-Hop",
     "Stoner Metal",
     "Folk Rock",
+    "Industrial Hip-Hop",
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -217,6 +218,7 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Instrumental Hip-Hop": ["Hip-Hop"],
   "Stoner Metal": ["Metal"],
   "Folk Rock": ["Rock"],
+  "Industrial Hip-Hop": ["Alternative Hip-Hop"],
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -535,17 +537,17 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "B.o.B": ["Southern Hip-Hop"],
 
   // ===== Abstract / experimental hip-hop (no strong region) =====
-  "clipping.": ["Abstract Hip-Hop", "Experimental Hip-Hop"],
+  "clipping.": ["Abstract Hip-Hop", "Experimental Hip-Hop", "Industrial Hip-Hop"],
   "Daveed Diggs": ["Abstract Hip-Hop"],
   "Death Grips": ["Abstract Hip-Hop", "Experimental Hip-Hop"],
   BUSDRIVER: ["Abstract Hip-Hop", "Experimental Hip-Hop"],
   "Moka Only": ["Abstract Hip-Hop"],
-  "Serengeti": ["Abstract Hip-Hop"],
-  cropscropscrops: ["Abstract Hip-Hop"],
-  Vaygrnt: ["Abstract Hip-Hop"],
+  "Serengeti": ["Abstract Hip-Hop", "Experimental Hip-Hop"],
+  cropscropscrops: ["Abstract Hip-Hop", "Experimental Hip-Hop"],
+  Vaygrnt: ["Abstract Hip-Hop", "Experimental Hip-Hop"],
   "Niontay": ["Abstract Hip-Hop"],
-  "redveil": ["Experimental Hip-Hop"],
-  "McKinley Dixon": ["Abstract Hip-Hop", "Jazz Rap"],
+  "redveil": ["Jazz Rap", "East Coast Hip-Hop", "Conscious Hip-Hop"],
+  "McKinley Dixon": ["Conscious Hip-Hop", "Jazz Rap", "Southern Hip-Hop"],
   "Sampha": ["R&B/Soul", "Electronic"],
   "Quadeca": ["Indietronica"],
   "IDK": ["Hip-Hop", "Trap", "Alternative Trap"],
