@@ -115,7 +115,9 @@ export const GENRES = [
     "Drone",
     "Plugg",
     "Chopped and Screwed",
-    "Instrumental Hip-Hop"
+    "Instrumental Hip-Hop",
+    "Stoner Metal",
+    "Folk Rock",
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -213,6 +215,8 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Plugg": ["Trap"],
   "Chopped and Screwed": ["Hip-Hop"],
   "Instrumental Hip-Hop": ["Hip-Hop"],
+  "Stoner Metal": ["Metal"],
+  "Folk Rock": ["Rock"],
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -584,6 +588,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Capital Steez": ["East Coast Hip-Hop"],
   Oxxxymiron: ["Conscious Hip-Hop"],
   Rav: ["Abstract Hip-Hop", "Jazz Rap", "Lo-Fi Hip-Hop"], // "lo-fi hip-hop" per user, same bucket as Kill Bill: The Rapper
+  "Airospace": ["Abstract Hip-Hop", "Lo-Fi Hip-Hop", "Experimental Hip-Hop", "Cloud Rap"],
   Scuare: ["Abstract Hip-Hop", "Jazz Rap", "Lo-Fi Hip-Hop"], // same as Rav per user
   "Charles Hamilton": ["Chipmunk Soul", "Pop Rap"],
   "Jonathan Snipes": ["Abstract Hip-Hop"],
@@ -675,6 +680,7 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Robin Callaway": ["Shoegaze", "Post-Rock"],
   "Foals": ["Indie Rock"],
   "bôa": ["Alternative Rock", "Indie Rock"],
+  "Kyuss": ["Stoner Rock", "Stoner Metal"],
 
   // ===== Shoegaze / Slowcore / Post-Rock / Ambient family =====
   "The Microphones": ["Indie Folk", "Psychedelic Folk", "Slacker Rock", "Singer-Songwriter", "Avant-Folk", "Post-Rock"],
@@ -684,7 +690,9 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "my bloody valentine": ["Shoegaze", "Noise Pop"],
   "Beach House": ["Dream Pop", "Indie Pop", "Neo-Psychedelia"],
   Panchiko: ["Shoegaze", "Indie Rock"],
-  "Red House Painters": ["Slowcore", "Post-Rock"],
+  "Red House Painters": ["Slowcore"],
+  "Sun Kil Moon": ["Singer-Songwriter", "Folk Rock"],
+  "Tacoma Radar": ["Slowcore", "Dream Pop"],
   "Have A Nice Life": ["Shoegaze", "Post-Rock", "Post-Punk", "Gothic Rock"],
   Slint: ["Post-Rock", "Math Rock", "Post-Hardcore"],
   "Unwound": ["Post-Rock", "Indie Rock", "Post-Hardcore", "Noise Rock", "Emo"],
