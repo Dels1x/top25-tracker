@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Dataset } from "../data/types";
 import { allTracks, type StatsOptions } from "../lib/stats";
-import { formatReleaseDate } from "../lib/releaseEra";
+import { formatReleaseDate, yearBucketForTrack, decadeBucketForTrack } from "../lib/releaseEra";
 import { formatDuration } from "../lib/durationBuckets";
+import { useGenreFilter } from "../lib/useGenreFilter";
+import { useRankFilter } from "../lib/useRankFilter";
+import { usePersistedSetState } from "../lib/usePersistedState";
 import { AlbumArt } from "./AlbumArt";
+import { GenreFilter } from "./GenreFilter";
+import { RankFilter } from "./RankFilter";
+import { ArtistFilter } from "./ArtistFilter";
+import { EraFilter } from "./EraFilter";
 import leaderboardStyles from "./Leaderboard.module.css";
 import styles from "./AllSongs.module.css";
 
@@ -58,12 +65,65 @@ function formatMonth(month: string): string {
  * list - confirmed directly ("should be a separate tab, with a search, and
  * the one that actually filters this time"), matching Shared's own
  * "The songs" search box behavior rather than Leaderboard's jump-to.
+ *
+ * **Also grew a collapsible "Filters" panel** (closed by default, so the
+ * tab still reads as a plain list at a glance - the project owner's own
+ * call when asked, keeping it out of the way rather than always-visible
+ * like Leaderboard's equivalent controls) with Genre/Artist/Year/Decade/Rank
+ * filters, all of which are genuine FILTERS here (narrowing the row list),
+ * consistent with this tab's own search box and unlike Leaderboard's
+ * jump-to. Genre and Rank reuse Leaderboard's exact components
+ * (`GenreFilter`/`useGenreFilter`, `RankFilter`/`useRankFilter`) under their
+ * own `"allSongs:${person}"`/`"allSongs"` persistence keys (separate from
+ * Leaderboard's per-person ones, same "each tab's filter is independent"
+ * precedent Shared's own `"shared"` genre-filter key established) - both
+ * compose for free through `allTracks`'s existing `genreFilter`/`maxRank`
+ * handling, no new filtering logic needed, since `allTracks` already
+ * applies them per-artist/per-track before this component ever sees the
+ * tracks. Year/Decade is a new `EraFilter` (a flat checkbox list, no
+ * hierarchy - unlike genres, a release year/decade has no parent/child
+ * relationship) filtering by `yearBucketForTrack`/`decadeBucketForTrack`
+ * directly on each track. Implemented as two independent `EraFilter` panels
+ * (Years, Decades) shown together rather than a mode switch, since - unlike
+ * Leaderboard's Years/Decades mode (which replaces the ROW GROUPING
+ * entirely) - here both are just independent narrowing filters that can
+ * combine (e.g. "1990s" AND "1994" is redundant but harmless; "1990s" AND
+ * "2005" legitimately excludes everything, same as selecting contradictory
+ * genre checkboxes already can). Artist is a new
+ * `ArtistFilter` (search + checklist + removable chips, Compare's own
+ * picker pattern, since artist counts run into the hundreds here too) -
+ * unlike the genre filter's "empty Set = show nobody" convention, an empty
+ * artist selection here means "no artist filter" (show everyone), since
+ * this is a search-to-narrow picker that starts with nothing explicitly
+ * chosen rather than everything pre-selected; selectedArtists.size === 0 is
+ * checked explicitly below before filtering on it.
  */
 export function AllSongs({ dataset, person, scoringOptions }: AllSongsProps) {
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState<SongSortKey>("date");
   const [sortDir, setSortDir] = useState<SortDirection>("desc");
   const [limit, setLimit] = useState(PAGE_SIZE);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+
+  const {
+    selected: selectedGenres,
+    toggleNode: toggleGenre,
+    selectAll: selectAllGenres,
+    selectNone: selectNoneGenres,
+  } = useGenreFilter(`allSongs:${person}`);
+  const [maxRank, setMaxRank] = useRankFilter("allSongs");
+  const [selectedArtists, setSelectedArtists] = usePersistedSetState(
+    `top25tracker:allSongsArtists:${person}`,
+    () => []
+  );
+  const [selectedYears, setSelectedYears] = usePersistedSetState(
+    `top25tracker:allSongsYears:${person}`,
+    () => []
+  );
+  const [selectedDecades, setSelectedDecades] = usePersistedSetState(
+    `top25tracker:allSongsDecades:${person}`,
+    () => []
+  );
 
   // Passes the full scoringOptions through (not just includeDuplicates) for
   // consistency with every other view, even though unite/producers/duos are
@@ -72,12 +132,61 @@ export function AllSongs({ dataset, person, scoringOptions }: AllSongsProps) {
   // own for those options to affect either - same "visible but inert"
   // precedent every non-artist Leaderboard/Timeline mode already follows
   // rather than this component needing to special-case which options it
-  // forwards.
-  const tracks = useMemo(() => allTracks(dataset, person, scoringOptions), [dataset, person, scoringOptions]);
+  // forwards. genreFilter/maxRank DO need to be threaded through here
+  // though - they're real per-artist/per-track cuts `allTracks` already
+  // knows how to apply, same as Leaderboard's own combinedOptions.
+  const trackOptions: StatsOptions = useMemo(
+    () => ({
+      ...scoringOptions,
+      genreFilter: selectedGenres,
+      maxRank: maxRank === 25 ? undefined : maxRank,
+    }),
+    [scoringOptions, selectedGenres, maxRank]
+  );
+  const tracks = useMemo(() => allTracks(dataset, person, trackOptions), [dataset, person, trackOptions]);
+
+  // Every distinct credited artist this person has, with a song count - the
+  // ArtistFilter picker's option list, sorted by count descending so the
+  // most relevant names surface first without searching (same reasoning
+  // Compare's own combinedArtistTotals sort gives). Built from `tracks`
+  // itself (already genre/rank-filtered) rather than unfiltered data, so an
+  // artist with zero songs left under the current genre/rank filter simply
+  // doesn't appear as a checkable option.
+  const artistOptions = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const t of tracks) {
+      for (const a of t.creditedArtists) counts.set(a, (counts.get(a) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  }, [tracks]);
+
+  // Every distinct release year/decade this person's (genre/rank-filtered)
+  // tracks actually have, sorted ascending (years numerically, decades by
+  // their own numeric prefix) - the EraFilter panels' own bucket lists.
+  // "Unknown" (no catalogued release date) is included like every other
+  // era-bucketing view in the app already does for its own checkbox list.
+  const yearBuckets = useMemo(() => {
+    const set = new Set(tracks.map((t) => yearBucketForTrack(t.releaseDate)));
+    return Array.from(set).sort((a, b) => {
+      if (a === "Unknown") return 1;
+      if (b === "Unknown") return -1;
+      return Number(a) - Number(b);
+    });
+  }, [tracks]);
+  const decadeBuckets = useMemo(() => {
+    const set = new Set(tracks.map((t) => decadeBucketForTrack(t.releaseDate)));
+    return Array.from(set).sort((a, b) => {
+      if (a === "Unknown") return 1;
+      if (b === "Unknown") return -1;
+      return Number(a.replace("s", "")) - Number(b.replace("s", ""));
+    });
+  }, [tracks]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const base = q
+    let base = q
       ? tracks.filter(
           (t) =>
             t.title.toLowerCase().includes(q) ||
@@ -85,6 +194,15 @@ export function AllSongs({ dataset, person, scoringOptions }: AllSongsProps) {
             t.creditedArtists.some((a) => a.toLowerCase().includes(q))
         )
       : tracks;
+    if (selectedArtists.size > 0) {
+      base = base.filter((t) => t.creditedArtists.some((a) => selectedArtists.has(a)));
+    }
+    if (selectedYears.size > 0) {
+      base = base.filter((t) => selectedYears.has(yearBucketForTrack(t.releaseDate)));
+    }
+    if (selectedDecades.size > 0) {
+      base = base.filter((t) => selectedDecades.has(decadeBucketForTrack(t.releaseDate)));
+    }
     return [...base].sort((a, b) => {
       let cmp: number;
       switch (sortKey) {
@@ -127,7 +245,7 @@ export function AllSongs({ dataset, person, scoringOptions }: AllSongsProps) {
       }
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [tracks, query, sortKey, sortDir]);
+  }, [tracks, query, sortKey, sortDir, selectedArtists, selectedYears, selectedDecades]);
 
   // A new search/person/dedup toggle changes the underlying set entirely -
   // an old "show more" depth from a different filtered list isn't
@@ -151,17 +269,104 @@ export function AllSongs({ dataset, person, scoringOptions }: AllSongsProps) {
     }
   }
 
+  function toggleArtist(name: string) {
+    setSelectedArtists((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
+  }
+
+  function toggleYear(bucket: string) {
+    setSelectedYears((prev) => {
+      const next = new Set(prev);
+      if (next.has(bucket)) next.delete(bucket);
+      else next.add(bucket);
+      return next;
+    });
+  }
+
+  function toggleDecade(bucket: string) {
+    setSelectedDecades((prev) => {
+      const next = new Set(prev);
+      if (next.has(bucket)) next.delete(bucket);
+      else next.add(bucket);
+      return next;
+    });
+  }
+
+  const activeFilterCount =
+    (selectedArtists.size > 0 ? 1 : 0) +
+    (selectedYears.size > 0 ? 1 : 0) +
+    (selectedDecades.size > 0 ? 1 : 0) +
+    (maxRank !== 25 ? 1 : 0);
+  // selectedGenres doesn't count toward this badge the same way - it's
+  // "everything selected" by default (no filter), not "nothing selected"
+  // like the other sets here, so its own "is this actually filtering
+  // anything" check is a size comparison against ALL_TOP_LEVEL rather than
+  // > 0; the genre filter's own panel already shows which boxes are
+  // unchecked, so this badge omitting it isn't a loss of information.
+
   return (
     <div className={leaderboardStyles.wrap}>
       <div className={leaderboardStyles.headRow}>
         <div>
           <h2 className={leaderboardStyles.heading}>All songs</h2>
           <p className={leaderboardStyles.sub}>
-            {tracks.length} songs
+            {filtered.length} of {tracks.length} songs
             {scoringOptions.includeDuplicates === false && " · repeat songs counted once"}
           </p>
         </div>
+        <button
+          type="button"
+          className={styles.filtersToggle}
+          onClick={() => setFiltersOpen((o) => !o)}
+          aria-expanded={filtersOpen}
+        >
+          Filters{activeFilterCount > 0 && ` (${activeFilterCount})`}
+        </button>
       </div>
+
+      {filtersOpen && (
+        <div className={styles.filtersPanel}>
+          <div className={leaderboardStyles.filterRow}>
+            <RankFilter value={maxRank} onChange={setMaxRank} />
+          </div>
+
+          <GenreFilter
+            selected={selectedGenres}
+            onToggle={toggleGenre}
+            onSelectAll={selectAllGenres}
+            onSelectNone={selectNoneGenres}
+          />
+
+          <ArtistFilter
+            options={artistOptions}
+            selected={selectedArtists}
+            onToggle={toggleArtist}
+            onClear={() => setSelectedArtists(new Set())}
+          />
+
+          <EraFilter
+            label="Filter by release year"
+            buckets={yearBuckets}
+            selected={selectedYears}
+            onToggle={toggleYear}
+            onSelectAll={() => setSelectedYears(new Set(yearBuckets))}
+            onSelectNone={() => setSelectedYears(new Set())}
+          />
+
+          <EraFilter
+            label="Filter by release decade"
+            buckets={decadeBuckets}
+            selected={selectedDecades}
+            onToggle={toggleDecade}
+            onSelectAll={() => setSelectedDecades(new Set(decadeBuckets))}
+            onSelectNone={() => setSelectedDecades(new Set())}
+          />
+        </div>
+      )}
 
       <input
         type="text"

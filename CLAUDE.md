@@ -542,11 +542,12 @@ There is no test runner configured yet.
   duplicating it) and the exact same column set/sort behavior (Date/#/Song/Album/Artist(s)/
   Released/Length, click a header to sort, click again to flip direction, `firstMonth ?? month` for
   the Date column/sort key under "include duplicates off" - identical conventions to Leaderboard's
-  drill-down, not reinvented here). Built straight on `allTracks(dataset, person, scoringOptions)` -
-  there's no artist/genre/rank filter on this tab at all, so there was no need for
-  `tracksForArtist`-style filtering; it wants literally every track for the person. Scoped to the
-  globally selected person (same `Layout` person-switcher tabs every other per-person view already
-  uses), not a new person picker of its own.
+  drill-down, not reinvented here). Built straight on `allTracks(dataset, person, trackOptions)` -
+  there's no artist to filter by at the `allTracks` call itself, so there was no need for
+  `tracksForArtist`-style filtering; it wants literally every track for the person, narrowed only by
+  whatever this tab's own filter panel (below) has selected. Scoped to the globally selected person
+  (same `Layout` person-switcher tabs every other per-person view already uses), not a new person
+  picker of its own.
   **This tab's search box genuinely FILTERS the row list** (title/album/any credited artist,
   case-insensitive), unlike Leaderboard's own jump-to search (see above) - this was a deliberate,
   explicit distinction the project owner drew after seeing Leaderboard's jump-to behavior: "should be
@@ -555,12 +556,44 @@ There is no test runner configured yet.
   autocomplete-dropdown-and-scroll pattern. Paginated the same way Shared's song list is
   (`PAGE_SIZE = 100`/"Show more", not Leaderboard's smaller `PAGE_SIZE = 20` - these are plain song
   rows, not artist bar-chart rows, so a bigger page reads fine) with the limit resetting whenever the
-  filtered set changes (search query, person switch, or the "include duplicates" toggle) - same
-  reasoning as every other paginated list's own reset effect in this app. `scoringOptions` is passed
-  through in full (not just `includeDuplicates`) for consistency with every other view, even though
-  unite/producers/duos are pure no-ops here - this list displays `creditedArtists` (the literal
-  credit, like every other song list in the app), never `scoringArtists`, and has no artist/genre
-  filter of its own for those three toggles to affect.
+  filtered set changes (search query, person switch, any filter-panel change, or the "include
+  duplicates" toggle) - same reasoning as every other paginated list's own reset effect in this app.
+  `scoringOptions` is passed through in full (not just `includeDuplicates`) for consistency with every
+  other view, even though unite/producers/duos are pure no-ops here - this list displays
+  `creditedArtists` (the literal credit, like every other song list in the app), never
+  `scoringArtists`, and has no per-artist identity concept of its own for those three toggles to
+  affect.
+  **Later grew a collapsible "Filters" panel** (closed by default, behind a "Filters" button in the
+  head row showing an active-filter count badge when anything beyond the default is set) with
+  Genre/Artist/Year/Decade/Rank filters - all genuine FILTERS that narrow the row list, consistent
+  with this tab's own search box, unlike Leaderboard's jump-to search. Genre and Rank reuse
+  Leaderboard's own components outright (`GenreFilter`/`useGenreFilter` under its own
+  `"allSongs:${person}"` persistence key, `RankFilter`/`useRankFilter` under `"allSongs"` - separate
+  from Leaderboard's per-person keys, same "each tab's filter is independent" precedent `Shared`'s own
+  `"shared"` genre-filter key established) and compose for free through `allTracks`'s existing
+  `genreFilter`/`maxRank` handling - `trackOptions` (the options object actually passed to
+  `allTracks`) is `{ ...scoringOptions, genreFilter: selectedGenres, maxRank }`, no new per-track
+  filtering logic needed since `allTracks` already applies both per-artist/per-track before this
+  component ever sees the tracks (same reasoning Leaderboard's own `combinedOptions` already
+  established). Year/Decade filtering is a new, small `EraFilter.tsx` component - a flat checkbox
+  list (unlike `GenreFilter`'s recursive tree, a release year/decade has no parent/child relationship
+  to nest) filtering directly on `yearBucketForTrack`/`decadeBucketForTrack` (`releaseEra.ts`) against
+  each track's own `releaseDate` - implemented as two independent panels (Years, Decades) rather than
+  a mode switch, since unlike Leaderboard's Years/Decades MODE (which replaces the row grouping
+  entirely), here both are just two independent narrowing filters that can combine freely. Artist
+  filtering is a new `ArtistFilter.tsx` component (search box + checklist + removable chips, reusing
+  `Compare.module.css`'s picker styling directly - Compare's own artist-picker pattern, since artist
+  counts run into the hundreds here too, same scale reasoning that pattern was built for) - **unlike
+  the genre filter's "empty Set = show nobody" convention, an empty artist selection here means "no
+  artist filter" (show everyone)**, since this is a search-to-narrow picker that naturally starts with
+  nothing explicitly chosen rather than everything pre-selected; `AllSongs.tsx` checks
+  `selectedArtists.size === 0` explicitly before applying it, and the Year/Decade `EraFilter`s follow
+  the same "empty = no filter" convention as the artist picker (not the genre filter's "default
+  everything selected" one), since both are the same kind of opt-in narrowing control. The artist
+  option list and year/decade bucket lists shown in their respective pickers are themselves derived
+  from `tracks` (i.e. already genre/rank-filtered) rather than the person's unfiltered history, so an
+  artist/year/decade with zero songs left under the current genre/rank filter simply isn't offered as
+  a checkable option.
 - **`app/src/components/ModeSwitch.tsx`** — the pill-shaped "Artists / Genres" (or similar) mode
   switch, originally built standalone inside `Compare.tsx` and extracted into its own small generic
   component (`<T extends string>`, a `value`/`options`/`onChange` triplet plus an `aria-label`) once
@@ -843,7 +876,37 @@ There is no test runner configured yet.
   reappear in their own song list either - but deliberately does NOT pass `genreFilter`, matching its
   pre-existing behavior of always showing an artist's full song list regardless of the genre
   checkboxes (genreFilter decides whether an artist qualifies at all, not which of their own songs to
-  hide once they're shown).
+  hide once they're shown). `AllSongs.tsx`'s own "Filters" panel reuses both `RankFilter`/
+  `useRankFilter` directly under an `"allSongs"` persistence key, separate from Leaderboard's
+  per-person one - see that component's own CLAUDE.md entry above for how it composes with its other
+  filters.
+- **`app/src/components/EraFilter.tsx`** — a small, flat checkbox-list filter for the All Songs tab's
+  release-year/decade filtering, deliberately NOT a reuse of `GenreFilter`'s recursive tree (a release
+  year/decade has no parent/child relationship to nest the way a genre subgenre does - "2016" isn't a
+  parent or child of any other year). Imports `GenreFilter.module.css` directly for its visual shell
+  (`.wrap`/`.headRow`/`.label`/`.bulkActions`/`.grid`/`.checkboxLabel`/`.checkbox`) rather than
+  duplicating that CSS - same "borrow the module instead of copying it" precedent `AllSongs.tsx`
+  itself already set for `Leaderboard.module.css`'s song-row grid. Takes a `buckets: string[]` prop
+  (the caller computes which years/decades actually appear in the current, already genre/rank-filtered
+  track list) plus `selected`/`onToggle`/`onSelectAll`/`onSelectNone`, mirroring `GenreFilter`'s prop
+  shape even though there's no cascade-to-descendants behavior needed here. `AllSongs.tsx` renders two
+  independent instances (one for years, one for decades) rather than a single mode-switched filter,
+  since both are simultaneously-applicable narrowing filters here, not two views of the same row
+  grouping the way Leaderboard's Years/Decades MODE is.
+- **`app/src/components/ArtistFilter.tsx`** — a searchable multi-select checklist (search box +
+  checkbox list + removable chips) for the All Songs tab's artist filter, reusing
+  `Compare.module.css`'s `.picker`/`.searchRow`/`.search`/`.toggleButton`/`.optionList`/
+  `.optionLabel`/`.checkbox`/`.optionName`/`.optionCount`/`.chips`/`.chip`/`.chipX` styles directly
+  rather than duplicating Compare's own artist-picker CSS - same scale reasoning Compare's picker was
+  built for (artist counts run into the hundreds, unlike genre's ~19 fixed checkboxes). Takes an
+  `options: Array<{ name, count }>` prop (sorted by count descending, same "most relevant first"
+  convention Compare's own `combinedArtistTotals` sort uses) plus `selected`/`onToggle`/`onClear`.
+  **Deliberately inverts the genre filter's "empty Set = show nobody" convention**: here an empty
+  `selected` Set means "no artist filter at all" (show everyone), since this is a search-to-narrow
+  picker that naturally starts with nothing checked, not a pre-populated "everything selected, uncheck
+  what you don't want" list the way `GenreFilter` is - `AllSongs.tsx` is the one that interprets
+  `selected.size === 0` as "don't filter" when building the options object it passes to `allTracks`,
+  this component itself has no opinion on that distinction, it just reports which names are checked.
 - **`app/src/lib/useWeightByRank.ts`** + the "Weight by placement" `ToggleCheckbox` next to
   `RankFilter` in `Leaderboard.tsx` — an opt-in (default OFF), per-person-persisted checkbox that
   switches the leaderboard from flat "1 point per song" counting to `rankPoints(rank)` (`stats.ts`): a
