@@ -1020,7 +1020,11 @@ There is no test runner configured yet.
   (her band's lead singer — this entry mainly matters for a track where she's credited as a featured
   artist outside Paramore, so that still rolls up into the same "Hayley Williams" total as her Paramore
   tracks); "Josh Homme" ⟵ Queens of the Stone Age + Kyuss (he founded/fronts QOTSA and was a guitarist
-  in Kyuss before that). When OFF, only the original per-project/per-credit names show, exactly like
+  in Kyuss before that); "Zach Hill" ⟵ Team Sleep + Death Grips (drummer in both, also one of Death
+  Grips' two core members) - the first case where one credited name ("Team Sleep") legitimately
+  belongs to two different linked entries at once (Chino Moreno's and Zach Hill's); a Team Sleep track
+  adds BOTH combined names, it isn't an either/or choice - `linkedArtistsFor` returns an array for
+  exactly this reason. When OFF, only the original per-project/per-credit names show, exactly like
   every other opt-in toggle defaulting to its "off" behavior.
   **This replaced an earlier "Unite similar artists/groups" toggle that MERGED/RENAMED** — flipping it
   on used to make a "Mount Eerie" track's `scoringArtists` read `["Phil Elverum"]` outright, which hid

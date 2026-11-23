@@ -39,6 +39,11 @@
  *   as her Paramore tracks.
  * - "Josh Homme": "Queens of the Stone Age", "Kyuss" - he founded/fronts
  *   Queens of the Stone Age and was a guitarist in Kyuss before that.
+ * - "Zach Hill": "Team Sleep", "Death Grips" - drummer in both (also one of
+ *   Death Grips' two core members) - this is the first case where a single
+ *   credited name ("Team Sleep") legitimately belongs to two different
+ *   linked entries at once (Chino Moreno's and Zach Hill's); a Team Sleep
+ *   track adds BOTH combined names, it isn't an either/or choice.
  */
 export const LINKED_ARTISTS: Record<string, string[]> = {
   "Phil Elverum": ["Mount Eerie", "The Microphones"],
@@ -46,6 +51,7 @@ export const LINKED_ARTISTS: Record<string, string[]> = {
   "Chino Moreno": ["Deftones", "Team Sleep"],
   "Hayley Williams": ["Paramore"],
   "Josh Homme": ["Queens of the Stone Age", "Kyuss"],
+  "Zach Hill": ["Team Sleep", "Death Grips"],
 };
 
 /**
