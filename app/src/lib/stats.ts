@@ -1,5 +1,5 @@
 import type { Dataset, MonthlyList, Track } from "../data/types";
-import { uniteRelatedProject } from "./relatedProjects";
+import { linkedArtistsFor } from "./relatedProjects";
 import { isKnownProducer } from "./knownProducers";
 import { genresForArtists } from "./artistGenres";
 import { isDistinctRecording } from "./trackDisambiguation";
@@ -98,15 +98,18 @@ export interface StatsOptions {
   startMonth?: string;
   endMonth?: string;
   /**
-   * When true (default false), credits for a project in RELATED_PROJECTS
-   * (src/lib/relatedProjects.ts) count toward its unified name instead of
-   * the project's own name - e.g. "Team Sleep" credits count as "Deftones".
-   * Unlike the build-time ARTIST_ALIASES/SPOTIFY_MISSPELLINGS tables baked
-   * into scoringArtists, this is a judgment call the viewer opts into via
-   * the "unite similar artists/groups" checkbox, not a certainty applied
-   * unconditionally.
+   * When true (default false), a track credited to a project in
+   * LINKED_ARTISTS (src/lib/relatedProjects.ts) also credits that project's
+   * linked person name, IN ADDITION TO the project's own name - e.g. a
+   * "Mount Eerie" track keeps crediting "Mount Eerie" and also credits "Phil
+   * Elverum". Unlike the build-time ARTIST_ALIASES/SPOTIFY_MISSPELLINGS
+   * tables baked into scoringArtists (which replace a name outright), this
+   * ADDS an extra scoringArtist rather than replacing anything - so turning
+   * it on can only ever grow a track's scoringArtists list, never shrink or
+   * rename it. A judgment call the viewer opts into via the "Show linked
+   * artists" checkbox, not a certainty applied unconditionally.
    */
-  uniteRelatedProjects?: boolean;
+  showLinkedArtists?: boolean;
   /**
    * When false (default - "show producers" checkbox OFF), credited names in
    * KNOWN_PRODUCERS (src/lib/knownProducers.ts) are dropped from
@@ -314,8 +317,12 @@ export function allTracks(
     for (const track of list.tracks) {
       if (options?.maxRank !== undefined && track.rank > options.maxRank) continue;
       let scoringArtists = track.scoringArtists;
-      if (options?.uniteRelatedProjects) {
-        scoringArtists = Array.from(new Set(scoringArtists.map(uniteRelatedProject)));
+      if (options?.showLinkedArtists) {
+        const withLinks = new Set(scoringArtists);
+        for (const a of scoringArtists) {
+          for (const linked of linkedArtistsFor(a)) withLinks.add(linked);
+        }
+        scoringArtists = Array.from(withLinks);
       }
       if (!options?.showProducers) {
         scoringArtists = scoringArtists.filter((a) => !isKnownProducer(a));
@@ -1408,14 +1415,13 @@ export function songsByPresence(
   presence: Map<string, PresenceRequirement>,
   options?: StatsOptions
 ): SharedSong[] {
-  // scoringArtists is resolved the same way allTracks does (unite related
-  // projects / drop known producers / drop group names if those options are
-  // on), so the "Unite similar artists/groups", "Show producers", and "Show
-  // duos" checkboxes affect who gets credit on a song exactly like they
-  // affect the regular per-person Leaderboard. This never changes WHICH
-  // songs qualify though - that's still keyed by trackKey (title + raw
-  // credited artists), identical to how includeDuplicates only affects
-  // counting, not identity.
+  // scoringArtists is resolved the same way allTracks does (add linked
+  // artists / drop known producers / drop group names if those options are
+  // on), so the "Show linked artists", "Show producers", and "Show duos"
+  // checkboxes affect who gets credit on a song exactly like they affect the
+  // regular per-person Leaderboard. This never changes WHICH songs qualify
+  // though - that's still keyed by trackKey (title + raw credited artists),
+  // identical to how includeDuplicates only affects counting, not identity.
   const groupNames = options?.showDuos ? null : new Set(dataset.groupNames);
 
   const byKey = new Map<string, SharedSong>();
@@ -1427,8 +1433,12 @@ export function songsByPresence(
       let entry = byKey.get(key);
       if (!entry) {
         let scoringArtists = track.scoringArtists;
-        if (options?.uniteRelatedProjects) {
-          scoringArtists = Array.from(new Set(scoringArtists.map(uniteRelatedProject)));
+        if (options?.showLinkedArtists) {
+          const withLinks = new Set(scoringArtists);
+          for (const a of scoringArtists) {
+            for (const linked of linkedArtistsFor(a)) withLinks.add(linked);
+          }
+          scoringArtists = Array.from(withLinks);
         }
         if (!options?.showProducers) {
           scoringArtists = scoringArtists.filter((a) => !isKnownProducer(a));

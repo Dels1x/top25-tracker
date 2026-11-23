@@ -37,9 +37,11 @@ There is no test runner configured yet.
   aliases, then group expansion — so a group whose listed members are themselves aliased or
   misspelled still collapses to the right canonical person. See the scoring rules below for what each
   table is for and the current entries.
-- **`app/src/lib/relatedProjects.ts`** — a separate, OPT-IN `RELATED_PROJECTS` table applied at
-  RUNTIME (not baked into data.json) behind the "unite similar artists/groups" checkbox, for merges
-  that are a reasonable judgment call rather than a certainty - see the scoring rules below.
+- **`app/src/lib/relatedProjects.ts`** — a separate, OPT-IN `LINKED_ARTISTS` table applied at
+  RUNTIME (not baked into data.json) behind the "Show linked artists" checkbox, for a key person whose
+  own combined name should ADD to a track's scoring artists (alongside the original project/credit
+  name, never replacing it) when it's a reasonable judgment call rather than a certainty - see the
+  scoring rules below.
 - **`app/src/lib/knownProducers.ts`** — the `KNOWN_PRODUCERS` set behind the "show producers" checkbox
   (opt-in, default OFF), also applied at runtime - see the scoring rules below for why this can't be
   derived from the CSV and has to be a hand-maintained allowlist.
@@ -74,8 +76,8 @@ There is no test runner configured yet.
   expected, not a bug, and was verified to match Leaderboard's own behavior under the same filter
   before relying on it.
   `sharedSongs` also resolves each `SharedSong`'s `scoringArtists` the same way `allTracks` does -
-  honoring `uniteRelatedProjects`/`showProducers`/`showDuos` from `StatsOptions` - so the Shared tab's
-  "Unite similar artists/groups"/"Show producers"/"Show duos" checkboxes (same `scoringOptions` object
+  honoring `showLinkedArtists`/`showProducers`/`showDuos` from `StatsOptions` - so the Shared tab's
+  "Show linked artists"/"Show producers"/"Show duos" checkboxes (same `scoringOptions` object
   `App.tsx` builds for every other view) change who gets credit on a shared song exactly like they
   change the regular per-person Leaderboard: toggling "Show duos" on adds a group's own name (e.g.
   "Armand Hammer") back onto a shared song's `scoringArtists` alongside its already-expanded members,
@@ -100,7 +102,7 @@ There is no test runner configured yet.
   `genreTotals`/`genreMonthCounts`/`tracksForGenre`/`cumulativeGenreSeries` mirror the artist-scoped
   functions but bucket by genre instead (see `artistGenres.ts`) - they only honor
   `includeDuplicates`/`startMonth`/`endMonth` from `StatsOptions`; the artist-identity options
-  (`uniteRelatedProjects`/`showProducers`/`showDuos`) don't apply to genres and the genre UI components
+  (`showLinkedArtists`/`showProducers`/`showDuos`) don't apply to genres and the genre UI components
   don't pass them through. Genre classification runs on each track's (already attribution-resolved)
   `scoringArtists`, not on raw `creditedArtists` - so a bare group credit still classifies correctly via
   the group's own `ARTIST_GENRES` entry even before member-expansion is considered.
@@ -173,7 +175,7 @@ There is no test runner configured yet.
   apart by color" property the whole point of color-coding by entity is for. Fixed by giving each of
   those 5 components a separate `stableOrder` memo - the same kind of all-time totals call
   (`artistTotals`/`genreTotals`/`sharedSongArtistTotals`) but with ONLY the identity-affecting options
-  (`scoringOptions`, i.e. unite/producers/duos/includeDuplicates - never `rangeOptions`/`genreFilter`/
+  (`scoringOptions`, i.e. linked/producers/duos/includeDuplicates - never `rangeOptions`/`genreFilter`/
   `maxRank`/`weightByRank`) - and feeding `buildArtistColorMap` that instead of the view's own
   (possibly narrower, possibly differently-ordered) `totals`. An all-time, identity-toggles-only list
   is always a superset of any filtered view's artists/genres, so `colorMap.get()` never misses - a
@@ -225,7 +227,7 @@ There is no test runner configured yet.
   `genreFilter` passed through, same precedent as every other `stableOrder` in this file (see the
   `colors.ts` entry above) - toggling a genre checkbox must never reshuffle which color a line gets.
   **The 3 artist-identity toggles
-  (unite/producers/duos) are NOT hidden in genre mode** in either component - this follows `Compare`'s
+  (linked/producers/duos) are NOT hidden in genre mode** in either component - this follows `Compare`'s
   own precedent (see below) of leaving them visible as harmless no-ops rather than something the
   component needs to hide per-mode; `App.tsx`'s old `GENRE_VIEWS` list (which hid them for the two
   standalone genre tabs) is gone entirely along with those tabs. Both components build TWO
@@ -236,7 +238,7 @@ There is no test runner configured yet.
   (songs that have appeared in every person's top 25 at some point — see `sharedSongs` in `stats.ts`;
   unlike every other view this one is NOT scoped to the active person, and (like every view besides
   Leaderboard) has no `StatsRow` either — but it DOES still receive `scoringOptions` and show the
-  `includeDuplicates`/`uniteRelatedProjects`/`showProducers`/`showDuos` checkboxes (`Shared` is not in
+  `includeDuplicates`/`showLinkedArtists`/`showProducers`/`showDuos` checkboxes (`Shared` is not in
   `NO_TOGGLES_VIEWS`, only `Replay` is, since Replay always shows literal `creditedArtists` and never
   looks at `scoringArtists` at all) — the three identity checkboxes change who gets credit on a shared
   song exactly like they change the regular per-person Leaderboard (see the `sharedSongs` note above);
@@ -343,7 +345,7 @@ There is no test runner configured yet.
   and see each person's cumulative count for that selection on one chart, one line per PERSON rather
   than per artist/genre/era, to answer "who got into this earlier / more"; also spans every person at
   once like `Shared` does, so no `StatsRow` either; in "artists" mode the artist-identity toggles
-  (unite/producers/duos) still apply since you're picking artist names, so `App.tsx` doesn't hide
+  (linked/producers/duos) still apply since you're picking artist names, so `App.tsx` doesn't hide
   them for Compare either - those toggles simply have no effect once the component switches into
   "genres"/"years"/"decades" mode internally, same as `includeDuplicates` being the only option
   genre/era-scoped stats functions ever look at, and the same precedent Leaderboard/Timeline's own
@@ -559,7 +561,7 @@ There is no test runner configured yet.
   filtered set changes (search query, person switch, any filter-panel change, or the "include
   duplicates" toggle) - same reasoning as every other paginated list's own reset effect in this app.
   `scoringOptions` is passed through in full (not just `includeDuplicates`) for consistency with every
-  other view, even though unite/producers/duos are pure no-ops here - this list displays
+  other view, even though linked/producers/duos are pure no-ops here - this list displays
   `creditedArtists` (the literal credit, like every other song list in the app), never
   `scoringArtists`, and has no per-artist identity concept of its own for those three toggles to
   affect.
@@ -839,7 +841,7 @@ There is no test runner configured yet.
   appears prompting "Restart match" once anything about the setup has actually changed, tracked by a
   plain (unpersisted) `configChanged` flag that resets on an actual restart. This view is in
   `NO_TOGGLES_VIEWS` (`App.tsx`) alongside Replay - it plays raw individual `Track`s head-to-head,
-  never aggregates by `scoringArtists`, so the unite/producers/duos/include-duplicates toggles have
+  never aggregates by `scoringArtists`, so the linked/producers/duos/include-duplicates toggles have
   nothing to affect here either.
   **Also has its own time-range picker**, reusing the same `useMonthRange`/`RangePicker` control
   Leaderboard/Timeline/Compare already use, under its own `"fight"` persistence key. Since Side A/B
@@ -951,7 +953,7 @@ There is no test runner configured yet.
   in `src/index.css`, following the project's dataviz skill palette for both light and dark mode.
 - **`app/src/lib/usePersistedState.ts`** — `usePersistedState`/`usePersistedSetState` wrap `useState`
   with a `localStorage` round-trip (no cookies/server — this is purely a per-browser UI convenience).
-  Used for the active person, active view, the "include duplicates", "unite similar artists/groups",
+  Used for the active person, active view, the "include duplicates", "Show linked artists",
   "show producers", and "show duos" checkboxes, and the Timeline's selected-artist set. The Timeline's
   selection is persisted **per
   person** (key includes the person name) since each person has a different artist pool. A stored
@@ -988,12 +990,12 @@ There is no test runner configured yet.
   under (added proactively — doesn't appear in the data yet, but will merge correctly whenever it
   does); "By Storm" is a rename/relaunch of the same group now credited as "Injury Reserve" (always
   co-credited together on every track, never shows up alone — an unambiguous rename, not a distinct
-  project, so it's here rather than in the opt-in `RELATED_PROJECTS` table). If a track credits two
+  project, so it's here rather than in the opt-in `LINKED_ARTISTS` table). If a track credits two
   aliases of the same person together (this happens — e.g. a track
   crediting both "Milo" and "R.A.P. Ferreira"), that's still one point for that person, not two. This
   table is reserved for an unambiguous rename of the SAME stage identity — a softer case (a genuinely
   different PROJECT name for the same person, or different entities with overlapping membership) is a
-  judgment call instead and belongs in the opt-in `RELATED_PROJECTS` table described below, not here.
+  judgment call instead and belongs in the opt-in `LINKED_ARTISTS` table described below, not here.
 - **Group/duo attribution** (always on, build-time): if a track is credited to a duo/group whose
   individual members also have independent solo careers, and the track credit does NOT separately
   name those members, each member individually gets a full point in addition to (or standing in for)
@@ -1004,17 +1006,36 @@ There is no test runner configured yet.
   shifting lineup over the years, unlike the clean duos), Clipse, Black Star, Gang Starr, Mobb Deep,
   Outkast, Smif-N-Wessun, KIDS SEE GHOSTS (Kanye West and Kid Cudi's duo project). This mapping is not
   in the CSVs and needs manual upkeep as new groups/duos show up.
-- **"Unite similar artists/groups" toggle** (opt-in, runtime, default ON — `uniteRelatedProjects`
-  option in `src/lib/stats.ts`, table in `src/lib/relatedProjects.ts`): for cases that are a reasonable
-  judgment call rather than a certainty — a different PROJECT name for the same person (not just a
-  renamed stage identity), or different bands/entities with meaningfully overlapping membership — this
-  merges them into one name ONLY when the viewer opts in, unlike the always-on tables above. Current
-  cases: "Mount Eerie" and "The Microphones" both unify under "Phil Elverum" (his main recording
-  project was renamed partway through his career — the project names aren't interchangeable, but the
-  person is); "Team Sleep" unifies under "Deftones" (a different band, but enough shared
-  membership/frontperson overlap — Chino Moreno — that uniting them is a reasonable view of
-  "Deftones-adjacent" output). When OFF, every name in `RELATED_PROJECTS` keeps its own separate count
-  instead.
+- **"Show linked artists" toggle** (opt-in, runtime, default ON — `showLinkedArtists` option in
+  `src/lib/stats.ts`, table in `src/lib/relatedProjects.ts` — **replaced an earlier "Unite similar
+  artists/groups" toggle**, see below for why): for cases that are a reasonable judgment call rather
+  than a certainty — a different PROJECT/credit name for the same key person, not just a renamed stage
+  identity (that's `ARTIST_ALIASES`, always on) — this ADDS that person's own combined name as an
+  extra `scoringArtist` on top of whichever of their projects/credits is actually on the track, when
+  the viewer opts in. Current cases (`LINKED_ARTISTS` in `relatedProjects.ts`): "Phil Elverum" ⟵
+  Mount Eerie + The Microphones (his main recording project was renamed partway through his career);
+  "Mark Kozelek" ⟵ Red House Painters + Sun Kil Moon (same singer-songwriter/frontperson, two
+  successive full-band project names); "Chino Moreno" ⟵ Deftones + Team Sleep (Team Sleep is his side
+  project, sharing some Deftones members and his own frontperson role); "Hayley Williams" ⟵ Paramore
+  (her band's lead singer — this entry mainly matters for a track where she's credited as a featured
+  artist outside Paramore, so that still rolls up into the same "Hayley Williams" total as her Paramore
+  tracks); "Josh Homme" ⟵ Queens of the Stone Age + Kyuss (he founded/fronts QOTSA and was a guitarist
+  in Kyuss before that). When OFF, only the original per-project/per-credit names show, exactly like
+  every other opt-in toggle defaulting to its "off" behavior.
+  **This replaced an earlier "Unite similar artists/groups" toggle that MERGED/RENAMED** — flipping it
+  on used to make a "Mount Eerie" track's `scoringArtists` read `["Phil Elverum"]` outright, which hid
+  "Mount Eerie" and "The Microphones" as their own leaderboard rows entirely once the checkbox was on.
+  The project owner explicitly asked for the opposite behavior: both original project names should
+  always stay visible as their own rows, with the combined person showing up as an ADDITIONAL row
+  that's the sum of their linked projects/credits — not a replacement. `linkedArtistsFor(name)`
+  (`relatedProjects.ts`) is a reverse lookup (member/project name → the linked person name(s) it should
+  ALSO add) built once off `LINKED_ARTISTS`, and both `allTracks` and `songsByPresence` (`stats.ts`) now
+  union it into `scoringArtists` via a `Set` rather than mapping/replacing — so turning this toggle on
+  can only ever GROW a track's scoring-artist list, never shrink or rename it, unlike every other
+  identity option in this file. Verified directly against the real dataset: delsix's leaderboard with
+  the checkbox on shows "Mount Eerie" (21), "The Microphones" (20), AND "Phil Elverum" (41) as three
+  separate rows, where Phil Elverum's total is exactly the sum of the other two — confirming the
+  addition, not replacement, and that the combined row's own point total is correct.
 - **"Show producers" toggle** (opt-in, runtime, **default OFF** — `showProducers` option in
   `src/lib/stats.ts`, set in `src/lib/knownProducers.ts`): the Spotify/Exportify CSV schema has no
   dedicated producer column, so a producer only ever shows up because they happen to also be listed

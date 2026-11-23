@@ -151,7 +151,7 @@ export function Shared({ dataset, scoringOptions }: SharedProps) {
   // buttons (songsByPresence), but never with the identity toggles (that's
   // keyed by raw trackKey) - those only change WHO gets credited on a
   // qualifying song, resolved the same way allTracks does, honoring
-  // uniteRelatedProjects/showProducers/showDuos from the shared options row.
+  // showLinkedArtists/showProducers/showDuos from the shared options row.
   const songs = useMemo(
     () => songsByPresence(dataset, presenceMap, scoringOptions),
     [dataset, presenceMap, scoringOptions]

@@ -1,37 +1,73 @@
 /**
- * "Related project" unification - a softer, OPT-IN cousin of the always-on
+ * "Linked artist" identity - a softer, OPT-IN cousin of the always-on
  * identity rules baked into data.json at build time (misspelling correction,
  * alias merging, group->member expansion; see scripts/artistAttribution.ts).
  *
  * Those are certain: a misspelling is just wrong, a true alias is the exact
  * same legal artist. This table is a judgment call instead - two or more
- * credited names that are different projects/entities but share enough
- * creative lineage (overlapping members, a shared frontperson) that it can
- * be useful to view them as one for scoring, while other people might
- * reasonably want to see them counted separately. So this merge only applies
- * when the "unite similar artists/groups" checkbox is on (see
- * useRelatedProjects / StatsOptions.uniteRelatedProjects in stats.ts) -
- * unlike the build-time tables, which are never optional.
+ * credited names that are different projects/bands/credits but share the
+ * same key person, where it can be useful to see that person's combined
+ * output as one entry, while other people might reasonably want to keep
+ * seeing each project counted separately. So this only applies when the
+ * "Show linked artists" checkbox is on (see useLinkedArtists /
+ * StatsOptions.showLinkedArtists in stats.ts) - unlike the build-time
+ * tables, which are never optional.
+ *
+ * Unlike the old "unite similar artists/groups" mechanism this replaced,
+ * turning this on does NOT replace/merge the original credited names - it
+ * ADDS the linked person's name as an extra scoringArtist alongside
+ * whichever of their projects actually appears on the track. With the
+ * checkbox on, a Mount Eerie track keeps crediting "Mount Eerie" AND also
+ * credits "Phil Elverum"; a Deftones track still credits "Deftones" on its
+ * own (Phil Elverum/Chino Moreno aren't retroactively added to every track -
+ * only the ones by a project actually listed as one of their entries below).
+ * This means Leaderboard etc. can show both "Mount Eerie" and "The
+ * Microphones" as their own distinct rows AND show "Phil Elverum" as a
+ * combined entry totaling both - nothing is hidden, something is added.
  *
  * Current cases:
- * - "Mount Eerie" and "The Microphones" -> both collapse to "Phil Elverum",
- *   the person behind both - his main recording project was renamed
- *   partway through his career, so the project names themselves aren't
- *   interchangeable, but the person is. (Arguably closer to a true alias
- *   than the Team Sleep case below, but since the project NAME genuinely
- *   changed rather than just the artist's stage name, it's kept here as
- *   opt-in rather than forced like R.A.P. Ferreira/Milo.)
- * - "Team Sleep" -> "Deftones": different bands, not the same legal entity,
- *   but Team Sleep shares enough members (and its frontperson, Chino
- *   Moreno) with Deftones that uniting them under "Deftones" is a reasonable
- *   view of "how much Deftones-adjacent music is in here".
+ * - "Phil Elverum": "Mount Eerie", "The Microphones" - his main recording
+ *   project was renamed partway through his career.
+ * - "Mark Kozelek": "Red House Painters", "Sun Kil Moon" - same
+ *   singer-songwriter and primary creative voice, two successive full-band
+ *   project names.
+ * - "Chino Moreno": "Deftones", "Team Sleep" - Team Sleep is Chino Moreno's
+ *   side project, sharing some Deftones members and his own frontperson role.
+ * - "Hayley Williams": "Paramore" - she's Paramore's lead singer; this entry
+ *   exists so a track where she's credited as a featured artist outside
+ *   Paramore still rolls up into the same combined "Hayley Williams" total
+ *   as her Paramore tracks.
+ * - "Josh Homme": "Queens of the Stone Age", "Kyuss" - he founded/fronts
+ *   Queens of the Stone Age and was a guitarist in Kyuss before that.
  */
-export const RELATED_PROJECTS: Record<string, string> = {
-  "Mount Eerie": "Phil Elverum",
-  "The Microphones": "Phil Elverum",
-  "Team Sleep": "Deftones",
+export const LINKED_ARTISTS: Record<string, string[]> = {
+  "Phil Elverum": ["Mount Eerie", "The Microphones"],
+  "Mark Kozelek": ["Red House Painters", "Sun Kil Moon"],
+  "Chino Moreno": ["Deftones", "Team Sleep"],
+  "Hayley Williams": ["Paramore"],
+  "Josh Homme": ["Queens of the Stone Age", "Kyuss"],
 };
 
-export function uniteRelatedProject(name: string): string {
-  return RELATED_PROJECTS[name] ?? name;
+/**
+ * Reverse lookup, built once: credited project/member name -> the linked
+ * person name(s) it should ALSO credit when the "Show linked artists"
+ * checkbox is on. A name can in principle belong to more than one linked
+ * entry (none do today), so this maps to an array rather than assuming a
+ * single owner.
+ */
+const LINKED_ARTISTS_BY_MEMBER: Map<string, string[]> = (() => {
+  const map = new Map<string, string[]>();
+  for (const [linkedName, members] of Object.entries(LINKED_ARTISTS)) {
+    for (const member of members) {
+      const existing = map.get(member);
+      if (existing) existing.push(linkedName);
+      else map.set(member, [linkedName]);
+    }
+  }
+  return map;
+})();
+
+/** The linked person name(s) this credited name should ALSO add, if any. */
+export function linkedArtistsFor(name: string): string[] {
+  return LINKED_ARTISTS_BY_MEMBER.get(name) ?? [];
 }

@@ -57,8 +57,8 @@ function App() {
     "top25tracker:includeDuplicates",
     false
   );
-  const [uniteRelatedProjects, setUniteRelatedProjects] = usePersistedState(
-    "top25tracker:uniteRelatedProjects",
+  const [showLinkedArtists, setShowLinkedArtists] = usePersistedState(
+    "top25tracker:showLinkedArtists",
     true
   );
   const [showProducers, setShowProducers] = usePersistedState(
@@ -74,7 +74,7 @@ function App() {
 
   const scoringOptions: StatsOptions = {
     includeDuplicates,
-    uniteRelatedProjects,
+    showLinkedArtists,
     showProducers,
     showDuos,
   };
@@ -98,9 +98,9 @@ function App() {
               Compare switch into genre mode internally - harmless no-ops
               there rather than something App.tsx needs to hide per-view. */}
           <ToggleCheckbox
-            checked={uniteRelatedProjects}
-            onChange={setUniteRelatedProjects}
-            label="Unite similar artists/groups"
+            checked={showLinkedArtists}
+            onChange={setShowLinkedArtists}
+            label="Show linked artists"
           />
           <ToggleCheckbox
             checked={showProducers}

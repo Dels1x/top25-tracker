@@ -68,9 +68,11 @@ export const SPOTIFY_MISSPELLINGS: Record<string, string> = {
  * A softer case - the same person's music released under a genuinely
  * different PROJECT name (Mount Eerie / The Microphones), or different
  * entities with overlapping membership (Team Sleep / Deftones) - is a
- * judgment call instead, and lives in the OPT-IN `RELATED_PROJECTS` table in
- * `src/lib/relatedProjects.ts`, applied at runtime behind the "unite similar
- * artists/groups" checkbox rather than forced here.
+ * judgment call instead, and lives in the OPT-IN `LINKED_ARTISTS` table in
+ * `src/lib/relatedProjects.ts`, applied at runtime behind the "Show linked
+ * artists" checkbox rather than forced here - and unlike this table, it ADDS
+ * the linked person's name alongside the original project credit rather than
+ * replacing it.
  */
 export const ARTIST_ALIASES: Record<string, string> = {
   Milo: "R.A.P. Ferreira",
