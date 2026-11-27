@@ -977,7 +977,9 @@ There is no test runner configured yet.
   handful of credits) → "The Alchemist"; "Laurie Bird" and "NSB Archive" → "Natural Snow Buildings"
   (Spotify mislabels this project under a member's name and under a separate catalog/archive entry —
   not a small typo like the others, but the same class of fix: credited wrong on Spotify's end, not a
-  real alternate identity). Add new ones here as they're spotted — there's no automatic way to detect
+  real alternate identity); "Sickboyrari" and "BLACK KRAY AKA SICKBOYRARI" (two differently malformed
+  spellings of the same artist — the second is the all-caps local-file credit on hryash's "GOTH LUV"
+  tracks) → "Black Kray". Add new ones here as they're spotted — there's no automatic way to detect
   a mislabeled artist name,
   so this is manual, same as the other tables here.
 - **Alias merging** (always on, build-time): if the same real person has released music under more
@@ -1137,7 +1139,13 @@ There is no test runner configured yet.
   file. Current cases: Bark Psychosis's "Codename: Dustsucker" - Spotify lists 2005-04-19 (a
   later/wider reissue date), corrected here to the album's true 2004-09-01 release date; Natural Snow
   Buildings' "The Winter Ray" - Spotify lists 2024-06-04 (a streaming-upload date, decades off),
-  corrected to "2004-12" - month-only precision (no day), since the exact release day isn't known.
+  corrected to "2004-12" - month-only precision (no day), since the exact release day isn't known;
+  Black Kray's "GOTH LUV" - the two `spotify:local:...` tracks on hryash's Nov 2026 list for this
+  album have no streaming match at all, so Spotify's catalog has no release date for them to even be
+  wrong about (`row["Release Date"]` is empty) - corrected to the album's true 2014-01-16 release
+  date, keyed on the raw local-file credit "BLACK KRAY AKA SICKBOYRARI" (not the canonical "Black
+  Kray" that credit resolves to via `SPOTIFY_MISSPELLINGS`), same pre-resolution keying convention as
+  the "NSB Archive" case.
   `formatReleaseDate`/`releaseYear` (`releaseEra.ts`) both already handle a `"YYYY-MM"` value with no
   day (same lower-precision convention Spotify's own catalog uses for some releases), so this needed
   no further code changes - "Dec 2004" renders correctly and it still buckets into the "2000s" decade.

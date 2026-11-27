@@ -119,6 +119,7 @@ export const GENRES = [
     "Stoner Metal",
     "Folk Rock",
     "Industrial Hip-Hop",
+    "Rage",
 ] as const;
 
 export type Genre = (typeof GENRES)[number];
@@ -219,6 +220,7 @@ const PARENT_GENRE: Record<string, Genre[]> = {
   "Stoner Metal": ["Metal"],
   "Folk Rock": ["Rock"],
   "Industrial Hip-Hop": ["Alternative Hip-Hop"],
+  "Rage": ["Trap"],
 };
 
 /** Shown for a track with no artist we can classify at all. */
@@ -400,6 +402,9 @@ export const ARTIST_GENRES: Record<string, Genre[]> = {
   "Tha God Fahim": ["East Coast Hip-Hop", "Drumless"],
   "Stove God Cooks": ["East Coast Hip-Hop", "Coke Rap"],
   "Tee Grizzley": ["Hip-Hop", "Trap", "Gangsta Rap"],
+  "Playboi Carti": ["Southern Hip-Hop", "Trap", "Cloud Rap", "Plugg", "Rage"],
+  "Lil Uzi Vert": ["Trap", "Pop Rap", "East Coast Hip-Hop"],
+  "Main Attrakionz": ["Cloud Rap", "West Coast Hip-Hop"],
   "King Von": ["Hip-Hop", "Trap", "Gangsta Rap"],
   "Lil Durk": ["Hip-Hop", "Trap", "Gangsta Rap"],
   "Teller Bank$": ["Experimental Hip-Hop", "Abstract Hip-Hop", "Jazz Rap"],

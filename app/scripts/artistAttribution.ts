@@ -36,14 +36,18 @@
  * has the colon this time but lowercase "the" - found on delsix's Oct 2026
  * "Pork [Remix]" credit, which otherwise silently failed to count toward
  * Kill Bill: The Rapper's totals), "RAP FERRERIA" (typo'd/all-caps vs.
- * "R.A.P. Ferreira"), and "KA" (all-caps vs. the dominant "Ka" spelling used
- * on the vast majority of his tracks).
+ * "R.A.P. Ferreira"), "KA" (all-caps vs. the dominant "Ka" spelling used
+ * on the vast majority of his tracks), and "BLACK KRAY AKA SICKBOYRARI"
+ * (the all-caps local-file credit on hryash's "GOTH LUV" tracks - a second,
+ * differently malformed spelling of the same artist already covered by
+ * "Sickboyrari" below).
  */
 export const SPOTIFY_MISSPELLINGS: Record<string, string> = {
   "Kill Bill the Rapper": "Kill Bill: The Rapper",
   "Kill Bill: the Rapper": "Kill Bill: The Rapper",
   "RAP FERRERIA": "R.A.P. Ferreira",
   "Sickboyrari": "Black Kray",
+  "BLACK KRAY AKA SICKBOYRARI": "Black Kray", // all-caps local-file credit on hryash's "GOTH LUV" tracks
   "Roc Marci": "Roc Marciano",
   "Roc Mariano": "Roc Marciano",
   "Stove God Cook$": "Stove God Cooks",

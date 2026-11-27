@@ -31,10 +31,20 @@
  *   spelling in the CSV, matching this function's own doc comment below
  *   about keying pre-attribution-resolution) rather than the canonical
  *   "Natural Snow Buildings" SPOTIFY_MISSPELLINGS resolves it to.
+ * - Black Kray's "GOTH LUV" - the two `spotify:local:...` tracks on hryash's
+ *   Nov 2026 list for this album (no streaming match, so Spotify's catalog
+ *   has no release date for them at all - `row["Release Date"]` is empty)
+ *   are corrected to the album's true 2014-01-16 release date. Keyed on
+ *   "BLACK KRAY AKA SICKBOYRARI" (the raw local-file credited spelling in
+ *   the CSV, matching this function's own doc comment about keying
+ *   pre-attribution-resolution - same convention as the "NSB Archive" case
+ *   above), not the canonical "Black Kray" SPOTIFY_MISSPELLINGS resolves it
+ *   to.
  */
 const RELEASE_DATE_CORRECTIONS: Record<string, string> = {
   "Bark Psychosis\u0000Codename: Dustsucker": "2004-09-01",
   "NSB Archive\u0000The Winter Ray": "2004-12",
+  "BLACK KRAY AKA SICKBOYRARI\u0000GOTH LUV": "2014-01-16",
   // Add more here as "artist\u0000album" -> "YYYY-MM-DD" (or "YYYY-MM" when
   // only the month is known), e.g.:
   // "Some Artist\u0000Some Album": "1999-01-01",
